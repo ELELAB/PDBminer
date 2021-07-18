@@ -20,8 +20,8 @@ import pandas as pd
 ##############
 
 from find_structure_list import find_structure_list
+from validate_sequence import validate_sequence
 
-#from validate_sequence import validate_sequence
 #from evaluate_mutations import evaluate_mutations
 #from choose_model import choose_model
 
@@ -55,8 +55,8 @@ print("Step 1 has finalized and the list of PDB sturctures per uniprot ID are av
 
 #might be nice to input a progress bar here
 
-#print("Step 2: .... validating the sequence")
-#validate_sequence()
+print("Step 2: .... validating the sequence")
+validate_sequence(path, input_dataframe)
 
 #print("Step 3: .... evaluating mutations the sequence")
 #evaluate_mutations()
