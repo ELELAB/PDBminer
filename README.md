@@ -1,11 +1,6 @@
 # PDBminer
 29-July-2021
 
-## Table of Contents
-* [Introduction to the Program] (#introduction-to-the-program)
-* [Dependencies] (#dependencies)
-* [Setup] (#setup)
-
 ## Introduction to the Program 
 PDBminer is a collection of scripts that takes a singular input file containing information about a protein and its mutations and outputs the best possible structural model in the PDB file format covering the protein and its mutations. 
 
@@ -47,7 +42,6 @@ run_program.py is the main script that will guide the program and currently cont
 $ ./run_PDBminer.sh 
 
 ```
-
 The output:
 * A directory called "structure_lists" containing a csv file for each uniprot ID. (to be expanded upon when the directory does contain more)
 * A directory called "sturctures" containing the final output structures in a PDB file format for further analysis.  
