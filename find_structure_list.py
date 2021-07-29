@@ -85,6 +85,14 @@ def get_structure_metadata(pdb_id):
         response = requests.get(mmcif_url.format(pdb_id))
         # Write the mmCIF file to the temporary file
         tmp.write(response.text)
+        
+        ##
+        
+        # "you don't need to save to a temporary file 
+        # - you can just use io.StringIO instead"
+        # I cannot get it to work, and since this is not
+        # my code, I am reluctant to change it. 
+        ##
          
         # Create a dictionary from the header data
         mmcif_dict = MMCIF2Dict(tmp.name)
@@ -113,7 +121,9 @@ def get_structure_metadata(pdb_id):
                     # separated by a semicolon
                     data = \
                         ":".join(datatype(\
-                            [item for item in data if item != "?"]))        
+                            [item for item in data if item != "?"]))  
+                    #"any reason you're just not keeping the tuple?"¨
+                    # reluctant to make changes in the SliM code. 
             else:
                 # The field is not present
                 data = None
@@ -128,14 +138,16 @@ def get_structure_metadata(pdb_id):
 ###########################################################################
     
 def get_structure_df(uniprot_id):
-    """ explain function
+    """ This function takes a single uniprot ID and outputs a 
+    dataframe containing a sorted list of PDB ids and their metadata 
+    associated to a singular Uniprot ID. 
     """
     
     #find all pdbs for a uniprot id
     pdb_list = get_pdbs(uniprot_id)
     
     #create an empty df
-    structure_df = pd.DataFrame([])
+    structure_df = pd.DataFrame()
     
     #make a for loop to populate the empty df with metadata for each pdb
     for i in range(len(pdb_list)):
@@ -144,33 +156,41 @@ def get_structure_df(uniprot_id):
         structure_metadata = get_structure_metadata(pdb_list[i])
         
         #input the values into a dataframe
-        structure_metadata_df = pd.DataFrame(structure_metadata.values())
-        #transpose dataframe for easy reading
-        structure_metadata_df = structure_metadata_df.transpose()
+        structure_metadata_df = pd.DataFrame.from_dict(dict([(x, [k[x] for k in [structure_metadata]]) for x in structure_metadata]))
         
-        #name columns
-        structure_metadata_df.columns = structure_metadata.keys()
-        
+        #append values
         structure_df = structure_df.append(structure_metadata_df) 
         
     #name_rows
     structure_df.index = pdb_list
     
-    #sort based on a defined hierarchy (quick and dirty version to be updated)
+    #sort based on a defined hierarchy 
+    #(quick and dirty version to be updated)
     structure_df.sort_values(["experimental_method", "resolution", "deposition_date"], 
                              ascending = [False, True, False], inplace = True)
+    
+    #somewhat unsure how to update. Will return to in August. 
     
     return structure_df
 
 def find_structure_list(input_dataframe, path):
-    """ explain function
+    """Takes the input file and the path where it is placed and outputs
+    a directory with a csv file for each Uniprot ID input and a txt file 
+    including all the UNIprot IDs that does not have any solved structures.
     """
     
     dir = 'structure_lists'
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+    #os.chdir("structure_lists")
+    #I wouldn't do this as it can complicate things down the line. 
+    #Instead you can just use the full path i.e. 
+    #structure_lists/a/b/c/....)
     
-    os.chdir("structure_lists")
+    #is this a solution?
+    path = path+"/structure_lists"
+
     
     #take all uniprot id's from the input file
     all_uniprot_ids = list(input_dataframe.Uniprot)
@@ -197,10 +217,9 @@ def find_structure_list(input_dataframe, path):
             missing_ID.append(all_uniprot_ids[i])
             
     #write into a file
-    textfile = open("missing_IDs.txt", "w")
-    for element in missing_ID:
-        textfile.write(element + "\n")
-        textfile.close()
+    with open("missing_IDs.txt", "w") as textfile:
+        for element in missing_ID:
+            textfile.write(element + "\n")
+            textfile.close()
                 
     return
-    
