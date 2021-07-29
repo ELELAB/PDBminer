@@ -39,7 +39,7 @@ code is written as:
 run_program.py is the main script that will guide the program and currently contains crude user prompting. Run from the terminal using: 
 
 ```
-$ ./run_PDBminer.sh 
+$ .....
 
 ```
 The output:
