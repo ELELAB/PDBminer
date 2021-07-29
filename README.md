@@ -33,9 +33,11 @@ The following packs are required:
 ## Setup
 Requires a Input file in a csv file format, containing the following:
 
+```
 Hugo_name | Uniprot | Uniprot-isoform | Mutations
 -------------------------------------------------
           |         |                 |           
+```
 
 code is written as:
 
