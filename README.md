@@ -30,11 +30,15 @@ Requires a Input file in a csv file format, containing the following:
 
 ```
 Hugo_name | Uniprot | Uniprot-isoform | Mutations
--------------------------------------------------
-          |         |                 |           
+----------------------------------------------------------
+TP53      |  P04637 |         2       | P278L;R337C;L344P
+MAT1A     |  Q00266 |         1       | P30N;W300H
+SSTR3     |  P05543 |         1       | T11S;C191S;R330L
+SAMD4A    |  Q9UPU9 |         3       | L10R;I80A
+        
 ```
 
-code is written as:
+This file is present in this repository under the name "inp..?" and can be used as an example.
 
 run_program.py is the main script that will guide the program and currently contains crude user prompting. Run from the terminal using: 
 
@@ -45,3 +49,4 @@ $ .....
 The output:
 * A directory called "structure_lists" containing a csv file for each uniprot ID. (to be expanded upon when the directory does contain more)
 * A directory called "sturctures" containing the final output structures in a PDB file format for further analysis.  
+
