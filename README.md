@@ -43,7 +43,11 @@ This file is present in this repository under the name "inp..?" and can be used 
 run_program.py is the main script that will guide the program and currently contains crude user prompting. Run from the terminal using: 
 
 ```
-$ .....
+$ python3 run_PDBminer.py [input file]
+
+#Example: Try Run
+
+$ python3 run_PDBminer.py input_test_file.csv
 
 ```
 The output:
