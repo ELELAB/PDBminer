@@ -183,14 +183,14 @@ def find_structure_list(input_dataframe, path):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
-    #os.chdir("structure_lists")
-    #I wouldn't do this as it can complicate things down the line. 
+    os.chdir("structure_lists")
+    #"I wouldn't do this as it can complicate things down the line. 
     #Instead you can just use the full path i.e. 
-    #structure_lists/a/b/c/....)
+    #structure_lists/a/b/c/....)"
     
     #is this a solution?
-    path = path+"/structure_lists"
-
+    #path = path+"/structure_lists"
+    #does not work
     
     #take all uniprot id's from the input file
     all_uniprot_ids = list(input_dataframe.Uniprot)
