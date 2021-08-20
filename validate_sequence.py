@@ -248,6 +248,8 @@ def find_sequence(name,csv,mutations):
     ranges_list = []
     mutational_sites = []
     wt_list = []
+    method = []
+    res = []
         
     for j in range(len(r_list)):
             
@@ -265,6 +267,8 @@ def find_sequence(name,csv,mutations):
                 pdb_id_success.append(r_list[j])
                 ranges_list.append(res_range)
                 wt_list.append(csv.loc[csv[name]==r_list[j],"model_mutations"].iloc[0])
+                method.append(csv.loc[csv[name]==r_list[j],"experimental_method"].iloc[0])
+                res.append(csv.loc[csv[name]==r_list[j],"resolution"].iloc[0])
                 
         except:
             print("failed to analyze " + r_list[j])
@@ -279,7 +283,7 @@ def find_sequence(name,csv,mutations):
             
         mutational_sites.append(placement)        
 
-    return pdb_id_success, wt_list, mutational_sites
+    return pdb_id_success, wt_list, mutational_sites, method, res
 
 ##################################################################################
 #Slimfast Functions
@@ -397,7 +401,7 @@ def validate_sequence(path, input_df):
         
         uniprot_name_list = list([names[1][i]]*len(pdb_data[0]))
         
-        d = {'uniprot_id': uniprot_name_list, 'PDB_id': pdb_data[0], 'WT_status': pdb_data[1], "Found_sites": pdb_data[2]}
+        d = {'uniprot_id': uniprot_name_list, 'PDB_id': pdb_data[0], 'WT_status': pdb_data[1], "Exp_method": pdb_data[3], "Resolution": pdb_data[4], "Found_sites": pdb_data[2]}
         
         df = pd.DataFrame(data=d)
 
