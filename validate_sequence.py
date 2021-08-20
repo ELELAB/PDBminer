@@ -71,7 +71,7 @@ def import_csvs(Path, names_list, uniprot_id):
 #Create a dictionary with the uniprot ID and mutational sites.
 
 def seq_pos_dict(input_dataframe):
-    """Takes the input file as inpit and returns a dictionary with 
+    """Takes the input file as input and returns a dictionary with 
     the uniprot ID as key and all the positions of the mutations as 
     values"""
     
@@ -97,22 +97,48 @@ def seq_pos_dict(input_dataframe):
  ################################################################################
  
 def find_ranges(segments):
-    """The function takes the segments found in get_uniprot_segments() 
-    (SLIM) which is ranges where the uniprot ID is covered by a given PDB 
-    file. find_ranges() removes the segments that are not covered by the 
-    PDB and output an array of the AA range the specific PDB covers"""
+    """The function takes the segments found in the quality control function
+       get_uniprot_segments() and removes sequences that does not match.
     
-    #output from get_uniprot_segments
+    Input:
+    --------------------------------------------------------------------------
+     {'Chain A': [((pdb_start, pdb_end), (Uniprot_start, Uniprot_end))], 
+      'Chain B': [(pdb_start, pdb_end), (Uniprot_start, Uniprot_end)]}
     
+    Example: 
+        {'A': [((19, 351), (39, 371))], 
+         'B': [((None, 395), (377, 415))]}
+        
+    Chain A:
+        
+    PDB sequence       19 ##################################### 351
+    Uniprot sequence          39 ##################################### 371
+    
+    Chain B
+    
+    PDB sequence         ? XXXXXXXXXX######### 395
+    Uniprot sequence          377 ################### 415    
+    
+    
+    Aim and Methodology of function:
+    --------------------------------------------------------------------------
+    The aim of find_ranges(segemnts) is to:
+        i) remove the segments that does not match, such as chain B above
+        ii) to correct the numbering to match the Uniprot numbering
+            
+    Output:
+    --------------------------------------------------------------------------
+    The output is an array of the corrected segment. 
+    
+    """
+    
+    #Convert the values of the input dictionary to an array    
     segment_array = np.array(list(segments.values()))
-    
-    #reshape to fit ranges
-    segment_array = segment_array.reshape([-1,2])
-    
+        
     #create empty list for removal:
     to_be_removed = []
     
-    #control if any ranges are not covered by the PDB
+    #control if any ranges are not covered
     for i in range(len(segment_array)):
         if None in segment_array[i]:
             to_be_removed.append(i)
@@ -129,6 +155,35 @@ def find_ranges(segments):
         segment_array = np.delete(segment_array, tbr, 0)
     else: 
         segment_array = segment_array
+
+    #For the remaining segments, a control of the length is to be conducted
+
+    #First the segment is reshaped to access both pdb and uniprot numbering
+    #seperately.    
+    segment_array = segment_array.reshape([-1,2])
+    
+    #Length of the segment is controlled to be identical and is either 
+    #discarded or the uniprot numbering is kept.
+    
+    #Collect all even numbers from the segment_array 
+    array_number =  list(range(len(segment_array)))
+    even_numbers = [num for num in array_number if num % 2 == 0]
+    
+    #create an empty list
+    collected_segments = []
+    
+    #assess the length of each segment
+    for j in even_numbers:
+        if segment_array[j][0]-segment_array[j][1] == segment_array[j+1][0]-segment_array[j+1][1]:
+            #choose the uniprot segment
+            segment_ = segment_array[j+1]
+            
+            collected_segments.append(segment_)
+    
+    if len(collected_segments) == 0:
+        segment_array = segment_array
+    else:
+        segment_array = collected_segments
     
     return segment_array
 
@@ -169,56 +224,62 @@ def find_mutational_sites(mutation_location, range_of_model):
     for mutation in range(len(mutation_location)):
         
         if mutation_location[mutation] in range_of_model:
-            r = 1
-        
-        else:
-            r = 0
+            r = mutation_location[mutation]
             
-        presence_of_mutations.append(r)
-    
-    if 0 in presence_of_mutations:
-        mut_result = False 
-    
-    else: 
-        mut_result = True
-    
-    return mut_result, mutation_location
+            presence_of_mutations.append(r)
 
-def find_mutational_sites_2nd(mutation_location, range_of_model, iteration):
-    """A function that is not yet utilized - the aim is to have a function
-    that can find mutational sites, if a specific model does cover two out 
-    of three mutations, perhaps this solved PDB is better than a homolog.
+    
+    return presence_of_mutations
+
+
+def find_sequence(name,csv,mutations):
+    
+    """
+    A function that takes a Uniprot ID, the corresponding CSV file and the mutations and search 
+    trough the PDBs in the CSV file to find the matching values. 
+    
     """
     
-    #create an empty list to store the presence of mutations, presence = 1, missing = 0
-    presence_of_mutations = []
+    #create a list of pdb ids
+    r_list = list(csv[name])
     
-    sites = []
-    
-    #a for loop to investigate if the mutational sites (locations) are present in the model
-    for mutation in range(len(mutation_location)):
+    #create empty lists for collection of information    
+    pdb_id_success = []
+    ranges_list = []
+    mutational_sites = []
+    wt_list = []
         
-        #when the mutational sites are present or not present, this is stored in a binary list as 1 or 0. 
-        if mutation_location[mutation] in range_of_model:
-            r = 1
-            #when a site has been found, the information is stored in case not all mutations can be found.
-            sites.append(mutation_location[mutation])
-        
-        else:
-            r = 0
+    for j in range(len(r_list)):
             
-        presence_of_mutations.append(r)
+        #search for the segments covered by the model in PDB
+        try:
+            r = get_uniprot_segments(r_list[j], name)
+            
+            #Clean up the segments, removing all the sequence elements of the PDB, for which 
+            #there is not a model
+            res_range = find_ranges(r)
+                
+            #create a dictionary of each PDBid and the range.
+            if len(res_range) > 0:
+                
+                pdb_id_success.append(r_list[j])
+                ranges_list.append(res_range)
+                wt_list.append(csv.loc[csv[name]==r_list[j],"model_mutations"].iloc[0])
+                
+        except:
+            print("failed to analyze " + r_list[j])
+                
+    for jj in range(len(pdb_id_success)):
+            
+        #Convert the segment descriptors [start, stop] into searchable ranges
+        searchable_range = make_searchable_ranges(ranges_list[jj])
+            
+        #Seach through the ranges for the relevant mutational site 
+        placement = find_mutational_sites(mutations[name], searchable_range)
+            
+        mutational_sites.append(placement)        
 
-    #for loop to ensure, that even if not all mutations are found, the best model 
-    #that satisfy most of the criteria is chosen  
-    if sum(presence_of_mutations) >= len(presence_of_mutations)-iteration:
-        mut_result = True
-
-    else:
-        mut_result = False
-
-    return mut_result, sites
-
+    return pdb_id_success, wt_list, mutational_sites
 
 ##################################################################################
 #Slimfast Functions
@@ -242,7 +303,7 @@ def get_uniprot_segments(pdb_id, uniprot_id):
     # Convert to text and read the resulting dictionary through JSON
     response_text = json.loads(response.text)
 
-    # Get the data about the mappings
+    # Get the data about the mappings - #p53, pos (csv_[2].iloc[90]) complains here for some reason.
     data = \
         response_text[pdb_id.lower()]["UniProt"][uniprot_id]["mappings"]
     
@@ -277,7 +338,7 @@ def get_uniprot_segments(pdb_id, uniprot_id):
 
         # Create a tuple of tuples to store those ranges
         ranges = ((pdb_start, pdb_end), (uniprot_start, uniprot_end))
-
+    
         # If the chain ID was already encountered (i.e. the PDB
         # chain corresponds to multiple discontinuous protein
         # segments)
@@ -308,21 +369,11 @@ def validate_sequence(path, input_df):
         
     The output is:
         
-        pdb_uniprot_df = a csv file in the following format:
+        a csv file per uniprot_id in the following format:
             
-        Uniprot | PDB | found_mutational_sites         
+        uniprot_id | PDB_id | WT_status | Found_sites         
         
     """
-    
-    
-    #create an empty list to hold the found pdb id's
-    pdb_list = []
-    
-    #create an empty list to hold the found pdb id's
-    mutational_sites = []
-    
-    #create an empty list for the Uniprot IDs where the pdbs does not cover the mutational sites
-    # uniprot_missing_mut_site = []
     
     path = path + "/structure_lists"
     
@@ -336,62 +387,20 @@ def validate_sequence(path, input_df):
     mutations = seq_pos_dict(input_df)
     
     for i in range(len(names[1])):
-        
         print(names[1][i])
         
-        #create a list of all the pdb's realted to one uniprot ID
-        r_list = list(csv_[i][names[1][i]])
+        #creation of a tuple containing three lists:
+            #i) all the PDBids that contain the domains where the mutations are
+            #ii) if the PDB is a model of a mutated or WT protein
+            #iii) the found mutational sites, not all mutations may be found.
+        pdb_data = find_sequence(names[1][i],csv_[i], mutations)
         
-        for j in range(len(r_list)):
-            
-            #search for the segments covered by the model in PDB
-            r = get_uniprot_segments(r_list[j], names[1][i])
-            
-            #Clean up the segments, removing all the sequence elements of the PDB, for which 
-            #there is not a model
-            res_range = find_ranges(r)
-            
-            #Convert the segment descriptors [start, stop] into searchable ranges
-            searchable_range = make_searchable_ranges(res_range)
-            
-            #Seach through the ranges for the relevant mutational site 
-            placement = find_mutational_sites(mutations[names[1][i]], searchable_range)
-            
-            #if all the mutational sites realated to a specific uniprot ID is found in a singular PDB model, 
-            #the model is kept, if not the search contunues. 
-            if placement[0] == True:
-                pdb_list.append(r_list[j]) 
-                mutational_sites.append(placement[1])
-                break
-            
-            else:
-                continue
-                
-#   For later;          
-#            if placement[0] == False:
-#                placement_ = find_mutational_sites_2nd(mutations[names[1][i]], searchable_range, j)
-#                
-#                if placement_[0] == True:
-#                    pdb_list.append(r_list[j]) 
-#                    mutational_sites.append(placement_[1])
-#                    break
-                    
-#                else:
-#                    continue
-            
-#            if placement[0] == False:
-#                uniprot_missing_mut_site.append(r_list[j])
-                 
-    #write into a file
-#    textfile = open("missing_mutational_sites.txt", "w")
-#    for element in uniprot_missing_mut_site:
-#        textfile.write(element + "\n")
-#        textfile.close()
-    
-    pdb_uniprot_df = pd.DataFrame(list(zip(names[1], pdb_list, mutational_sites)), 
-                                  columns =['Uniprot', 'PDB', 'found_mutational_sites'])         
-    
-    pdb_uniprot_df.to_csv("pdb_uniprot_df.csv")
-            
-    return(pdb_uniprot_df)  
+        uniprot_name_list = list([names[1][i]]*len(pdb_data[0]))
+        
+        d = {'uniprot_id': uniprot_name_list, 'PDB_id': pdb_data[0], 'WT_status': pdb_data[1], "Found_sites": pdb_data[2]}
+        
+        df = pd.DataFrame(data=d)
 
+        df.to_csv(names[1][i]+"_PDB_Uniprot_df.csv")
+            
+    return
