@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 This file contains the code required to answer
 the question: 
@@ -69,7 +68,31 @@ STRUCTURE_METADATA = [
     ("_pdbx_database_status.recvd_initial_deposition_date",
      str,
      "deposition_date"),
+    
+    # WT or Mutated model
+    # This is based on the logic that 0 mutations equals WT - I need to double check that 
+    # this is indeed true. Further, this addition has slowed the code down remarkably.
+    # Hence, lets see how mich information gain there is in the end. 
+    
+    ("_entity.pdbx_mutation",
+     str,
+     "model_mutations"),
     ]
+
+def experimental_sorter(column):
+    """Function to sort the experimental method used"""
+    
+    #the correct order
+    reorder = [
+        "X-RAY DIFFRACTION",
+        "ELECTRON MICROSCOPY",
+        "SOLUTION NMR",
+    ]
+    
+    mapper = {name: order for order, name in enumerate(reorder)}
+    
+    return column.map(mapper) 
+
 
 def get_structure_metadata(pdb_id):
     """
@@ -164,12 +187,19 @@ def get_structure_df(uniprot_id):
     #name_rows
     structure_df.index = pdb_list
     
-    #sort based on a defined hierarchy 
-    #(quick and dirty version to be updated)
-    structure_df.sort_values(["experimental_method", "resolution", "deposition_date"], 
-                             ascending = [False, True, False], inplace = True)
+    structure_df.sort_values(["resolution", "deposition_date"], 
+                             ascending = [True, False], inplace = True)
     
-    #somewhat unsure how to update. Will return to in August. 
+    structure_df = structure_df.sort_values(by="experimental_method", key=experimental_sorter)
+    # update needs to be controlled so that the experimental method is x-ray, EM, NMR rather than x-ray, NMR, EM
+
+    
+    #If there are no mutations present, the value is to be Wild Type
+    for i in range(len(structure_df)):
+        if structure_df["model_mutations"][i] == None:
+            structure_df["model_mutations"][i] = "WT"
+        else:
+            structure_df["model_mutations"][i] = "Mutated"
     
     return structure_df
 
@@ -184,13 +214,13 @@ def find_structure_list(input_dataframe, path):
         os.makedirs(dir)
 
     os.chdir("structure_lists")
-    #"I wouldn't do this as it can complicate things down the line. 
+    #I wouldn't do this as it can complicate things down the line. 
     #Instead you can just use the full path i.e. 
-    #structure_lists/a/b/c/....)"
+    #structure_lists/a/b/c/....)
     
     #is this a solution?
-    #path = path+"/structure_lists"
-    #does not work
+    #path = path+"/structure_lists" # no does not work.
+
     
     #take all uniprot id's from the input file
     all_uniprot_ids = list(input_dataframe.Uniprot)
@@ -223,3 +253,4 @@ def find_structure_list(input_dataframe, path):
             textfile.close()
                 
     return
+    
