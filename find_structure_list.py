@@ -20,6 +20,8 @@ This file also contains:
     get_structure_df(uniprot_id)        
     find_structure_list(input_dataframe, path)
 
+last update: 24th Aug 2021
+
 """
 
 ##############
@@ -164,6 +166,17 @@ def get_structure_df(uniprot_id):
     """ This function takes a single uniprot ID and outputs a 
     dataframe containing a sorted list of PDB ids and their metadata 
     associated to a singular Uniprot ID. 
+    
+    Parameters
+    -------------
+    uniprot_id      A sting, e.g. 'P04637'
+    
+    Returns
+    -------------
+    structure_df    A pandas dataframe containing all the names and details
+                    regarding the solved structures related to the 
+                    uniprot id in terms of pdb files.  
+    
     """
     
     #find all pdbs for a uniprot id
@@ -191,8 +204,6 @@ def get_structure_df(uniprot_id):
                              ascending = [True, False], inplace = True)
     
     structure_df = structure_df.sort_values(by="experimental_method", key=experimental_sorter)
-    # update needs to be controlled so that the experimental method is x-ray, EM, NMR rather than x-ray, NMR, EM
-
     
     #If there are no mutations present, the value is to be Wild Type
     for i in range(len(structure_df)):
@@ -207,6 +218,19 @@ def find_structure_list(input_dataframe, path):
     """Takes the input file and the path where it is placed and outputs
     a directory with a csv file for each Uniprot ID input and a txt file 
     including all the UNIprot IDs that does not have any solved structures.
+    
+    parameters
+    ------------
+    input_dataframe  The input df, as described in the readme file 
+    path             The placement of the input df as a csv file. 
+    
+    Returns          
+    --------------
+    txt file         Containing a list of stings with all the uniprot IDs to
+                     which there are no solved structurs.
+    
+    csv files        A csv file titled the uniprot id where each solved stuture
+                     and a number of describtors are detailed. 
     """
     
     dir = 'structure_lists'
@@ -253,4 +277,3 @@ def find_structure_list(input_dataframe, path):
             textfile.close()
                 
     return
-    
