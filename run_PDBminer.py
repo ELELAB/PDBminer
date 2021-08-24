@@ -42,15 +42,7 @@ args = parser.parse_args()
 
 input_data = args.Input
 
-path = os.getcwd()
-
-#Answer = input("Do you have a new input file? (Y/N):  ")
-
-#if Answer == "Y":
-#    input_data = input("Please write the name of the input file, if you do not have one, use /input_test_file.csv")
-#elif Answer == "N":
-#    input_data = "/input_test_file.csv" #why "/"
-#else: print("Your input was neither Y or N")    
+path = os.getcwd()  
 
 print("####################################################################")
 
@@ -69,15 +61,3 @@ print("Step 2: Checking for the domains containing the mutations...")
 validate_sequence(path, input_dataframe)
 
 print("Step 2 has finalized and the .csv file containig the PDB file, and mutational sites for each Uniprot ID is avialable in the directory")
-
-#path = '/Users/krde/Documents/Research/TCGA_3D/structure_lists'
-#names = import_names(path)
-#test = import_csvs(path, names[0], names[1])
-#mutations = seq_pos_dict(input_df)
-
-print("This what PDBminer is capable of doing at the moment. Program has finished.")
-#print("Step 3: Control if PDBs contain the correct AA mutations..")
-#evaluate_mutations()
-
-#print("Step 4: ... choosing a model")
-#choose_model()
