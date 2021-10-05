@@ -1,5 +1,6 @@
 # PDBminer
-29-July-2021
+
+THIS READ ME IS OBSOLETE
 
 ## Introduction to the Program 
 PDBminer is a collection of scripts that takes a singular input file containing information about a protein and its mutations and outputs the best possible structural model in the PDB file format covering the protein and its mutations. 
