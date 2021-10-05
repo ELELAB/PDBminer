@@ -239,8 +239,6 @@ def validate_sequence(sturcture_df, input_dataframe, path):
     
     input_dataframe: the input file
     
-    path: where you want the csv to be downloaded to
-    
     Returns:
     ----------------------------
     A csv file & df for inspection of all the stuctures discarded
@@ -257,52 +255,71 @@ def validate_sequence(sturcture_df, input_dataframe, path):
     
         for j in range(len(sturcture_df)):
 
-            if sturcture_df.iloc[j]["Uniprot_ID"] == input_dataframe.Uniprot[i]:
+            if sturcture_df.iloc[j]["Uniprot_ID"] == input_dataframe.Uniprot[i] and sturcture_df.iloc[j]["ClusterID"] == input_dataframe.ClusterID[i]: 
 
                 try: 
                     segments = get_uniprot_segments(sturcture_df.iloc[j].name, input_dataframe.Uniprot[i])
                     mutation_list = input_dataframe["mutation_positions"][i]
 
                     outcome = identify_mutational_positions(segments, mutation_list, sturcture_df.iloc[j].name)
-                    mutation_coverage.append(outcome)
-                
-                    searching_mutations.append(input_dataframe["Mutations"][i])
-                
+                    
+                    if outcome == {}: #removing empty dictionaries
+                        mutation_coverage.append("segments not found")
+                        searching_mutations.append(input_dataframe["Mutations"][i])
+                         
+                    else: 
+                        mutation_coverage.append(outcome)
+                        searching_mutations.append(input_dataframe["Mutations"][i])
+                   
                 except:
                     "KeyError:" + input_dataframe.Uniprot[i]
                     mutation_coverage.append("segments not found")
                     searching_mutations.append(input_dataframe["Mutations"][i])
                 
 
-    sturcture_df.insert(5, "mutation_coverage", mutation_coverage, True)
+    sturcture_df.insert(5, "mutation_coverage", mutation_coverage, True) 
     sturcture_df.insert(6, "Research_mutations", searching_mutations, True)
     
     #Notice 
     # 1) The information on isoforms are not used here!
     # 2) PTM information should also be captured in some capacity!
     
+    #Seperate out potential choices for structures and a list of structures to insepect
     binary = []
 
+    #The last quality check that each coverage is added as a dictionary
     for i in range(len(sturcture_df)):
-        if type(sturcture_df.mutation_coverage[i]) == dict:
+        if type(sturcture_df.mutation_coverage[i]) == dict and sturcture_df.mutation_coverage[i] != {}:
 
             binary.append(0)
 
         else:
+            
             binary.append(1)
 
     sturcture_df.insert(0, "type_of_inf", binary, True)
+    
+    if len(set(sturcture_df['type_of_inf'])) > 1:
+        
+        df1, df2 = [x for _, x in sturcture_df.groupby(sturcture_df['type_of_inf'] > 0)]
 
-    df1, df2 = [x for _, x in sturcture_df.groupby(sturcture_df['type_of_inf'] > 0)]
+        potential_structures = df1.drop("type_of_inf", axis=1)
+        potential_structures.to_csv(path+'/potential_structures.csv')
 
-    potential_structures = df1.drop("type_of_inf", axis=1)
-    potential_structures.to_csv(path+'/potential_structures.csv')
-
-    inspection_structures = df2.drop("type_of_inf", axis=1)
-    inspection_structures.to_csv(path+'/inspection_structures.csv')
+        inspection_structures = df2.drop("type_of_inf", axis=1)
+        inspection_structures.to_csv(path+'/inspection_structures.csv')
+        
+    else:
+        
+        if sturcture_df['type_of_inf'].iloc[0] == 0:
+            potential_structures = sturcture_df.drop("type_of_inf", axis=1)
+            potential_structures.to_csv(path+'/potential_structures.csv')
+            
+        else: 
+            inspection_structures = sturcture_df.drop("type_of_inf", axis=1)
+            inspection_structures.to_csv(path+'/inspection_structures.csv')
 
     return potential_structures, inspection_structures
-
 
 
 
