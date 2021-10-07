@@ -6,7 +6,8 @@
 
 import requests
 from tempfile import NamedTemporaryFile
-from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+#from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+from Bio.PDB import *
 import json
 import logging as log
 
@@ -30,6 +31,7 @@ def get_pdbs(uniprot_id):
             pdbs.append(pdb_id)
 
     return pdbs
+
 
 STRUCTURE_METADATA = [
     # experimental method used for structure determination
@@ -66,45 +68,50 @@ def get_structure_metadata(pdb_id):
         tmp.write(response.text)
         
         # Create a dictionary from the header data
-        mmcif_dict = MMCIF2Dict(tmp.name)
+        try:
+            mmcif_dict = MMCIF2Dict.MMCIF2Dict(tmp.name)
 
         # For each field of interest
-        for field, datatype, col in STRUCTURE_METADATA:
-            
-            # If the field is present in the mmCIF file
-            if field in mmcif_dict.keys():
+            for field, datatype, col in STRUCTURE_METADATA:
 
-                # Retrieve data for that field
-                data = mmcif_dict[field]
-                
-                # If the data type is not tuple
-                if datatype is not tuple:
-                    # If the piece of data is available
-                    if data[0] != "?":
-                        # Convert it to the appropriate data type
-                        data = str(datatype(data[0]))
+                # If the field is present in the mmCIF file
+                if field in mmcif_dict.keys():
+
+                    # Retrieve data for that field
+                    data = mmcif_dict[field]
+
+                    # If the data type is not tuple
+                    if datatype is not tuple:
+                        # If the piece of data is available
+                        if data[0] != "?":
+                            # Convert it to the appropriate data type
+                            data = str(datatype(data[0]))
+                        else:
+                            data = None
+
+                    # If the data type is tuple   
                     else:
-                        data = None
-                
-                # If the data type is tuple   
+                        # Join the pieces of data in a string,
+                        # separated by a semicolon
+                        data = \
+                            ":".join(datatype(\
+                                [item for item in data if item != "?"]))  
+                        #"any reason you're just not keeping the tuple?"¨
+                        # reluctant to make changes in the SliM code. 
                 else:
-                    # Join the pieces of data in a string,
-                    # separated by a semicolon
-                    data = \
-                        ":".join(datatype(\
-                            [item for item in data if item != "?"]))  
-                    #"any reason you're just not keeping the tuple?"¨
-                    # reluctant to make changes in the SliM code. 
-            else:
-                # The field is not present
-                data = None
+                    # The field is not present
+                    data = None
 
-            # Append data to the list
-            metadata[col] = data
-
+                # Append data to the list
+                metadata[col] = data
+        except:
+            
+            "ValueError: Empty file."
+            
+            return
+        
         # Return the dictionary of metadata
         return metadata
-    
 
 # Get the module logger
 logger = log.getLogger(__name__)
