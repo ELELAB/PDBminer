@@ -7,6 +7,8 @@ import numpy as np
 import os
 from Bio.PDB import *
 from Bio import SeqIO
+import shutil
+
 
 #############
 
@@ -14,7 +16,11 @@ from SLiM_codes import get_uniprot_segments
 
 #############
 
-def identify_mutational_positions(segments, mutation_list, pdb_id):
+def identify_mutational_positions(segments, mutation_list, pdb_id, path):
+    
+    #This function is too strict in its quality control and should be reworked somehow. 
+    #Idea is to introduce alignment rather than segmentation. 
+    
     """The function takes the segments found in the quality control function
        get_uniprot_segments(), removes sequences that does not match, identifty mutational sites
        and find the related amino acids.
@@ -178,13 +184,15 @@ def identify_mutational_positions(segments, mutation_list, pdb_id):
 
         pdb_name = pdb_id[1:3]
         pdb_name = pdb_name.lower()
-        os.chdir(pdb_name)
+        os.chdir(pdb_name) #this is not a good solution, but I end up creating a russian doll of structures if I dont. 
 
         for record in SeqIO.parse(pdb_id+".cif", "cif-seqres"):
             chains.append(record.annotations['chain'])
             sequences.append(record.seq)
-
-        #Create an empty dictionary to capture the amino acids
+        
+        os.chdir(path) # this is needed as long as os.chdir(pdb_name) is in use
+        
+	#Create an empty dictionary to capture the amino acids
         chain_dict = {}
         
         #loop over the doctionary containing the mutational sites. 
@@ -222,6 +230,8 @@ def identify_mutational_positions(segments, mutation_list, pdb_id):
             elif len(set(pl)) > 1 or pl[0] != "X":
                 chain_dict[k] = pl
     
+       # shutil.move(path+"/"+pdb_name, path+"/structures") # now I move all the structures to a dir, but they should proberbly just be deleted.             
+            
     return chain_dict
 
 
@@ -261,7 +271,7 @@ def validate_sequence(sturcture_df, input_dataframe, path):
                     segments = get_uniprot_segments(sturcture_df.iloc[j].name, input_dataframe.Uniprot[i])
                     mutation_list = input_dataframe["mutation_positions"][i]
 
-                    outcome = identify_mutational_positions(segments, mutation_list, sturcture_df.iloc[j].name)
+                    outcome = identify_mutational_positions(segments, mutation_list, sturcture_df.iloc[j].name, path)
                     
                     if outcome == {}: #removing empty dictionaries
                         mutation_coverage.append("segments not found")
@@ -279,6 +289,11 @@ def validate_sequence(sturcture_df, input_dataframe, path):
 
     sturcture_df.insert(5, "mutation_coverage", mutation_coverage, True) 
     sturcture_df.insert(6, "Research_mutations", searching_mutations, True)
+    
+    if len(set(sturcture_df.ClusterID)) == 1 and sturcture_df.ClusterID[0] == 999:
+        
+        #Return all clusters set at 999 to N/A  
+        input_dataframe.ClusterID = "N/A"
     
     #Notice 
     # 1) The information on isoforms are not used here!
@@ -319,8 +334,4 @@ def validate_sequence(sturcture_df, input_dataframe, path):
             inspection_structures = sturcture_df.drop("type_of_inf", axis=1)
             inspection_structures.to_csv(path+'/inspection_structures.csv')
 
-    return potential_structures, inspection_structures
-
-
-
-
+    return #potential_structures, inspection_structures #how do I deal with this when not both are there. 
