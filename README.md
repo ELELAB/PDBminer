@@ -1,60 +1,60 @@
 # PDBminer
 
 ## Introduction to the Program 
-PDBminer is a snakemake pipeline that takes a singular input file containing information about a protein and its mutations and outputs an overview of the best possible structural models in the 
-Protein data bank to cover the protein and its mutations.  
+PDBminer is a snakemake pipeline that uses a singular file as input. The file must contain information about a protein of interest and its mutations. PDBminer outputs an overview of the best possible structural models in the Protein Data Bank.
 
 PDBminer is currently only applicable for solved structures and does therefore not find alphafold 
-models.  
+models. 
 
 ## Dependencies
 
-It is recommended to create an environment to run PDBminer, all specifications for this is 
-Described in environment_python.yml.
+It is recommended to create a virtual environment to run PDBminer. The environment can be created using environment_python.yml as described below:
 
-#First time:
+### First time:
+
+```
 conda env create -f environment_python.yml 
 conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
+```
 
-#all subsequent times
+### All subsequent times
+
+```
 conda activate PDBminer
+```
 
 
-Within the envrionment_python.yml it is the following packs are described: 
+PDBminer is dependent on the following packs (as described in envrionment_python.yml):
 
 * python=3.8.8
 * pandas=1.2.4
 * requests=2.25.1
 
 ## Setup
-PDBminer Requires a Input file in a csv file format, containing the following:
+PDBminer requires an input file in a comma-separated values file format, with four mandatory columns; "Hugo_name", "Uniprot", "Uniprot-isoform", and "Mutations". It is optional to include a fifth column titled "ClusterID". The cluster ID should be an integer and can be used to annotate mutations forming a spacial cluster. See "inputfile.csv" as an example. 
 
 ```
-Hugo_name | Uniprot | Uniprot-isoform | Mutations
-----------------------------------------------------------
-TP53      |  P04637 |         2       | P278L;R337C;L344P
-MAT1A     |  Q00266 |         1       | P30N;W300H
-SSTR3     |  P05543 |         1       | T11S;C191S;R330L
-SAMD4A    |  Q9UPU9 |         3       | L10R;I80A
+Hugo_name | Uniprot | Uniprot-isoform | Mutations         | ClusterID
+-----------------------------------------------------------------------
+TP53      |  P04637 |         2       | P278L;R337C;L344P | 1
+MAT1A     |  Q00266 |         1       | P30N;W300H        | 1
+SSTR3     |  P05543 |         1       | T11S;C191S;R330L  | 1
+SAMD4A    |  Q9UPU9 |         3       | L10R;I80A         | 1
 
         
 ```
-This should be specified in the config.yaml file. 
+The name of the input file should be specified in the config.yaml file. 
 
-This file is present in this repository under the name "inputfile.csv" and can be used as an example.
-
-run_program.py is the main script that will guide the program and currently contains crude user prompting. Run from the terminal using: 
-
+## Running the Program
+Once the config.yaml has been updated and the dependencies installed, the program can be run from the terminal:
 ```
 $ snakemake --cores X
-
-#An example of the output can be found in results.
-
 ```
-The output:
-Each Uniprot ID will have its own directory containing: 
+
+## The Output
+For each Uniprot ID in the input file, a directory is created. After a successful run, this directory will contain the following: 
 
 * {unipot_id}_input.csv, the input
 * a common file indicating that the calculations have finished: {unipot_id}_done.txt
@@ -66,6 +66,8 @@ Moreover, there will be varying other files:
 * missing_id.txt, If there are no PDBids associated with the uniprot id. This should become an alphafold api.
 * alphafold.txt, If there are PDBs associated but none of them covers a single mutation. This should become an alphafold api.
 * issue.log
+
+See an example of the output of the example input file in the directory results.
 
 #content of clean_{unipot_id}_structural_df.csv and 
 #all_{unipot_id}_structural_df.csv:
