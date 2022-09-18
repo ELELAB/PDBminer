@@ -231,8 +231,11 @@ def find_structure_list(input_dataframe):
             else:
                 textfile.write(structure_info + "\n")
             
-    found_structure_list = pd.concat(df_collector) 
-    
+    if len(df_collector) > 0:
+        found_structure_list = pd.concat(df_collector) 
+        
+    else:
+        found_structure_list = []
     return found_structure_list
 
 
