@@ -8,6 +8,9 @@ path = config['path']
 
 #importing the file
 df = pd.read_csv(path+"/"+config['input_file']) 
+if ('ClusterID' in df.columns) == False:
+    cluster_id = [999] * len(df)
+    df['ClusterID'] = cluster_id
 if len(set(df.ClusterID)) == 1 and df.ClusterID[0] == "N/A":
     df.ClusterID = 999
 
