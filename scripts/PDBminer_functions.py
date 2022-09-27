@@ -449,7 +449,7 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
             #as a ligand or very small sequence is included in the structural list
             #these are removed if the overall alignment score is less than 10. 
             #10 is an arbitrary number chosen based on observations. 
-            if alignments[0][2] > 10:
+            if alignments != [] and alignments[0][2] > 10:
                 chains.append(record.annotations['chain'])
                 alignment_score.append(alignments[0][2])
                 uniprot_aligned = alignments[0][0]
