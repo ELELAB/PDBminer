@@ -613,20 +613,26 @@ def get_complex_information(pdb_id):
         
     response = requests.get(mapping_url_proteins.format(pdb_id))
     response_text = json.loads(response.text)
-    
-    protein_segment_dictionary = response_text[pdb_id.lower()]
-    
-    if len(protein_segment_dictionary['UniProt']) > 1:
-        protein_complex_list = ['protein complex']
 
-        info = []
+    if response_text != {}:
+    
+        protein_segment_dictionary = response_text[pdb_id.lower()]
+    
+        if len(protein_segment_dictionary['UniProt']) > 1:
+            protein_complex_list = ['protein complex']
 
-        for i in protein_segment_dictionary['UniProt']:
-            info.append(f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}")
+            info = []
         
-        info = ';'.join(info)
-        protein_info = [info]
-    
+            for i in protein_segment_dictionary['UniProt']:
+                info.append(f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}")
+        
+            info = ';'.join(info)
+            protein_info = [info]
+
+        else: 
+            protein_complex_list = ["NA"]
+            protein_info = ["NA"]    
+
     else:
         protein_complex_list = ["NA"]
         protein_info = ["NA"]
