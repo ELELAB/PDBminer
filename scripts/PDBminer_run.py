@@ -66,7 +66,10 @@ def run_list(full_path):
             structural_df = collect_complex_info(structural_df)
     
             structural_df.to_csv(f"all_{uniprot_id}_structural_df.csv")
-            shutil.rmtree("structure")
+            
+            if os.path.exists("structure"):
+                shutil.rmtree("structure")
+                
             if os.path.getsize("missing_ID.txt") == 0:
                 os.remove("missing_ID.txt")
     
@@ -75,21 +78,10 @@ def run_list(full_path):
     
             if len(clean_df) > 0:
                 clean_df.to_csv(f"clean_{uniprot_id}_structural_df.csv")
-            
-            else: 
-                with open("alphafold.txt", "w") as textfile: 
-                   textfile.write("use the alphafold model, API to come")
-        else:
-            with open("issue_log.txt", "w") as textfile: 
-                textfile.write("structural df issue")
-    
-    else:
-        with open("issue_log.txt", "w") as textfile: 
-            textfile.write("No structures found")
     
     with open(f"{uniprot_id}_done.txt", "w") as textfile: 
         textfile.write(f"Analysis complete for {uniprot_id}")
-            
+          
     os.chdir(f"{path}/results/")
   
     return 

@@ -10,6 +10,7 @@ conda env create -f environment_python.yml
 conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
+conda install -c conda-forge biopandas=0.4.1
 
 #all subsequent times
 conda activate PDBminer

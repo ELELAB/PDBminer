@@ -11,6 +11,8 @@ from Bio.PDB import *
 from Bio import pairwise2
 from Bio import SeqIO
 from io import StringIO
+from biopandas.pdb import PandasPdb
+from Bio.SeqUtils import seq1
 
 #============================================================================#
 # Following the Documentation from PDBminer_run.py
@@ -25,12 +27,13 @@ from io import StringIO
 #   get(pdbs)
 #   get_structure_metadata(pdb_id)
 #   get_structure_df(uniprot_id)
+#   get_alphafold_basics(uniprot_id)
 #   find_structure_list(input_dataframe)
 #
-#   The three first functions are called through find_structure_list
+#   The functions are called through find_structure_list
 #   the aim is to take the input dataframe as input and output
-#   a dataframe "found_structure_list" with all avialable PDB structures
-#   including their metadata for further analysis. 
+#   a dataframe "found_structure_list" with all avialable PDB & newest AF 
+#   structure including their metadata for further analysis. 
 
 def get_pdbs(uniprot_id):
     """
@@ -112,6 +115,43 @@ def get_structure_metadata(pdb_id):
         
     return deposition_date, experimental_method, resolution
 
+def get_alphafold_basics(uniprot_id):
+    """
+    Function that takes a uniprot id and retrieve data from the alphafold
+    database, and prepare the basic information of that model in alignment 
+    with the PDB data.
+
+    Parameters
+    ----------
+    uniprot_id : A sting, e.g. 'P04637'
+
+    Returns
+    -------
+    A tuple of information fitting as a line in the structure_df captured 
+    in get_structure_df. 
+
+    """
+    
+    result = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
+    result = json.loads(result.text)
+    
+    if result == {}:
+        return {}
+
+    else:     
+        result=result[0]
+        deposition_date = result['modelCreatedDate'] 
+        url = result['pdbUrl']
+        local_filename = url.split('/')[-1] 
+        Alphafold_ID = local_filename[:-4]
+        
+    experimental_method = "AF_model"
+    resolution = "NA"
+    rank = 0
+
+    return Alphafold_ID, rank, uniprot_id, deposition_date, experimental_method, resolution
+
+
 def get_structure_df(uniprot_id): 
     """
     This function takes a single uniprot ID and outputs a 
@@ -131,14 +171,29 @@ def get_structure_df(uniprot_id):
     #find all pdbs for a uniprot id
     pdb_list = get_pdbs(uniprot_id)
     
-    #empty list for collection of PDBs 
-    currated_pdb_list = []
-    
-    #if no structures exist, return and end the function.
+    #if there are no PDBs check for alphafold models
     if len(pdb_list) == 0:
-        return uniprot_id
+        
+        AF_model = get_alphafold_basics(uniprot_id)
+        
+        #if no PDB structures nor AF models exist,return and end the function.
+        if AF_model == {}:
+            return uniprot_id
+        
+        #if an alphagold model exist, use that as input for structure_df
+        else:
+            structure_df = pd.DataFrame({'Uniprot_ID': [AF_model[2]], 
+                                         'deposition_date': [AF_model[3]], 
+                                         'experimental_method': [AF_model[4]], 
+                                         'resolution': [AF_model[5]]})
+            structure_df.index = [AF_model[0]]           
+            
+            return structure_df
     
+    #if there are PDBs these should be captured. 
     else: 
+        #empty list for collection of PDBs 
+        currated_pdb_list = []
         #create an empty df
         structure_df = pd.DataFrame()
     
@@ -175,16 +230,21 @@ def get_structure_df(uniprot_id):
             
             #add numerical values in each of the dataframes to ensure that the sorting is kept in place 
             if method_dfs[method].experimental_method[0] == 'X-RAY DIFFRACTION':
-                method_dfs[method].insert(0, "Rank", sorted(range(0,len(method_dfs[method]))), True)
-                
-            elif method_dfs[method].experimental_method[0] == 'ELECTRON MICROSCOPY':
                 method_dfs[method].insert(0, "Rank", sorted(range(1000,1000+len(method_dfs[method]))), True)
                 
-            elif "NMR" in method_dfs[method].experimental_method[0]:
+            elif method_dfs[method].experimental_method[0] == 'ELECTRON MICROSCOPY':
                 method_dfs[method].insert(0, "Rank", sorted(range(2000,2000+len(method_dfs[method]))), True)
+                
+            elif "NMR" in method_dfs[method].experimental_method[0]:
+                method_dfs[method].insert(0, "Rank", sorted(range(3000,3000+len(method_dfs[method]))), True)
 
         #concatenate all the dataframes
         structure_df = pd.concat(method_dfs)
+        
+        AF_model = get_alphafold_basics(uniprot_id)
+        
+        if AF_model != {}: 
+            structure_df.loc[AF_model[0]] = list(AF_model[1:])
         
         #Sort based on rank & remove rank when sorted
         structure_df = structure_df.sort_values(by="Rank")
@@ -236,6 +296,7 @@ def find_structure_list(input_dataframe):
         
     else:
         found_structure_list = []
+        
     return found_structure_list
 
 
@@ -249,7 +310,7 @@ def find_structure_list(input_dataframe):
 #   The aim is to take the input dataframe, and the dataframe with all 
 #   the structures from the prior step and combine these to a single 
 #   dataframe to continue working on.
-#
+
 
 def combine_structure_dfs(found_structures, input_dataframe):
     """
@@ -305,10 +366,11 @@ def combine_structure_dfs(found_structures, input_dataframe):
 #
 #   to_ranges(iterable)
 #   align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path)
+#   align_alphafold(alphafold_id, mutation_positions)
 #   align(combined_structure, path)
 #
-#   The first functions is called by the second and the second function
-#   is called through the third.
+#   The first functions is called by the second and the second and third 
+#   function is called through the forth function.
 #   The aim is to take the dataframe created in the prior step, and the 
 #   relative path as input, and output an identical dataframe including 
 #   information of structural coverage and amino acids in mutational sites.
@@ -524,6 +586,78 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
     
     return output_array
 
+def align_alphafold(alphafold_id, mutation_positions):
+    """
+    This function takes an alphafold ID and the mutational positions. 
+    The aim is to find the high quality areas of the protein, and set these in 
+    relation to the mutations. 
+
+    Parameters
+    ----------
+    alphafold_id : String of the ID
+    mutation_positions : List of mutations
+
+    Returns
+    -------
+    coverage : [(x, y)] per chain high quality areas (pDDLT > 70)
+    AA_in_PDB : If the high quality portions of the AF structure covers 
+    mutations. 
+
+    """
+    
+    url = (f"'https://alphafold.ebi.ac.uk/files/{alphafold_id}.pdb'")
+    os.system(f"wget {url}")
+    
+    ppdb = PandasPdb().read_pdb(f"{alphafold_id}.pdb")
+    ATOMS = ppdb.df['ATOM']
+    ATOMS = ATOMS[ATOMS.atom_name == "CA"]
+    confidence_list = list(ATOMS['b_factor'])
+    positions = np.array(range(1,len(ATOMS)+1))
+    sequence = list(seq1(''.join(list(ATOMS.residue_name))))
+
+    confidence_categories = []
+    for i in range(len(confidence_list)):
+        if confidence_list[i] > 70:
+            confidence_categories.append("high")
+        else:
+            confidence_categories.append("low")
+            
+    #create an intermediate df containing the quality estimates
+    df = pd.DataFrame({'position':positions,'sequence':sequence,'PDDLT':confidence_list,'category':confidence_categories})    
+    confident_seq = np.array(df[df.category == "high"].position)
+        
+    #create coverage string (PDBminer output style)
+    f = []
+    f.append(confident_seq[0])
+    for i in range(len(confident_seq)-1):
+        if confident_seq[i]+1 != confident_seq[i+1]:
+            f.append(confident_seq[i])
+            f.append(confident_seq[i+1])
+    f.append(confident_seq[-1])
+    
+    f = np.array(f)
+    coverage = []
+    for i in range(len(f[::2])):
+        p = f[::2][i],f[1::2][i] 
+        coverage.append(p)
+        
+    coverage = str(coverage)
+    coverage = coverage.replace("), (", ");(" )
+    
+    AA_in_PDB = []
+    
+    for i in range(len(mutation_positions)):
+        if df.category[df.position == mutation_positions[i]].values == "high":
+            mutation = f"{df.sequence[df.position == mutation_positions[i]].values[0]}{mutation_positions[i]}{df.sequence[df.position == mutation_positions[i]].values[0]}"
+        else:
+            mutation = 'Mutation not in range'
+            
+        AA_in_PDB.append(mutation)
+    
+    AA_in_PDB = ",".join(AA_in_PDB)
+    #output coverage string
+    return coverage, AA_in_PDB
+
 def align(combined_structure, path):
     """
     This functions takes the pandas dataframe containing all the structures, 
@@ -551,21 +685,31 @@ def align(combined_structure, path):
         
         combined_structure['mutation_positions'] = combined_structure['Mutations'].str.split(';').apply(lambda x: [int(y[1:-1]) for y in x])
         
-        alignment_info = align_uniprot_pdb(combined_structure.PDB_id[i],
+        if combined_structure['PDB_id'][i].startswith("AF"):
+            alignment_info = align_alphafold(combined_structure['PDB_id'][i], combined_structure['mutation_positions'][i])
+            
+            combined_structure.at[i, 'chains'] = "A"  
+            combined_structure.at[i, 'coverage'] = alignment_info[0] 
+            combined_structure.at[i, 'AA_in_PDB'] = alignment_info[1] 
+            combined_structure.at[i, 'mutations_in_pdb'] = "[]" 
+            
+        else:    
+                 
+            alignment_info = align_uniprot_pdb(combined_structure.PDB_id[i],
                                            combined_structure.Uniprot_ID[i], 
                                            int(combined_structure['Uniprot-isoform'][i]),
                                            combined_structure['mutation_positions'][i],
                                            path)
                 
-        if alignment_info[0] != '':
-            combined_structure.at[i, 'chains'] = alignment_info[0]  
-            combined_structure.at[i, 'coverage'] = alignment_info[1] 
-            combined_structure.at[i, 'AA_in_PDB'] = alignment_info[2] 
-            combined_structure.at[i, 'mutations_in_pdb'] = alignment_info[3] 
+            if alignment_info[0] != '':
+                combined_structure.at[i, 'chains'] = alignment_info[0]  
+                combined_structure.at[i, 'coverage'] = alignment_info[1] 
+                combined_structure.at[i, 'AA_in_PDB'] = alignment_info[2] 
+                combined_structure.at[i, 'mutations_in_pdb'] = alignment_info[3] 
         
-        #drop missing values. 
-        else:
-            combined_structure = combined_structure.drop([i])
+            #drop missing values. 
+            else:
+                combined_structure = combined_structure.drop([i])
     
     combined_structure = combined_structure.reset_index(drop=True)  
                         
@@ -706,13 +850,21 @@ def collect_complex_info(structural_df):
                            'complex_ligand_details'])
 
     for pdb in range(len(structural_df)):
+        
+        if structural_df['PDB_id'][pdb].startswith("AF"):
+            list_of_values = [structural_df.PDB_id[pdb],['NA'],
+                              ['NA'],['NA'],
+                              ['NA'],['NA'],
+                              ['NA']]
+            
+        else:
 
-        complex_info = get_complex_information(structural_df.PDB_id[pdb])
-
-        list_of_values = [structural_df.PDB_id[pdb], complex_info[0], 
-                          complex_info[1], complex_info[2], 
-                          complex_info[3], complex_info[4], 
-                          complex_info[5]]
+            complex_info = get_complex_information(structural_df.PDB_id[pdb])
+    
+            list_of_values = [structural_df.PDB_id[pdb], complex_info[0], 
+                              complex_info[1], complex_info[2], 
+                              complex_info[3], complex_info[4], 
+                              complex_info[5]]
 
         df.loc[pdb] = np.array(list_of_values, dtype="object") 
     
