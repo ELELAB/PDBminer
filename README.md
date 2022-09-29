@@ -3,8 +3,7 @@
 ## Introduction to the Program 
 PDBminer is a snakemake pipeline that uses a singular file as input. The file must contain information about a protein of interest and its mutations. PDBminer outputs an overview of the best possible structural models in the Protein Data Bank.
 
-PDBminer is currently only applicable for solved structures and does therefore not find alphafold 
-models. 
+PDBminer find and annotate both structures from the Protein Data Bank and Alphafold.
 
 ## Dependencies
 
@@ -17,6 +16,7 @@ conda env create -f environment_python.yml
 conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
+conda install -c conda-forge biopandas=0.4.1
 ```
 
 ### All subsequent times
@@ -61,11 +61,9 @@ For each Uniprot ID in the input file, a directory is created. After a successfu
 
 Moreover, there will be varying other files: 
 
-* all_{unipot_id}_structural_df.csv, An output file with all PDBs associated with the uniprot_id
-* clean_{unipot_id}_structural_df.csv, An output file with the PDBs associated with the uniprot_id that covers at least one mutation.
-* missing_id.txt, If there are no PDBids associated with the uniprot id. This should become an alphafold api.
-* alphafold.txt, If there are PDBs associated but none of them covers a single mutation. This should become an alphafold api.
-* issue.log
+* all_{unipot_id}_structural_df.csv, An output file with all PDBs and alphafold structure associated with the uniprot_id
+* clean_{unipot_id}_structural_df.csv, An output file with the PDBs and alphafold structure associated with the uniprot_id that covers at least one mutation.
+* missing_id.txt, If there are no structures from the protein data bank or alphafold structures available for the uniprot_id
 
 See an example of the output of the example input file in the directory results.
 
@@ -79,7 +77,7 @@ Output Columns and explanations
 #Uniprot_id                     ID 
 #Uniprot_isoform                Number identifying which isoform to which the alignment was done. 
 #Cluster_ID                     Number of cluster from the input file. 
-#PDB_id                         Identifier of the PDB file.
+#structure_id                   Identifier of the PDB file or Alphafold Model.
 #Research_mutations             The mutations specified in the input file
 #experimental_method            By which the PDB was generated.
 #resolution                     Estimation of PDB quality
