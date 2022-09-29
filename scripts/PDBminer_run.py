@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import shutil
 
-from PDBminer_functions import find_structure_list, combine_structure_dfs, align, collect_complex_info, cleanup_df
+from PDBminer_functions import find_structure_list, combine_structure_dfs, align, collect_complex_info, cleanup_all, filter_all
 
 def run_list(full_path):
     """
@@ -64,8 +64,15 @@ def run_list(full_path):
         if len(structural_df) != 0:
 
             structural_df = collect_complex_info(structural_df)
-    
-            structural_df.to_csv(f"all_{uniprot_id}_structural_df.csv")
+            
+            #prep and export all file
+            all_df = cleanup_all(structural_df)
+            all_df.to_csv(f"{uniprot_id}_all.csv")
+            
+            #prep and export the filered file
+            filtered_df = filter_all(structural_df)   
+            if len(filtered_df) > 0:
+                filtered_df.to_csv(f"{uniprot_id}_filtered.csv")
             
             #remove the alphafold model
             os.system("find . -maxdepth 1 -name '*.pdb' -type f -delete")
@@ -74,13 +81,7 @@ def run_list(full_path):
                 shutil.rmtree("structure")
                 
             if os.path.getsize("missing_ID.txt") == 0:
-                os.remove("missing_ID.txt")
-    
-            #regular clean up
-            clean_df = cleanup_df(structural_df)
-    
-            if len(clean_df) > 0:
-                clean_df.to_csv(f"clean_{uniprot_id}_structural_df.csv")
+                os.remove("missing_ID.txt")            
     
     with open(f"{uniprot_id}_done.txt", "w") as textfile: 
         textfile.write(f"Analysis complete for {uniprot_id}")
