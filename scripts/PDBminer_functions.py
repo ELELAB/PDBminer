@@ -145,7 +145,7 @@ def get_alphafold_basics(uniprot_id):
         local_filename = url.split('/')[-1] 
         Alphafold_ID = local_filename[:-4]
         
-    experimental_method = "AF_model"
+    experimental_method = "Predicted"
     resolution = "NA"
     rank = 0
 
@@ -325,7 +325,7 @@ def combine_structure_dfs(found_structures, input_dataframe):
     Returns
     -------
     final_df :  A dataframe with nine columns including Hugo_name, Uniprot_ID,
-                Uniprot-isoform, Mutations, ClusterID, PDB_id, deposition_date
+                Uniprot-isoform, Mutations, ClusterID, structure_id, deposition_date
                 experimental_method, resolution
 
     """
@@ -342,7 +342,7 @@ def combine_structure_dfs(found_structures, input_dataframe):
         df.insert(2, "Uniprot-isoform", [input_dataframe['Uniprot-isoform'][i]]*len(sub_df), True)
         df.insert(3, "Mutations", [input_dataframe.Mutations[i]]*len(sub_df), True)
         df.insert(4, "ClusterID", [input_dataframe.ClusterID[i]]*len(sub_df), True)
-        df.insert(5, "PDB_id", list(sub_df.index), True)
+        df.insert(5, "structure_id", list(sub_df.index), True)
         df.insert(6, "deposition_date", list(sub_df.deposition_date), True)
         df.insert(7, "experimental_method", list(sub_df.experimental_method), True)
         df.insert(8, "resolution", list(sub_df.resolution), True)
@@ -685,8 +685,8 @@ def align(combined_structure, path):
         
         combined_structure['mutation_positions'] = combined_structure['Mutations'].str.split(';').apply(lambda x: [int(y[1:-1]) for y in x])
         
-        if combined_structure['PDB_id'][i].startswith("AF"):
-            alignment_info = align_alphafold(combined_structure['PDB_id'][i], combined_structure['mutation_positions'][i])
+        if combined_structure['structure_id'][i].startswith("AF"):
+            alignment_info = align_alphafold(combined_structure['structure_id'][i], combined_structure['mutation_positions'][i])
             
             combined_structure.at[i, 'chains'] = "A"  
             combined_structure.at[i, 'coverage'] = alignment_info[0] 
@@ -695,7 +695,7 @@ def align(combined_structure, path):
             
         else:    
                  
-            alignment_info = align_uniprot_pdb(combined_structure.PDB_id[i],
+            alignment_info = align_uniprot_pdb(combined_structure.structure_id[i],
                                            combined_structure.Uniprot_ID[i], 
                                            int(combined_structure['Uniprot-isoform'][i]),
                                            combined_structure['mutation_positions'][i],
@@ -844,31 +844,31 @@ def collect_complex_info(structural_df):
 
     """
     
-    df = pd.DataFrame(columns=['PDB_id','complex_protein',
+    df = pd.DataFrame(columns=['structure_id','complex_protein',
                            'complex_protein_details', 'complex_nucleotide',
                            'complex_nucleotide_details','complex_ligand', 
                            'complex_ligand_details'])
 
     for pdb in range(len(structural_df)):
         
-        if structural_df['PDB_id'][pdb].startswith("AF"):
-            list_of_values = [structural_df.PDB_id[pdb],['NA'],
+        if structural_df['structure_id'][pdb].startswith("AF"):
+            list_of_values = [structural_df.structure_id[pdb],['NA'],
                               ['NA'],['NA'],
                               ['NA'],['NA'],
                               ['NA']]
             
         else:
 
-            complex_info = get_complex_information(structural_df.PDB_id[pdb])
+            complex_info = get_complex_information(structural_df.structure_id[pdb])
     
-            list_of_values = [structural_df.PDB_id[pdb], complex_info[0], 
+            list_of_values = [structural_df.structure_id[pdb], complex_info[0], 
                               complex_info[1], complex_info[2], 
                               complex_info[3], complex_info[4], 
                               complex_info[5]]
 
         df.loc[pdb] = np.array(list_of_values, dtype="object") 
     
-    df_combined = pd.merge(structural_df, df, how='inner', on = 'PDB_id')
+    df_combined = pd.merge(structural_df, df, how='inner', on = 'structure_id')
     
     return df_combined
 

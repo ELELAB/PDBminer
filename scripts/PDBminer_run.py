@@ -67,6 +67,9 @@ def run_list(full_path):
     
             structural_df.to_csv(f"all_{uniprot_id}_structural_df.csv")
             
+            #remove the alphafold model
+            os.system("find . -maxdepth 1 -name '*.pdb' -type f -delete")
+            
             if os.path.exists("structure"):
                 shutil.rmtree("structure")
                 
