@@ -8,14 +8,14 @@ path = config['path']
 
 #importing the file
 df = pd.read_csv(path+"/"+config['input_file']) 
-if ('ClusterID' in df.columns) == False:
+if ('cluster_id' in df.columns) == False:
     cluster_id = [999] * len(df)
-    df['ClusterID'] = cluster_id
-if len(set(df.ClusterID)) == 1 and df.ClusterID[0] == "N/A":
-    df.ClusterID = 999
+    df['cluster_id'] = cluster_id
+if len(set(df.cluster_id)) == 1 and df.cluster_id[0] == "N/A":
+    df.cluster_id = 999
 
 #creating the uniprot list
-uniprot_list = list(set(df.Uniprot))
+uniprot_list = list(set(df.uniprot))
 
 #creating the results directory
 if os.path.exists(path+"/results") == False: 
@@ -43,7 +43,7 @@ rule prepare_files_and_dirs:
             else:
                 os.chdir(uniprot_id)
             
-            uniprot_dataframe = df[df.Uniprot == uniprot_id]        
+            uniprot_dataframe = df[df.uniprot == uniprot_id]        
             uniprot_dataframe = uniprot_dataframe.reset_index(drop=True)
             uniprot_dataframe.to_csv(f"{uniprot_id}_input.csv")
             os.chdir(f"{input}/results")

@@ -182,7 +182,7 @@ def get_structure_df(uniprot_id):
         
         #if an alphagold model exist, use that as input for structure_df
         else:
-            structure_df = pd.DataFrame({'Uniprot_ID': [AF_model[2]], 
+            structure_df = pd.DataFrame({'uniprot_id': [AF_model[2]], 
                                          'deposition_date': [AF_model[3]], 
                                          'experimental_method': [AF_model[4]], 
                                          'resolution': [AF_model[5]]})
@@ -219,7 +219,7 @@ def get_structure_df(uniprot_id):
                 
         #Add pdb ID & uniprot ID as columns
         structure_df.index = currated_pdb_list
-        structure_df.insert(0, "Uniprot_ID", [uniprot_id]*len(structure_df), True)
+        structure_df.insert(0, "uniprot_id", [uniprot_id]*len(structure_df), True)
         
         #Split based on experimental method
         method_dfs = [x for _, x in structure_df.groupby(structure_df['experimental_method'])]
@@ -255,8 +255,8 @@ def get_structure_df(uniprot_id):
 def find_structure_list(input_dataframe):    
     """
     Takes the input file and the path where it is placed and outputs
-    a directory with a csv file for each Uniprot ID input and a txt file 
-    including all the Uniprot IDs that does not have any solved structures.
+    a directory with a csv file for each uniprot id input and a txt file 
+    including all the uniprot ids that does not have any solved structures.
     
     parameters
     ------------
@@ -274,7 +274,7 @@ def find_structure_list(input_dataframe):
     df_collector = []
     
     #take all uniprot id's from the input file
-    all_uniprot_ids = list(input_dataframe.Uniprot)
+    all_uniprot_ids = list(input_dataframe.uniprot)
     all_uniprot_ids = sorted(set(all_uniprot_ids), key=all_uniprot_ids.index)
     
     with open("missing_ID.txt", "w") as textfile:
@@ -324,8 +324,8 @@ def combine_structure_dfs(found_structures, input_dataframe):
 
     Returns
     -------
-    final_df :  A dataframe with nine columns including Hugo_name, Uniprot_ID,
-                Uniprot-isoform, Mutations, ClusterID, structure_id, deposition_date
+    final_df :  A dataframe with nine columns including hugo_name, uniprot_id,
+                uniprot_isoform, mutations, cluster_id, structure_id, deposition_date
                 experimental_method, resolution
 
     """
@@ -336,12 +336,12 @@ def combine_structure_dfs(found_structures, input_dataframe):
         
         df = pd.DataFrame([])
         
-        sub_df = found_structures[found_structures.Uniprot_ID == input_dataframe.Uniprot[i]]
-        df.insert(0, "Hugo_name", [input_dataframe.Hugo_name[i]]*len(sub_df), True)
-        df.insert(1, "Uniprot_ID", [input_dataframe.Uniprot[i]]*len(sub_df), True)
-        df.insert(2, "Uniprot-isoform", [input_dataframe['Uniprot-isoform'][i]]*len(sub_df), True)
-        df.insert(3, "Mutations", [input_dataframe.Mutations[i]]*len(sub_df), True)
-        df.insert(4, "ClusterID", [input_dataframe.ClusterID[i]]*len(sub_df), True)
+        sub_df = found_structures[found_structures.uniprot_id == input_dataframe.uniprot[i]]
+        df.insert(0, "hugo_name", [input_dataframe.hugo_name[i]]*len(sub_df), True)
+        df.insert(1, "uniprot_id", [input_dataframe.uniprot[i]]*len(sub_df), True)
+        df.insert(2, "uniprot_isoform", [input_dataframe['uniprot_isoform'][i]]*len(sub_df), True)
+        df.insert(3, "mutations", [input_dataframe.mutations[i]]*len(sub_df), True)
+        df.insert(4, "cluster_id", [input_dataframe.cluster_id[i]]*len(sub_df), True)
         df.insert(5, "structure_id", list(sub_df.index), True)
         df.insert(6, "deposition_date", list(sub_df.deposition_date), True)
         df.insert(7, "experimental_method", list(sub_df.experimental_method), True)
@@ -430,12 +430,12 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
     ########################################
     
     #setting the fasta path for the API (updated may 2022, novel Uniprot format)
-    Uniprot_Url="https://rest.uniprot.org/uniprotkb/"
+    uniprot_Url="https://rest.uniprot.org/uniprotkb/"
     
     #Alignment to correct isoform:
     if isoform == 1:
     
-        fasta_url=Uniprot_Url+uniprot_id+".fasta"
+        fasta_url=uniprot_Url+uniprot_id+".fasta"
         response = requests.post(fasta_url)
         sequence_data=''.join(response.text)
         Seq=StringIO(sequence_data)
@@ -447,7 +447,7 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
     
     else:
     
-        fasta_url=Uniprot_Url+uniprot_id+"-"+str(isoform)+".fasta"
+        fasta_url=uniprot_Url+uniprot_id+"-"+str(isoform)+".fasta"
         response = requests.post(fasta_url)
         sequence_data=''.join(response.text)
         Seq=StringIO(sequence_data)
@@ -683,7 +683,7 @@ def align(combined_structure, path):
     
     for i in range(len(combined_structure)):
         
-        combined_structure['mutation_positions'] = combined_structure['Mutations'].str.split(';').apply(lambda x: [int(y[1:-1]) for y in x])
+        combined_structure['mutation_positions'] = combined_structure['mutations'].str.split(';').apply(lambda x: [int(y[1:-1]) for y in x])
         
         if combined_structure['structure_id'][i].startswith("AF"):
             alignment_info = align_alphafold(combined_structure['structure_id'][i], combined_structure['mutation_positions'][i])
@@ -696,8 +696,8 @@ def align(combined_structure, path):
         else:    
                  
             alignment_info = align_uniprot_pdb(combined_structure.structure_id[i],
-                                           combined_structure.Uniprot_ID[i], 
-                                           int(combined_structure['Uniprot-isoform'][i]),
+                                           combined_structure.uniprot_id[i], 
+                                           int(combined_structure['uniprot_isoform'][i]),
                                            combined_structure['mutation_positions'][i],
                                            path)
                 
@@ -893,15 +893,23 @@ def collect_complex_info(structural_df):
 #     that cover the mutations, a txt file is reported indicating 
 #     that an alphafold structure may be the next path. 
 #============================================================================#        
-# This step consist of one function. 
-#
-#   cleanup_df(structural_df)
+# This step consist of two functions.
+# 
+#   cleanup_all(structural_df)
+#   filter_all(structural_df)
 #
 #   The aim is to take the structural dataframe as input and output
 #   he structural dataframe with simple ammendments. This step sould
 #   become obsolete in time, when prior functions are improved. 
 
-def cleanup_df(structural_df):
+def cleanup_all(structural_df):
+
+    structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions'])
+    structural_df.index.name = 'structure_rank'
+
+    return structural_df
+
+def filter_all(structural_df):
     """
     This function cleans up sloppy coding from earlier in the pipeline
     which is needed for further investigation by removing structures that 
@@ -944,6 +952,10 @@ def cleanup_df(structural_df):
     for i in range(len(structural_df.mutations_in_pdb)):
         if set(structural_df.mutations_in_pdb[i].split(";")) == {'[]'}:
             structural_df.iloc[i, structural_df.columns.get_loc('mutations_in_pdb')] = '[]'
+            
+    structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions'])
+    
+    structural_df.index.name = 'structure_rank'
 
     return structural_df
 
