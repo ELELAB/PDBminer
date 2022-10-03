@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+import os
+import argparse
+
+parser = argparse.ArgumentParser(prog = "PDBminer",
+                                 usage = 'PDBminer [-h] help [-i] inputfile [-n] cores')
+
+parser.add_argument("-i", '--inputfile',
+                    metavar = 'Input file',
+                    type=str,
+                    required=True,
+                    help='The name of the input_file if any')
+
+parser.add_argument("-n", "--cores",
+                    metavar = "cores for run",
+                    type=int,
+                    required=True,
+                    help="the number of cores to allocate the run")
+
+args = parser.parse_args()
+
+#create config.yaml
+
+cores = args.cores
+input_file = args.inputfile
+path = os.getcwd()
+
+with open("program/config.yaml", "w") as textfile: 
+    textfile.write(f"input_file: '{input_file}'\n")
+    textfile.write(f"path: '{path}'\n")
+
+os.system(f"cp {input_file} program")
+
+
+#create or call input_file.csv
+os.chdir("program")
+os.system(f"snakemake --cores={cores}")
+os.chdir(path)
+#os.system('mv program/results .')
+os.system(f"rm program/{input_file}")
+os.system("rm results/*/*done.txt")
+os.system("rm results/*/*input.csv")
+os.system('echo PDBminer finished')
+

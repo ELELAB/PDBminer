@@ -1,0 +1,10 @@
+FileNotFoundError in line 11 of /data/user/krde/PDBminer/program/snakefile:
+[Errno 2] No such file or directory: '/data/user/krde/PDBminer/program/input_file'
+  File "/data/user/krde/PDBminer/program/snakefile", line 11, in <module>
+  File "/home/krde/.conda/envs/PDBminer/lib/python3.8/site-packages/pandas/io/parsers.py", line 610, in read_csv
+  File "/home/krde/.conda/envs/PDBminer/lib/python3.8/site-packages/pandas/io/parsers.py", line 462, in _read
+  File "/home/krde/.conda/envs/PDBminer/lib/python3.8/site-packages/pandas/io/parsers.py", line 819, in __init__
+  File "/home/krde/.conda/envs/PDBminer/lib/python3.8/site-packages/pandas/io/parsers.py", line 1050, in _make_engine
+  File "/home/krde/.conda/envs/PDBminer/lib/python3.8/site-packages/pandas/io/parsers.py", line 1867, in __init__
+  File "/home/krde/.conda/envs/PDBminer/lib/python3.8/site-packages/pandas/io/parsers.py", line 1362, in _open_handles
+  File "/home/krde/.conda/envs/PDBminer/lib/python3.8/site-packages/pandas/io/common.py", line 642, in get_handle

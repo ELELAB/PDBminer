@@ -1,7 +1,7 @@
 # PDBminer
 
 ## Introduction to the Program 
-PDBminer is a snakemake pipeline that uses a singular file as input. The file must contain information about a protein of interest and its mutations. 
+PDBminer is a snakemake pipeline that uses a single inputfile. The file must contain information about a protein of interest and its mutations. 
 PDBminer outputs a ranked overview of the possible structural models in the Protein Data Bank and the most current version of the Alphafold2 model, if any.
 
 ## Dependencies
@@ -11,7 +11,7 @@ It is recommended to create a virtual environment to run PDBminer. The environme
 ### First time:
 
 ```
-conda env create -f environment_python.yml 
+conda env create -f program/environment_python.yml 
 conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
@@ -24,7 +24,7 @@ conda install -c conda-forge biopandas=0.4.1
 conda activate PDBminer
 ```
 
-PDBminer is dependent on the following packs (as described in envrionment_python.yml):
+PDBminer is dependent on the following packs (as described in program/envrionment_python.yml):
 
 * python=3.8.8
 * pandas=1.2.4
@@ -44,15 +44,17 @@ SAMD4A    |  Q9UPU9 |         3       | L10R;I80A         | 1
 
         
 ```
-The name of the input file should be specified in the config.yaml file. 
+The name of the input file should be specified in the commandline. 
 
 ## Running the Program
-Once the config.yaml has been updated and the dependencies installed, the program can be run from the terminal:
+
 ```
-$ snakemake --cores X
+$ PDBminer -i [input file name] -n [cores]
 ```
+See example directory.
 
 ## The Output
+The output is found in the directory "results".
 For each uniprot id in the input file, a directory is created. After a successful run, this directory will contain the following: 
 
 * {unipot_id}_input.csv, the input

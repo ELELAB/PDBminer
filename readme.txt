@@ -6,7 +6,7 @@
 module load conda/4.9.2/modulefile
 
 #First time:
-conda env create -f environment_python.yml
+conda env create -f program/environment_python.yml
 conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
@@ -17,4 +17,7 @@ conda activate PDBminer
 
 # prep files as described on Github
 # Running it
-tsp -N 4 snakemake --cores 4
+tsp -N 4 PDBminer -i input_file.csv -n 4
+#notice that the PDBminer program is written in 
+#python and this should be possible, but you can
+# write python before PDBminer if needed.
