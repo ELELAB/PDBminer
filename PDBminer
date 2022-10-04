@@ -2,15 +2,41 @@
 
 import os
 import argparse
+import pandas as pd
+from sys import exit
 
 parser = argparse.ArgumentParser(prog = "PDBminer",
-                                 usage = 'PDBminer [-h] help [-i] inputfile [-n] cores')
+                                 usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-g] hugo_name and [-u] uniprot id')
 
 parser.add_argument("-i", '--inputfile',
-                    metavar = 'Input file',
+                    metavar = 'input file',
                     type=str,
-                    required=True,
                     help='The name of the input_file if any')
+
+parser.add_argument("-g", '--hugo_name',
+                    metavar = 'hugo name',
+                    type=str,
+                    help='The gene name in hugo formating')
+
+parser.add_argument("-u", '--uniprot_id',
+                    metavar = 'uniprot_id',
+                    type=str,
+                    help='The uniprot id')
+
+parser.add_argument("-s", '--uniprot_isoform',
+                    metavar = 'uniprot_isoform',
+                    type=int,
+                    help='The uniprot isoform, an interger')
+
+parser.add_argument("-m", '--mutations',
+                    metavar = 'mutations',
+                    type=str,
+                    help='string with each mutation seperated by a ";", e.i. E120K;I390P')
+
+parser.add_argument("-c", '--cluster_id',
+                    metavar = 'cluster id',
+                    type=int,
+                    help='The mutational cluster, an interger')
 
 parser.add_argument("-n", "--cores",
                     metavar = "cores for run",
@@ -23,18 +49,44 @@ args = parser.parse_args()
 #create config.yaml
 
 cores = args.cores
-input_file = args.inputfile
+
+if args.inputfile:
+    input_file = args.inputfile
+    print("input file identified.")
+
+elif args.hugo_name and args.uniprot_id:
+    hugo_name = [args.hugo_name]
+    uniprot_id = [args.uniprot_id]
+    df = pd.DataFrame({'hugo_name':hugo_name,'uniprot':uniprot_id})
+    if args.uniprot_isoform:
+        isoform = [args.isoform]
+        df['uniprot_isoform'] = isoform
+    if args.mutations:
+        mutations = [args.mutations]
+        df['mutations'] = mutations
+    if args.cluster_id:
+        mutations = [args.cluster_id]
+        df['cluster_id'] = cluster
+    df.to_csv('input_file.csv')
+    input_file = 'input_file.csv'
+    print("input file created based on hugo name and uniprot id")
+
+else:
+    print(f"ERROR: input file or input hugo name and uniprot id is missing. Exiting...")
+    exit(1)
+
 path = os.getcwd()
 
+print("Configuration file is generated")
 with open("program/config.yaml", "w") as textfile: 
     textfile.write(f"input_file: '{input_file}'\n")
     textfile.write(f"path: '{path}'\n")
 
 os.system(f"cp {input_file} program")
 
-
 #create or call input_file.csv
 os.chdir("program")
+print("Pipeline is starting")
 os.system(f"snakemake --cores={cores}")
 os.chdir(path)
 #os.system('mv program/results .')

@@ -965,3 +965,12 @@ def filter_all(structural_df):
 
     return structural_df
 
+
+
+
+
+
+
+
+
+
