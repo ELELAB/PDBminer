@@ -49,7 +49,7 @@ The name of the input file should be specified in the commandline.
 ## Running the Program
 
 ```
-$ PDBminer -i [input file name] -n [cores]
+$ python PDBminer -i [input file name] -n [cores]
 ```
 See example directory.
 

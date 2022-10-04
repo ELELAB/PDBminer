@@ -17,7 +17,7 @@ conda activate PDBminer
 
 # prep files as described on Github
 # Running it
-tsp -N 4 PDBminer -i input_file.csv -n 4
-#notice that the PDBminer program is written in 
-#python and this should be possible, but you can
-# write python before PDBminer if needed.
+tsp -N 4 python PDBminer -i input_file.csv -n 4
+
+#once PDBminer is added to our path, we can 
+#omit "python". 
