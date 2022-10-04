@@ -1,9 +1,0 @@
-,Hugo_name,Uniprot_ID,Uniprot-isoform,Mutations,ClusterID,PDB_id,deposition_date,experimental_method,resolution,chains,coverage,AA_in_PDB,mutations_in_pdb,mutation_positions,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details
-0,AKT1,P31749,1,E17K,1,1UNQ,2003-09-12,X-RAY DIFFRACTION,0.98,A,"[(1, 123)]",['E17E'],[],[17],['NA'],['NA'],['NA'],['NA'],['Other ligands'],"[""[INOSITOL-(1,3,4,5)-TETRAKISPHOSPHATE, ['A']]""]"
-1,AKT1,P31749,1,E17K,1,1UNR,2003-09-15,X-RAY DIFFRACTION,1.25,A,"[(1, 123)]",['E17E'],[],[17],['NA'],['NA'],['NA'],['NA'],['Other ligands'],"[""[SULFATE ION, ['A']]""]"
-2,AKT1,P31749,1,E17K,1,1H10,2002-07-01,X-RAY DIFFRACTION,1.4,A,"[(1, 123)]",['E17E'],[],[17],['NA'],['NA'],['NA'],['NA'],['Other ligands'],"[""[INOSITOL-(1,3,4,5)-TETRAKISPHOSPHATE, ['A']]""]"
-3,AKT1,P31749,1,E17K,1,1UNP,2003-09-12,X-RAY DIFFRACTION,1.65,A,"[(1, 121)]",['E17E'],[],[17],['NA'],['NA'],['NA'],['NA'],['NA'],['NA']
-4,AKT1,P31749,1,E17K,1,2UZR,2007-05-01,X-RAY DIFFRACTION,1.94,A,"[(1, 123)]",['E17K'],['E17K'],[17],['NA'],['NA'],['NA'],['NA'],['NA'],['NA']
-5,AKT1,P31749,1,E17K,1,2UVM,2007-03-12,X-RAY DIFFRACTION,1.94,A,"[(1, 123)]",['E17E'],[],[17],['NA'],['NA'],['NA'],['NA'],['Other ligands'],"[""[SODIUM ION, ['A']]""]"
-6,AKT1,P31749,1,E17K,1,2UZS,2007-05-01,X-RAY DIFFRACTION,2.46,A,"[(1, 123)]",['E17K'],['E17K'],[17],['NA'],['NA'],['NA'],['NA'],['Other ligands'],"[""[INOSITOL-(1,3,4,5)-TETRAKISPHOSPHATE, ['A']]""]"
-7,AKT1,P31749,1,E17K,1,3O96,2010-08-03,X-RAY DIFFRACTION,2.7,A,"[(1, 443)]",['E17E'],['M1A'],[17],['NA'],['NA'],['NA'],['NA'],['Other ligands'],"[""[1-(1-(4-(7-phenyl-1H-imidazo[4,5-g]quinoxalin-6-yl)benzyl)piperidin-4-yl)-1H-benzo[d]imidazol-2(3H)-one, ['A']]""]"
