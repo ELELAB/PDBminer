@@ -31,7 +31,7 @@ parser.add_argument("-s", '--uniprot_isoform',
 parser.add_argument("-m", '--mutations',
                     metavar = 'mutations',
                     type=str,
-                    help='string with each mutation seperated by a ";", e.i. E120K;I390P')
+                    help='string with each mutation seperated by a ";" with "" around the expression, e.i. "E120K;I390P"')
 
 parser.add_argument("-c", '--cluster_id',
                     metavar = 'cluster id',

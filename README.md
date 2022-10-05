@@ -68,7 +68,7 @@ with flags. Agian is the hugo_name and uniprot options mandatory while the rest 
 ```
 $ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores]
 
-$ python PDBminer -g TP53 -u P04637 -m P278L;R337C;L344P -n 1
+$ python PDBminer -g TP53 -u P04637 -m "P278L;R337C;L344P" -n 1
 ``` 
 
 NOTICE: when isoform is not specified 1 is assumed.
@@ -88,6 +88,9 @@ a file called {uniprot_id}_all.csv:
 If mutations are included in the input, a filtered version of all will also be available if the mutations
 are covered by any structure.
 * {unipot_id}_filtered.csv, An output file with the PDBs and alphafold structure associated with the uniprot_id that covers at least one mutation.
+
+Notice that multiple filtered files are available when multiple clusters are parsed. 
+* {uniprot_id}_cluster{cluster_id}_filtered.csv
 
 See examples of the in- and  output of the example directories.
 
@@ -116,6 +119,7 @@ Output Columns and explanations
 #				within these intervals are of high quality. “;” separated for multiple chains.			 
 #mutations_in_pdb		All mutations found in the pdb file compared to the uniprot sequence if none: 
 #				[] indicating WT structure.
+#missing_residues		A string of all the missing residues on the different chains, e.g. 'chain c: M1;L2;W3;W4;E5;E6;V7;E8'
 #complex_protein                Binary, either “NA” or “Protein in complex” indicates if the PDB file contains a protein complex.
 #complex_protein_details        Details regarding the protein complex indicating the Uniprot ID of the other protein and the chains.
 #complex_nucleotide             Binary, indicates if the protein is bound to a nucleotide string such as DNA.

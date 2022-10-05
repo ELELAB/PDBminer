@@ -1,2 +1,0 @@
-structure_rank,hugo_name,uniprot_id,uniprot_isoform,mutations,cluster_id,structure_id,deposition_date,experimental_method,resolution,chains,coverage,mutations_in_pdb,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details
-0,DMD,P11532,1,K18N,1,1DXX,2000-01-20,X-RAY DIFFRACTION,2.6,A;B;C;D,"[(1, 246)];[(1, 246)];[(1, 246)];[(1, 246)]","['C10S', 'C188S'];['C10S', 'C188S'];['C10S', 'C188S'];['C10S', 'C188S']",['NA'],['NA'],['NA'],['NA'],['NA'],['NA']

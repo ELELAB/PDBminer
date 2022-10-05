@@ -1,0 +1,2 @@
+structure_rank,hugo_name,uniprot_id,uniprot_isoform,mutations,cluster_id,structure_id,deposition_date,experimental_method,resolution,chains,coverage,mutations_in_pdb,missing_residues,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details
+0,SCP2,P22307,1,C71S;G72K,1,AF-P22307-F1-model_v3,2022-06-01,Predicted,NA,A,"[(10, 412);(430, 539)]",[],see coverage,NA,NA,NA,NA,NA,NA

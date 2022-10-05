@@ -39,7 +39,7 @@ tsp -N {cores} python PDBminer -g {hugo_name} -u {uniprot_id} -s {uniprot_isofor
 
 python PDBminer -g RNH -u P0A7Y7 -n 1
 
-python PDBminer -g RNH -u P0A7Y7 -m D134N -n 1
+python PDBminer -g RNH -u P0A7Y7 -m "D134N;D134K" -n 1
 
 #notice that only 1 core is used when only one protein is used, 
 #this is because parallelization via snakemake is done per
