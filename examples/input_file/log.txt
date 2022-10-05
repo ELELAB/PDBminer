@@ -1,0 +1,6 @@
+PDBminer is starting
+input file mode is choosen and input file has been identified.
+input file is correctly formatted
+Configuration file is generated
+Pipeline is starting
+PDBminer has finished. Check log file an results to ensure correct useage.

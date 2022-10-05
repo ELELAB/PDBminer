@@ -74,6 +74,8 @@ $ python PDBminer -g TP53 -u P04637 -m "P278L;R337C;L344P" -n 1
 NOTICE: when isoform is not specified 1 is assumed.
 
 ## The Output
+A log.txt file is created for each run. 
+
 The output is found in the directory "results".
 For each uniprot id in the input file, a directory is created. 
 After a successful run, this directory can contain the following: 
