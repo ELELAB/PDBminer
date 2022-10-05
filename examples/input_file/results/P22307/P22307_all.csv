@@ -1,0 +1,4 @@
+structure_rank,hugo_name,uniprot_id,uniprot_isoform,mutations,cluster_id,structure_id,deposition_date,experimental_method,resolution,chains,coverage,mutations_in_pdb,missing_residues,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details
+0,SCP2,P22307,1,C71S,1,AF-P22307-F1-model_v3,2022-06-01,Predicted,NA,A,"[(10, 412);(430, 539)]",[],see coverage,NA,NA,NA,NA,NA,NA
+1,SCP2,P22307,1,C71S,1,2C0L,2005-09-05,X-RAY DIFFRACTION,2.3,B,"[(426, 547)]",[],"['chain a: T441;P442;A443;E444;E445;G446;A447;G448;G449;A450;G451;L452;G453', 'chain b: ']",['protein complex'],"['PEX5_HUMAN, P50542, chain_A;SCP2_HUMAN, P22307, chain_B']",NA,NA,NA,NA
+2,SCP2,P22307,1,C71S,1,1QND,1999-10-14,SOLUTION NMR,NA,A,"[(425, 547)]",[],['chain a: no missing residues'],NA,NA,NA,NA,NA,NA

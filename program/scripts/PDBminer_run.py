@@ -51,6 +51,7 @@ def run_list(full_path):
     os.chdir(f"{path}/results/{uniprot_id}")
 
     input_dataframe = pd.read_csv(f"{uniprot_id}_input.csv", index_col=0)
+    #only one of each 
     
     #prior issue with one uniprot id, still to be fixed this is a patch
     found_structures = find_structure_list(input_dataframe)
@@ -67,15 +68,29 @@ def run_list(full_path):
             
             #prep and export all file
             all_df = cleanup_all(structural_df)
+            
+            if type(input_dataframe.mutations[0]) != str: 
+                all_df = all_df.drop(columns=('mutations'))
+            if set(input_dataframe.cluster_id) == {999}:
+                all_df = all_df.drop(columns=('cluster_id'))
+            
             all_df.to_csv(f"{uniprot_id}_all.csv")
             
             #prep and export the filered file
-            filtered_df = filter_all(structural_df)   
-            if len(filtered_df) > 0:
-                filtered_df.to_csv(f"{uniprot_id}_filtered.csv")
+            filtered_df = filter_all(structural_df, input_dataframe)   
+            
+            if len(filtered_df) == 1:            
+                if len(filtered_df[0]) > 0:
+                    if set(input_dataframe.cluster_id) == {999}:
+                        filtered_df[0] = filtered_df[0].drop(columns=('cluster_id'))
+                    filtered_df[0].to_csv(f"{uniprot_id}_filtered.csv")
+            else:
+                for cluster_df in filtered_df:
+                    if len(cluster_df) > 0:
+                        cluster_df.to_csv(f"{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv")
             
             #remove the alphafold model
-            os.system("find . -maxdepth 1 -name '*.pdb' -type f -delete")
+            os.system("find . -maxdepth 1 -name '*.pdb*' -type f -delete")
             
             if os.path.exists("structure"):
                 shutil.rmtree("structure")
@@ -88,6 +103,6 @@ def run_list(full_path):
           
     os.chdir(f"{path}/results/")
   
-    return 
+    return all_df, filtered_df
 
 run_list(snakemake.input)

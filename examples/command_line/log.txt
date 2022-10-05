@@ -1,0 +1,6 @@
+PDBminer is starting
+input file created based on hugo name and uniprot id, file name: input_file.csv
+input file is correctly formatted
+Configuration file is generated
+Pipeline is starting
+PDBminer has finished. Check log file an results to ensure correct useage.

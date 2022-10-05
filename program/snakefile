@@ -1,18 +1,14 @@
 import pandas as pd
 import os
 import numpy as np
+from sys import exit
 
 configfile: 'config.yaml'
 
 path = config['path']
 
 #importing the file
-df = pd.read_csv(path+"/"+config['input_file']) 
-if ('cluster_id' in df.columns) == False:
-    cluster_id = [999] * len(df)
-    df['cluster_id'] = cluster_id
-if len(set(df.cluster_id)) == 1 and df.cluster_id[0] == "N/A":
-    df.cluster_id = 999
+df = pd.read_csv(path+"/"+config['input_file'])
 
 #creating the uniprot list
 uniprot_list = list(set(df.uniprot))
