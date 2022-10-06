@@ -718,7 +718,7 @@ def align(combined_structure, path):
             combined_structure.at[i, 'coverage'] = alignment_info[0] 
             combined_structure.at[i, 'AA_in_PDB'] = alignment_info[1] 
             combined_structure.at[i, 'mutations_in_pdb'] = "[]" 
-            combined_structure.at[i, 'missing_residues'] = "see coverage"
+            combined_structure.at[i, 'missing_residues'] = "NA"
             
         else:    
                  
