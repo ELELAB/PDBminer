@@ -103,6 +103,6 @@ def run_list(full_path):
           
     os.chdir(f"{path}/results/")
   
-    return all_df, filtered_df
+    return
 
 run_list(snakemake.input)

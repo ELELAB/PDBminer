@@ -96,6 +96,18 @@ with open ("log.txt", "w") as f:
         input_file = args.inputfile
         f.write("input file mode is choosen and input file has been identified.\n")
 
+        df = pd.read_csv(input_file)
+        df,problems = check_input_file(df)
+
+        if len(problems) == 0:
+            df.to_csv(f"{input_file}", index=False)
+
+        elif len(problems) > 0:
+            f.write(f"ERROR: The input file is not correctly formated. {problems}. Exiting...\n")
+            exit(1)
+        else:
+            f.write("input file is correctly formatted\n")
+
     elif args.hugo_name and args.uniprot_id:
         hugo_name = [args.hugo_name]
         uniprot_id = [args.uniprot_id]
@@ -117,16 +129,6 @@ with open ("log.txt", "w") as f:
         f.write(f"ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
         exit(1)
 
-    df = pd.read_csv('input_file.csv')
-    df,problems = check_input_file(df)
-    df.to_csv('input_file.csv')
-
-    if len(problems) > 0:
-        f.write(f"ERROR: The input file is not correctly formated. {problems}. Exiting...\n")
-        exit(1)
-    else:
-        f.write("input file is correctly formatted\n")
-
     path = os.getcwd()
 
     f.write("Configuration file is generated\n")
@@ -142,6 +144,6 @@ with open ("log.txt", "w") as f:
     os.system(f"snakemake --cores={cores}")
     os.chdir(path)
     os.system(f"rm program/{input_file}")
-    os.system("rm results/*/*done.txt")
-    os.system("rm results/*/*input.csv")
+#    os.system("rm results/*/*done.txt")
+#    os.system("rm results/*/*input.csv")
     f.write("PDBminer has finished. Check log file an results to ensure correct useage.\n")
