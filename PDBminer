@@ -144,6 +144,6 @@ with open ("log.txt", "w") as f:
     os.system(f"snakemake --cores={cores}")
     os.chdir(path)
     os.system(f"rm program/{input_file}")
-#    os.system("rm results/*/*done.txt")
-#    os.system("rm results/*/*input.csv")
+    os.system("rm results/*/*done.txt")
+    os.system("rm results/*/*input.csv")
     f.write("PDBminer has finished. Check log file an results to ensure correct useage.\n")
