@@ -650,38 +650,43 @@ def align_alphafold(alphafold_id, mutation_positions):
     df = pd.DataFrame({'position':positions,'sequence':sequence,'PDDLT':confidence_list,'category':confidence_categories})    
     confident_seq = np.array(df[df.category == "high"].position)
         
-    #create coverage string (PDBminer output style)
-    f = []
-    f.append(confident_seq[0])
-    for i in range(len(confident_seq)-1):
-        if confident_seq[i]+1 != confident_seq[i+1]:
-            f.append(confident_seq[i])
-            f.append(confident_seq[i+1])
-    f.append(confident_seq[-1])
+    if len(confident_seq) > 0:
+#create coverage string (PDBminer output style)
+        f = []
+        f.append(confident_seq[0])
+        for i in range(len(confident_seq)-1):
+            if confident_seq[i]+1 != confident_seq[i+1]:
+                f.append(confident_seq[i])
+                f.append(confident_seq[i+1])
+        f.append(confident_seq[-1])
     
-    f = np.array(f)
-    coverage = []
-    for i in range(len(f[::2])):
-        p = f[::2][i],f[1::2][i] 
-        coverage.append(p)
+        f = np.array(f)
+        coverage = []
+        for i in range(len(f[::2])):
+            p = f[::2][i],f[1::2][i] 
+            coverage.append(p)
         
-    coverage = str(coverage)
-    coverage = coverage.replace("), (", ");(" )
+        coverage = str(coverage)
+        coverage = coverage.replace("), (", ");(" )
     
-    AA_in_PDB = []
+        AA_in_PDB = []
     
-    for i in range(len(mutation_positions)):
-        if mutation_positions[i] == "N/A":
-            mutation = "N/A"
-        else:
-            if df.category[df.position == mutation_positions[i]].values == "high":
-                mutation = f"{df.sequence[df.position == mutation_positions[i]].values[0]}{mutation_positions[i]}{df.sequence[df.position == mutation_positions[i]].values[0]}"
+        for i in range(len(mutation_positions)):
+            if mutation_positions[i] == "N/A":
+                mutation = "N/A"
             else:
-                mutation = 'Mutation not in range'
+                if df.category[df.position == mutation_positions[i]].values == "high":
+                    mutation = f"{df.sequence[df.position == mutation_positions[i]].values[0]}{mutation_positions[i]}{df.sequence[df.position == mutation_positions[i]].values[0]}"
+                else:
+                    mutation = 'Mutation not in range'
             
-        AA_in_PDB.append(mutation)
+            AA_in_PDB.append(mutation)
     
-    AA_in_PDB = ",".join(AA_in_PDB)
+        AA_in_PDB = ",".join(AA_in_PDB)
+
+    else: 
+        coverage = "N/A"
+        AA_in_PDB = "N/A"
     #output coverage string
     return coverage, AA_in_PDB
 
