@@ -606,7 +606,7 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
         os.chdir(path)
 
     else:
-        output_array = np.array(['NA', 'NA', "NA", "NA", "NA"], 'dtype=object')
+        output_array = np.array([''])
     
     return output_array
 

@@ -1,3 +1,3 @@
-,hugo_name,uniprot,uniprot_isoform,mutations,cluster_id
-0,SCP2,P22307,1,C71S;G72K,1
-1,SCP2,P22307,1,A500M;D490T,2
+hugo_name,uniprot,uniprot_isoform,mutations,cluster_id
+SCP2,P22307,1,C71S;G72K,1
+SCP2,P22307,1,A500M;D490T,2

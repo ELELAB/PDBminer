@@ -115,12 +115,15 @@ with open ("log.txt", "w") as f:
         if args.uniprot_isoform:
             isoform = [args.isoform]
             df['uniprot_isoform'] = isoform
+        else: df['uniprot_isoform'] = [1]
         if args.mutations:
             mutations = [args.mutations]
             df['mutations'] = mutations
+        else: df['mutations'] = ["N/A"]
         if args.cluster_id:
             mutations = [args.cluster_id]
             df['cluster_id'] = cluster
+        else: df['cluster_id'] = [999]
         df.to_csv('input_file.csv')
         input_file = 'input_file.csv'
         f.write("input file created based on hugo name and uniprot id, file name: input_file.csv\n")
@@ -146,4 +149,4 @@ with open ("log.txt", "w") as f:
     os.system(f"rm program/{input_file}")
     os.system("rm results/*/*done.txt")
     os.system("rm results/*/*input.csv")
-    f.write("PDBminer has finished. Check log file an results to ensure correct useage.\n")
+    f.write("PDBminer has finished.\n")
