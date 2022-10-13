@@ -482,7 +482,7 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
     pdb_dir = pdb_id[1:3]
     pdb_dir = pdb_dir.lower()
 
-    if len(os.listdir(pdb_dir)) != 0:
+    if os.path.exists(f'./{pdb_dir}/pdb{pdb_id.lower()}.ent') == True:
         os.chdir(pdb_dir)     
     # for loop to retrive sequence from sturcture
         missing_residues = [] 
