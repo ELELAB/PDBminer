@@ -240,13 +240,15 @@ def get_structure_df(uniprot_id):
 
         #concatenate all the dataframes
         structure_df = pd.concat(method_dfs)
-        structure_df = structure_df.sort_values(by="Rank")
         
         AF_model = get_alphafold_basics(uniprot_id)
         
         if AF_model != {}: 
-            structure_df.loc[AF_model[0]] = list(AF_model[1:])
+            AF_model = list(AF_model)
+            AF_model[1] = int(AF_model[1])
+            structure_df.loc[AF_model[0]] = AF_model[1:]
 
+        structure_df = structure_df.sort_values(by="Rank")
         #Sort based on rank & remove rank when sorted
         structure_df = structure_df.drop(['Rank'], axis=1)
                                                             
