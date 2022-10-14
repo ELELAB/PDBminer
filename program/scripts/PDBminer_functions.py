@@ -147,7 +147,7 @@ def get_alphafold_basics(uniprot_id):
         
     experimental_method = "Predicted"
     resolution = "NA"
-    rank = 0
+    rank = int(0)
 
     return Alphafold_ID, rank, uniprot_id, deposition_date, experimental_method, resolution
 
@@ -244,10 +244,12 @@ def get_structure_df(uniprot_id):
         AF_model = get_alphafold_basics(uniprot_id)
         
         if AF_model != {}: 
-            structure_df.loc[AF_model[0]] = list(AF_model[1:])
-        
-        #Sort based on rank & remove rank when sorted
+            AF_model = list(AF_model)
+            AF_model[1] = int(AF_model[1])
+            structure_df.loc[AF_model[0]] = AF_model[1:]
+
         structure_df = structure_df.sort_values(by="Rank")
+        #Sort based on rank & remove rank when sorted
         structure_df = structure_df.drop(['Rank'], axis=1)
                                                             
         return structure_df 
@@ -481,31 +483,32 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
     pdb.retrieve_pdb_file(pdb_id, file_format="pdb")
     pdb_dir = pdb_id[1:3]
     pdb_dir = pdb_dir.lower()
-    os.chdir(pdb_dir)
-        
+
+    if os.path.exists(f'./{pdb_dir}/pdb{pdb_id.lower()}.ent') == True:
+        os.chdir(pdb_dir)     
     # for loop to retrive sequence from sturcture
-    missing_residues = [] 
+        missing_residues = [] 
     
-    for record in SeqIO.parse(f"pdb{pdb_id.lower()}.ent", "pdb-seqres"):
-        if record.seq != '' and len(set(str(record.seq))) != 1:
-            pdb_seq = list(record.seq)
-            
-            h = parse_pdb_header(f"pdb{pdb_id.lower()}.ent")
-            chain = record.id.split(":")[-1].lower()
-            
-            if h['has_missing_residues'] == True:
-                missing_list = []
-                print(f"MISSING RESIDUES IN CHAIN {chain}")
-                missing = h['missing_residues']
-                for i in range(len(missing)):
-                    if chain in missing[i]['chain'].lower():
-                        missing_list.append(f"{seq1(missing[i]['res_name'])}{missing[i]['ssseq']}")
-                missing_list = ";".join(missing_list)
-                print(missing_list)
-                missing_residues.append(f"chain {chain}: {missing_list}")
+        for record in SeqIO.parse(f"pdb{pdb_id.lower()}.ent", "pdb-seqres"):
+            if record.seq != '' and len(set(str(record.seq))) != 1:
+                pdb_seq = list(record.seq)
+                
+                h = parse_pdb_header(f"pdb{pdb_id.lower()}.ent")
+                chain = record.id.split(":")[-1].lower()
+                
+                if h['has_missing_residues'] == True:
+                    missing_list = []
+                    print(f"MISSING RESIDUES IN CHAIN {chain}")
+                    missing = h['missing_residues']
+                    for i in range(len(missing)):
+                        if chain in missing[i]['chain'].lower():
+                            missing_list.append(f"{seq1(missing[i]['res_name'])}{missing[i]['ssseq']}")
+                    missing_list = ";".join(missing_list)
+                    print(missing_list)
+                    missing_residues.append(f"chain {chain}: {missing_list}")
                         
-            else:
-                missing_residues.append(f"chain {chain}: no missing residues")
+                else:
+                    missing_residues.append(f"chain {chain}: no missing residues")
 
             
             #alignment. The alignemet parameters are set as: 
@@ -528,24 +531,24 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
             # Align
     
             ########################################    
-            pdb_sequence_string = ''.join(pdb_seq)
-            alignments = pairwise2.align.localms(uniprot_sequence, pdb_sequence_string, 1, -10, -20, -10)  
+                pdb_sequence_string = ''.join(pdb_seq)
+                alignments = pairwise2.align.localms(uniprot_sequence, pdb_sequence_string, 1, -10, -20, -10)  
             
             #sometimes a stucture where the wanted uniprot id is only included 
             #as a ligand or very small sequence is included in the structural list
             #these are removed if the overall alignment score is less than 10. 
             #10 is an arbitrary number chosen based on observations. 
-            if alignments != [] and alignments[0][2] > 10:
-                chains.append(record.annotations['chain'])
-                alignment_score.append(alignments[0][2])
-                uniprot_aligned = alignments[0][0]
-                pdb_aligned = alignments[0][1]
+                if alignments != [] and alignments[0][2] > 10:
+                    chains.append(record.annotations['chain'])
+                    alignment_score.append(alignments[0][2])
+                    uniprot_aligned = alignments[0][0]
+                    pdb_aligned = alignments[0][1]
                 
                 #trim first part of alignment strings if pdb contains
                 #amino acids that are not in the uniprot at the begining.         
-                while uniprot_aligned[0] == "-":
-                    uniprot_aligned = uniprot_aligned[1:]
-                    pdb_aligned = pdb_aligned[1:]
+                    while uniprot_aligned[0] == "-":
+                        uniprot_aligned = uniprot_aligned[1:]
+                        pdb_aligned = pdb_aligned[1:]
                 
                 ########################################
     
@@ -553,55 +556,59 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
                 
                 ########################################
                             
-                if len(pdb_aligned) == len(uniprot_numbering):
-                    #create a dataframe with three columns and remove all where the PDB does not cover. 
-                    df = pd.DataFrame({"uni": list(uniprot_aligned), "num": uniprot_numbering, "seq": list(pdb_aligned)})
-                    df = df[df.seq!="-"]
+                    if len(pdb_aligned) == len(uniprot_numbering):
+                        #create a dataframe with three columns and remove all where the PDB does not cover. 
+                        df = pd.DataFrame({"uni": list(uniprot_aligned), "num": uniprot_numbering, "seq": list(pdb_aligned)})
+                        df = df[df.seq!="-"]
                     
-                    muts = []
+                        muts = []
                     
                     #capture the amino acid in all the mutational sites of interest. 
-                    for mutational_positon in list(set(mut_pos)):
-                        if mutational_positon in list(df.num):
-                            new_df = df[df.num == mutational_positon]
-                            mutation = list(new_df.uni)[0]+str(list(new_df.num)[0])+list(new_df.seq)[0]
-                            muts.append(str(mutation))
-                        else:
-                            muts.append("Mutation not in range")
+                        for mutational_positon in list(set(mut_pos)):
+                            if mutational_positon in list(df.num):
+                                new_df = df[df.num == mutational_positon]
+                                mutation = list(new_df.uni)[0]+str(list(new_df.num)[0])+list(new_df.seq)[0]
+                                muts.append(str(mutation))
+                            else:
+                                muts.append("Mutation not in range")
                     
-                    #capture the area the PDB covers accourding to the alignment. 
-                    ranges_covered = list(to_ranges(list(df.num)))
-                    ranges_covered = str(ranges_covered)
-                    ranges_covered = ranges_covered.replace("), (", ");(" )
-                    coverage.append(ranges_covered)
-                    mutational_column.append(muts)
+                        #capture the area the PDB covers accourding to the alignment. 
+                        ranges_covered = list(to_ranges(list(df.num)))
+                        ranges_covered = str(ranges_covered)
+                        ranges_covered = ranges_covered.replace("), (", ");(" )
+                        coverage.append(ranges_covered)
+                        mutational_column.append(muts)
                     
-                    df = df.reset_index(drop=True)
+                        df = df.reset_index(drop=True)
                     
                     #capture all mutations in PDBfile compared to the specified 
                     #protein isoform. 
-                    mutations_in_all = []
-                    for i in range(len(df)):
-                        if df["uni"][i] != df["seq"][i]:
-                            mutations_in_all.append(f"{list(df.uni)[i]}{str(list(df.num)[i])}{list(df.seq)[i]}")
+                        mutations_in_all = []
+                        for i in range(len(df)):
+                            if df["uni"][i] != df["seq"][i]:
+                                mutations_in_all.append(f"{list(df.uni)[i]}{str(list(df.num)[i])}{list(df.seq)[i]}")
                     
-                    mutation_list.append(mutations_in_all)
+                        mutation_list.append(mutations_in_all)
         
-                else:
-                    coverage.append("Mismatch in alignment")
-                    mutational_column.append("Mutations not covered")
+                    else:
+                        coverage.append("Mismatch in alignment")
+                        mutational_column.append("Mutations not covered")
             
-    chains_string = ';'.join([str(elem) for elem in chains])
-    #alignment_score_string = ';'.join([str(elem) for elem in alignment_score])
-    coverage_string = ';'.join([str(elem) for elem in coverage])
-    mutational_column_string = ';'.join([str(elem) for elem in mutational_column])        
-    mutation_list_string = ';'.join([str(elem) for elem in mutation_list])
+        chains_string = ';'.join([str(elem) for elem in chains])
+        #alignment_score_string = ';'.join([str(elem) for elem in alignment_score])
+        coverage_string = ';'.join([str(elem) for elem in coverage])
+        mutational_column_string = ';'.join([str(elem) for elem in mutational_column])        
+        mutation_list_string = ';'.join([str(elem) for elem in mutation_list])
                                                     
-    #directory administration to return to previous directory and 
-    #avoid creating a russian doll of directories
-    os.chdir(path) 
-    
-    output_array = np.array([chains_string, coverage_string, mutational_column_string, mutation_list_string, missing_residues], dtype=object)
+        #directory administration to return to previous directory and 
+        #avoid creating a russian doll of directories
+            
+        output_array = np.array([chains_string, coverage_string, mutational_column_string, mutation_list_string, missing_residues], dtype=object)
+
+        os.chdir(path)
+
+    else:
+        output_array = np.array([''])
     
     return output_array
 
@@ -645,38 +652,43 @@ def align_alphafold(alphafold_id, mutation_positions):
     df = pd.DataFrame({'position':positions,'sequence':sequence,'PDDLT':confidence_list,'category':confidence_categories})    
     confident_seq = np.array(df[df.category == "high"].position)
         
-    #create coverage string (PDBminer output style)
-    f = []
-    f.append(confident_seq[0])
-    for i in range(len(confident_seq)-1):
-        if confident_seq[i]+1 != confident_seq[i+1]:
-            f.append(confident_seq[i])
-            f.append(confident_seq[i+1])
-    f.append(confident_seq[-1])
+    if len(confident_seq) > 0:
+#create coverage string (PDBminer output style)
+        f = []
+        f.append(confident_seq[0])
+        for i in range(len(confident_seq)-1):
+            if confident_seq[i]+1 != confident_seq[i+1]:
+                f.append(confident_seq[i])
+                f.append(confident_seq[i+1])
+        f.append(confident_seq[-1])
     
-    f = np.array(f)
-    coverage = []
-    for i in range(len(f[::2])):
-        p = f[::2][i],f[1::2][i] 
-        coverage.append(p)
+        f = np.array(f)
+        coverage = []
+        for i in range(len(f[::2])):
+            p = f[::2][i],f[1::2][i] 
+            coverage.append(p)
         
-    coverage = str(coverage)
-    coverage = coverage.replace("), (", ");(" )
+        coverage = str(coverage)
+        coverage = coverage.replace("), (", ");(" )
     
-    AA_in_PDB = []
+        AA_in_PDB = []
     
-    for i in range(len(mutation_positions)):
-        if mutation_positions[i] == "N/A":
-            mutation = "N/A"
-        else:
-            if df.category[df.position == mutation_positions[i]].values == "high":
-                mutation = f"{df.sequence[df.position == mutation_positions[i]].values[0]}{mutation_positions[i]}{df.sequence[df.position == mutation_positions[i]].values[0]}"
+        for i in range(len(mutation_positions)):
+            if mutation_positions[i] == "N/A":
+                mutation = "N/A"
             else:
-                mutation = 'Mutation not in range'
+                if df.category[df.position == mutation_positions[i]].values == "high":
+                    mutation = f"{df.sequence[df.position == mutation_positions[i]].values[0]}{mutation_positions[i]}{df.sequence[df.position == mutation_positions[i]].values[0]}"
+                else:
+                    mutation = 'Mutation not in range'
             
-        AA_in_PDB.append(mutation)
+            AA_in_PDB.append(mutation)
     
-    AA_in_PDB = ",".join(AA_in_PDB)
+        AA_in_PDB = ",".join(AA_in_PDB)
+
+    else: 
+        coverage = "N/A"
+        AA_in_PDB = "N/A"
     #output coverage string
     return coverage, AA_in_PDB
 
@@ -718,7 +730,7 @@ def align(combined_structure, path):
             combined_structure.at[i, 'coverage'] = alignment_info[0] 
             combined_structure.at[i, 'AA_in_PDB'] = alignment_info[1] 
             combined_structure.at[i, 'mutations_in_pdb'] = "[]" 
-            combined_structure.at[i, 'missing_residues'] = "NA"
+            combined_structure.at[i, 'missing_residues'] = "see coverage"
             
         else:    
                  
@@ -727,7 +739,7 @@ def align(combined_structure, path):
                                            int(combined_structure['uniprot_isoform'][i]),
                                            combined_structure['mutation_positions'][i],
                                            path)
-                
+
             if alignment_info[0] != '':
                 combined_structure.at[i, 'chains'] = alignment_info[0]  
                 combined_structure.at[i, 'coverage'] = alignment_info[1] 

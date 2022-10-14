@@ -96,6 +96,18 @@ with open ("log.txt", "w") as f:
         input_file = args.inputfile
         f.write("input file mode is choosen and input file has been identified.\n")
 
+        df = pd.read_csv(input_file)
+        df,problems = check_input_file(df)
+
+        if len(problems) == 0:
+            df.to_csv(f"{input_file}", index=False)
+
+        elif len(problems) > 0:
+            f.write(f"ERROR: The input file is not correctly formated. {problems}. Exiting...\n")
+            exit(1)
+        else:
+            f.write("input file is correctly formatted\n")
+
     elif args.hugo_name and args.uniprot_id:
         hugo_name = [args.hugo_name]
         uniprot_id = [args.uniprot_id]
@@ -103,12 +115,15 @@ with open ("log.txt", "w") as f:
         if args.uniprot_isoform:
             isoform = [args.isoform]
             df['uniprot_isoform'] = isoform
+        else: df['uniprot_isoform'] = [1]
         if args.mutations:
             mutations = [args.mutations]
             df['mutations'] = mutations
+        else: df['mutations'] = ["N/A"]
         if args.cluster_id:
             mutations = [args.cluster_id]
             df['cluster_id'] = cluster
+        else: df['cluster_id'] = [999]
         df.to_csv('input_file.csv')
         input_file = 'input_file.csv'
         f.write("input file created based on hugo name and uniprot id, file name: input_file.csv\n")
@@ -116,16 +131,6 @@ with open ("log.txt", "w") as f:
     else:
         f.write(f"ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
         exit(1)
-
-    df = pd.read_csv('input_file.csv')
-    df,problems = check_input_file(df)
-    df.to_csv('input_file.csv')
-
-    if len(problems) > 0:
-        f.write(f"ERROR: The input file is not correctly formated. {problems}. Exiting...\n")
-        exit(1)
-    else:
-        f.write("input file is correctly formatted\n")
 
     path = os.getcwd()
 
@@ -144,4 +149,4 @@ with open ("log.txt", "w") as f:
     os.system(f"rm program/{input_file}")
     os.system("rm results/*/*done.txt")
     os.system("rm results/*/*input.csv")
-    f.write("PDBminer has finished. Check log file an results to ensure correct useage.\n")
+    f.write("PDBminer has finished.\n")

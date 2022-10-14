@@ -74,7 +74,7 @@ def run_list(full_path):
             if set(input_dataframe.cluster_id) == {999}:
                 all_df = all_df.drop(columns=('cluster_id'))
             
-            all_df.to_csv(f"{uniprot_id}_all.csv")
+            all_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_all.csv")
             
             #prep and export the filered file
             filtered_df = filter_all(structural_df, input_dataframe)   
@@ -83,13 +83,14 @@ def run_list(full_path):
                 if len(filtered_df[0]) > 0:
                     if set(input_dataframe.cluster_id) == {999}:
                         filtered_df[0] = filtered_df[0].drop(columns=('cluster_id'))
-                    filtered_df[0].to_csv(f"{uniprot_id}_filtered.csv")
+                    filtered_df[0].to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.csv")
             else:
                 for cluster_df in filtered_df:
                     if len(cluster_df) > 0:
-                        cluster_df.to_csv(f"{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv")
+                        cluster_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv")
             
             #remove the alphafold model
+            os.chdir(f"{path}/results/{uniprot_id}")
             os.system("find . -maxdepth 1 -name '*.pdb*' -type f -delete")
             
             if os.path.exists("structure"):
@@ -103,6 +104,6 @@ def run_list(full_path):
           
     os.chdir(f"{path}/results/")
   
-    return all_df, filtered_df
+    return
 
 run_list(snakemake.input)
