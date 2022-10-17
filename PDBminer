@@ -5,6 +5,13 @@ import argparse
 import pandas as pd
 from sys import exit
 
+###############################################################################
+## Correct based on snakefile path!
+###############################################################################
+path = os.getcwd()
+snakefile_path = "/data/user/krde/PDBminer/snakemake_change/program/snakefile"
+################################################################################
+
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-g] hugo_name and [-u] uniprot id')
 
@@ -132,21 +139,9 @@ with open ("log.txt", "w") as f:
         f.write(f"ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
         exit(1)
 
-    path = os.getcwd()
-
-    f.write("Configuration file is generated\n")
-    with open("program/config.yaml", "w") as textfile: 
-        textfile.write(f"input_file: '{input_file}'\n")
-        textfile.write(f"path: '{path}'\n")
-
-    os.system(f"cp {input_file} program")
-
-    os.chdir("program")
     f.write("Pipeline is starting\n")
+    os.system(f"snakemake --cores {cores} --snakefile {snakefile_path} --config input_file={input_file} path={path}")
 
-    os.system(f"snakemake --cores={cores}")
-    os.chdir(path)
-    os.system(f"rm program/{input_file}")
     os.system("rm results/*/*done.txt")
     os.system("rm results/*/*input.csv")
     f.write("PDBminer has finished.\n")

@@ -1,0 +1,3 @@
+WorkflowError in line 6 of /data/user/krde/PDBminer/snakemake_change/program/snakefile:
+Workflow defines configfile config.yaml but it is not present or accessible.
+  File "/data/user/krde/PDBminer/snakemake_change/program/snakefile", line 6, in <module>

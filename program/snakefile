@@ -3,12 +3,12 @@ import os
 import numpy as np
 from sys import exit
 
-configfile: 'config.yaml'
+#configfile: 'config.yaml'
 
 path = config['path']
 
 #importing the file
-df = pd.read_csv(path+"/"+config['input_file'])
+df = pd.read_csv(f"/{path}/{config['input_file']}")
 
 #creating the uniprot list
 uniprot_list = list(set(df.uniprot))
