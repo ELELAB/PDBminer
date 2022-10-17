@@ -9,7 +9,7 @@ from sys import exit
 ## Correct based on snakefile path!
 ###############################################################################
 path = os.getcwd()
-snakefile_path = "/data/user/krde/PDBminer/snakemake_change/program/snakefile"
+snakefile_path = "/usr/local/envs/PDBminer/PDBminer/program/snakefile"
 ################################################################################
 
 parser = argparse.ArgumentParser(prog = "PDBminer",

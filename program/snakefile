@@ -3,8 +3,6 @@ import os
 import numpy as np
 from sys import exit
 
-#configfile: 'config.yaml'
-
 path = config['path']
 
 #importing the file
