@@ -1,3 +1,0 @@
-KeyError in line 9 of /data/user/krde/PDBminer/snakemake_change/program/snakefile:
-'program'
-  File "/data/user/krde/PDBminer/snakemake_change/program/snakefile", line 9, in <module>

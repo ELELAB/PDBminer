@@ -5,13 +5,6 @@ import argparse
 import pandas as pd
 from sys import exit
 
-###############################################################################
-## Correct based on snakefile path!
-###############################################################################
-path = os.getcwd()
-snakefile_path = "/usr/local/envs/PDBminer/PDBminer/program/snakefile"
-################################################################################
-
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-g] hugo_name and [-u] uniprot id')
 
@@ -50,7 +43,20 @@ parser.add_argument("-n", "--cores",
                     type=int,
                     help="the number of cores to allocate the run, if nothing is choosen: 1 core")
 
-args = parser.parse_args() 
+parser.add_argument("-f", "--snakefile",
+                    metavar = "snakefile placement",
+                    type=str,
+                    help="snakefile path")
+
+
+args = parser.parse_args()
+
+path = os.getcwd()
+
+if args.snakefile:
+    snakefile_path = args.snakefile
+else:
+    snakefile_path = "/usr/local/envs/PDBminer/PDBminer/program/snakefile"
 
 def check_input_file(df):
 
@@ -91,7 +97,7 @@ def check_input_file(df):
     
     return df, problems
 
-with open ("log.txt", "w") as f:
+with open (f"{path}/log.txt", "w") as f:
     f.write("PDBminer is starting\n")
 
     if args.cores:
@@ -103,7 +109,7 @@ with open ("log.txt", "w") as f:
         input_file = args.inputfile
         f.write("input file mode is choosen and input file has been identified.\n")
 
-        df = pd.read_csv(input_file)
+        df = pd.read_csv(f"{input_file}")
         df,problems = check_input_file(df)
 
         if len(problems) == 0:
@@ -131,7 +137,7 @@ with open ("log.txt", "w") as f:
             mutations = [args.cluster_id]
             df['cluster_id'] = cluster
         else: df['cluster_id'] = [999]
-        df.to_csv('input_file.csv')
+        df.to_csv(f'{path}/input_file.csv')
         input_file = 'input_file.csv'
         f.write("input file created based on hugo name and uniprot id, file name: input_file.csv\n")
 
@@ -140,8 +146,9 @@ with open ("log.txt", "w") as f:
         exit(1)
 
     f.write("Pipeline is starting\n")
+
     os.system(f"snakemake --cores {cores} --snakefile {snakefile_path} --config input_file={input_file} path={path}")
 
-    os.system("rm results/*/*done.txt")
-    os.system("rm results/*/*input.csv")
+    os.system(f"rm {path}/results/*/*done.txt")
+    os.system(f"rm {path}/results/*/*input.csv")
     f.write("PDBminer has finished.\n")

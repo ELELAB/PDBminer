@@ -3,17 +3,18 @@ import os
 import numpy as np
 from sys import exit
 
+#identify the path
 path = config['path']
 
 #importing the file
-df = pd.read_csv(f"/{path}/{config['input_file']}")
+df = pd.read_csv(f"{path}/{config['input_file']}")
 
 #creating the uniprot list
 uniprot_list = list(set(df.uniprot))
 
 #creating the results directory
-if os.path.exists(path+"/results") == False: 
-    os.mkdir(path+"/results")                    
+if os.path.exists(f"{path}/results") == False: 
+    os.mkdir(f"{path}/results")                    
 
 target = expand("{path}/results/{uniprot_id}/{uniprot_id}_done.txt", uniprot_id=uniprot_list, path=path)                   
 
@@ -21,7 +22,6 @@ rule all:
     input:
         target     
 
-#works as intended
 rule prepare_files_and_dirs:
     input:
         "{path}"

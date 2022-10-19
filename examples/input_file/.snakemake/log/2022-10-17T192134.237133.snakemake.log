@@ -1,3 +1,0 @@
-WorkflowError:
-Failed to open source file /data/user/krde/PDBminer/snakemake_change/program
-IsADirectoryError: [Errno 21] Is a directory: '/data/user/krde/PDBminer/snakemake_change/program'
