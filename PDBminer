@@ -41,22 +41,18 @@ parser.add_argument("-c", '--cluster_id',
 parser.add_argument("-n", "--cores",
                     metavar = "cores for run",
                     type=int,
+                    default = 1,
                     help="the number of cores to allocate the run, if nothing is choosen: 1 core")
 
 parser.add_argument("-f", "--snakefile",
                     metavar = "snakefile placement",
                     type=str,
+                    default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile",
                     help="snakefile path")
 
 
 args = parser.parse_args()
-
 path = os.getcwd()
-
-if args.snakefile:
-    snakefile_path = args.snakefile
-else:
-    snakefile_path = "/usr/local/envs/PDBminer/PDBminer/program/snakefile"
 
 def check_input_file(df):
 
@@ -100,20 +96,15 @@ def check_input_file(df):
 with open (f"{path}/log.txt", "w") as f:
     f.write("PDBminer is starting\n")
 
-    if args.cores:
-        cores = args.cores
-    else:
-        cores = 1
-
     if args.inputfile:
         input_file = args.inputfile
         f.write("input file mode is choosen and input file has been identified.\n")
 
-        df = pd.read_csv(f"{input_file}")
+        df = pd.read_csv(input_file)
         df,problems = check_input_file(df)
 
         if len(problems) == 0:
-            df.to_csv(f"{input_file}", index=False)
+            df.to_csv(input_file, index=False)
 
         elif len(problems) > 0:
             f.write(f"ERROR: The input file is not correctly formated. {problems}. Exiting...\n")
@@ -147,7 +138,7 @@ with open (f"{path}/log.txt", "w") as f:
 
     f.write("Pipeline is starting\n")
 
-    os.system(f"snakemake --cores {cores} --snakefile {snakefile_path} --config input_file={input_file} path={path}")
+    os.system(f"snakemake --cores {args.cores} --snakefile {args.snakefile} --config input_file={input_file} path={path}")
 
     os.system(f"rm {path}/results/*/*done.txt")
     os.system(f"rm {path}/results/*/*input.csv")
