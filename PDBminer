@@ -41,9 +41,18 @@ parser.add_argument("-c", '--cluster_id',
 parser.add_argument("-n", "--cores",
                     metavar = "cores for run",
                     type=int,
+                    default = 1,
                     help="the number of cores to allocate the run, if nothing is choosen: 1 core")
 
-args = parser.parse_args() 
+parser.add_argument("-f", "--snakefile",
+                    metavar = "snakefile placement",
+                    type=str,
+                    default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile",
+                    help="snakefile path")
+
+
+args = parser.parse_args()
+path = os.getcwd()
 
 def check_input_file(df):
 
@@ -84,13 +93,8 @@ def check_input_file(df):
     
     return df, problems
 
-with open ("log.txt", "w") as f:
+with open (f"{path}/log.txt", "w") as f:
     f.write("PDBminer is starting\n")
-
-    if args.cores:
-        cores = args.cores
-    else:
-        cores = 1
 
     if args.inputfile:
         input_file = args.inputfile
@@ -100,7 +104,7 @@ with open ("log.txt", "w") as f:
         df,problems = check_input_file(df)
 
         if len(problems) == 0:
-            df.to_csv(f"{input_file}", index=False)
+            df.to_csv(input_file, index=False)
 
         elif len(problems) > 0:
             f.write(f"ERROR: The input file is not correctly formated. {problems}. Exiting...\n")
@@ -124,7 +128,7 @@ with open ("log.txt", "w") as f:
             mutations = [args.cluster_id]
             df['cluster_id'] = cluster
         else: df['cluster_id'] = [999]
-        df.to_csv('input_file.csv')
+        df.to_csv(f'{path}/input_file.csv')
         input_file = 'input_file.csv'
         f.write("input file created based on hugo name and uniprot id, file name: input_file.csv\n")
 
@@ -132,21 +136,10 @@ with open ("log.txt", "w") as f:
         f.write(f"ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
         exit(1)
 
-    path = os.getcwd()
-
-    f.write("Configuration file is generated\n")
-    with open("program/config.yaml", "w") as textfile: 
-        textfile.write(f"input_file: '{input_file}'\n")
-        textfile.write(f"path: '{path}'\n")
-
-    os.system(f"cp {input_file} program")
-
-    os.chdir("program")
     f.write("Pipeline is starting\n")
 
-    os.system(f"snakemake --cores={cores}")
-    os.chdir(path)
-    os.system(f"rm program/{input_file}")
-    os.system("rm results/*/*done.txt")
-    os.system("rm results/*/*input.csv")
+    os.system(f"snakemake --cores {args.cores} --snakefile {args.snakefile} --config input_file={input_file} path={path}")
+
+    os.system(f"rm {path}/results/*/*done.txt")
+    os.system(f"rm {path}/results/*/*input.csv")
     f.write("PDBminer has finished.\n")

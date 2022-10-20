@@ -1,5 +1,4 @@
 PDBminer is starting
 input file created based on hugo name and uniprot id, file name: input_file.csv
-Configuration file is generated
 Pipeline is starting
 PDBminer has finished.

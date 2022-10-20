@@ -1,5 +1,4 @@
 PDBminer is starting
 input file mode is choosen and input file has been identified.
-Configuration file is generated
 Pipeline is starting
 PDBminer has finished.
