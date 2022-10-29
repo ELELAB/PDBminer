@@ -4,6 +4,8 @@ import os
 import argparse
 import pandas as pd
 from sys import exit
+import requests
+from requests.exceptions import ConnectionError
 
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-g] hugo_name and [-u] uniprot id')
@@ -53,6 +55,27 @@ parser.add_argument("-f", "--snakefile",
 
 args = parser.parse_args()
 path = os.getcwd()
+
+def check_APIs():
+    
+    checked_api = []
+    #check uniprot fasta, use p53 as test case
+      
+    uniprot_url = "https://www.uniprot.org/uniprot/P04637.txt"
+    try: 
+        response = requests.get(uniprot_url)  
+    except ConnectionError as e:
+        checked_api.append("UNIPROT API controlled and rejected, connection error")
+    
+    #check PDBe, use 2XWR as test case
+    
+    mapping_url = "https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/2XWR"
+    try: 
+        response = requests.get(mapping_url)
+    except ConnectionError as e:
+        checked_api.append("PDBe API controlled and rejected, connection error")
+
+    return checked_api
 
 def check_input_file(df):
 
@@ -125,7 +148,7 @@ with open (f"{path}/log.txt", "w") as f:
             df['mutations'] = mutations
         else: df['mutations'] = ["N/A"]
         if args.cluster_id:
-            mutations = [args.cluster_id]
+            cluster = [args.cluster_id]
             df['cluster_id'] = cluster
         else: df['cluster_id'] = [999]
         df.to_csv(f'{path}/input_file.csv')
@@ -133,7 +156,15 @@ with open (f"{path}/log.txt", "w") as f:
         f.write("input file created based on hugo name and uniprot id, file name: input_file.csv\n")
 
     else:
-        f.write(f"ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
+        f.write("ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
+        exit(1)
+        
+    f.write("APIs are checked")
+    api = check_APIs()
+    if api == []:
+        f.write("   APIs controlled and accepted")
+    else:
+        f.write(f"   ERROR: {api}")
         exit(1)
 
     f.write("Pipeline is starting\n")
