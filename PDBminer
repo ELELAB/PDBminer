@@ -65,7 +65,7 @@ def check_APIs():
     try: 
         response = requests.get(uniprot_url)  
     except ConnectionError as e:
-        checked_api.append("UNIPROT API controlled and rejected, connection error")
+        checked_api.append("UNIPROT API controlled and rejected, connection error\n")
     
     #check PDBe, use 2XWR as test case
     
@@ -73,7 +73,7 @@ def check_APIs():
     try: 
         response = requests.get(mapping_url)
     except ConnectionError as e:
-        checked_api.append("PDBe API controlled and rejected, connection error")
+        checked_api.append("PDBe API controlled and rejected, connection error\n")
 
     return checked_api
 
@@ -159,10 +159,10 @@ with open (f"{path}/log.txt", "w") as f:
         f.write("ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
         exit(1)
         
-    f.write("APIs are checked")
+    f.write("APIs are checked\n")
     api = check_APIs()
     if api == []:
-        f.write("   APIs controlled and accepted")
+        f.write("   APIs controlled and accepted\n")
     else:
         f.write(f"   ERROR: {api}")
         exit(1)
