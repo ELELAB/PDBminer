@@ -1,0 +1,345 @@
+#!/usr/bin/env python3
+
+#coverage and mutation coverage
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import requests
+from Bio import SeqIO
+from io import StringIO
+import os
+import seaborn as sns
+import math
+from matplotlib.colors import ListedColormap
+import argparse
+import re
+
+parser = argparse.ArgumentParser(prog = "PDBminer2coverage",
+                                 usage = 'PDBminer2coverage [-h] help')
+
+parser.add_argument("-r", '--result',
+                    metavar = 'result path',
+                    type=str,
+                    default = "./results/",
+                    help='The path to the result path, deafault ./results')
+
+parser.add_argument("-i", "--inputfile",
+                    metavar = 'input file',
+                    type=str,
+                    default = "input_file.csv",
+                    help="input file created in the PDBminer run or original file")
+
+parser.add_argument("-s", "--sequence",
+                    metavar = "sequence",
+                    type=str,
+                    help="The area to be plotted, e.g., 1-200 or 1-20,50-66, comma seperated")
+
+args = parser.parse_args()
+
+path = args.result
+df = pd.read_csv(args.inputfile)
+
+if args.sequence: 
+    sequence = [int(s) for s in re.findall(r'\b\d+\b', args.sequence)]
+    evens = [x for x in range(len(sequence)) if x%2 == 0]
+    for number in evens:
+        sequence[number] = sequence[number]-1
+else:
+    sequence = 0
+    
+def get_uniprot_seq(isoform, uniprot_id):
+    """
+    Function with an API to Uniprot retriving the fasta file,
+    to annotate the sequence.
+
+    Parameters
+    ----------
+    isoform : The isoform from the PDBminer run.
+    uniprot_id : The Uniprot ID, also taken from the input-file.
+
+    Returns
+    -------
+    uniprot_numbering : A list of numbers annotating the positions of the protein
+    columns : A list containing the WT amino acid and positions. 
+
+    """
+    
+    uniprot_Url="https://rest.uniprot.org/uniprotkb/"
+        
+    #Alignment to correct isoform:
+    if isoform == 1:
+    
+        fasta_url=uniprot_Url+uniprot_id+".fasta"
+        response = requests.post(fasta_url)
+        sequence_data=''.join(response.text)
+        Seq=StringIO(sequence_data)
+        pSeq=list(SeqIO.parse(Seq,'fasta'))
+        uniprot_sequence = str(pSeq[0].seq)
+        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+    
+    else:
+    
+        fasta_url=uniprot_Url+uniprot_id+"-"+str(isoform)+".fasta"
+        response = requests.post(fasta_url)
+        sequence_data=''.join(response.text)
+        Seq=StringIO(sequence_data)
+        pSeq=list(SeqIO.parse(Seq,'fasta'))
+        uniprot_sequence = str(pSeq[0].seq)
+        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+    
+    uniprot_sequence = list(uniprot_sequence)
+    columns = []
+    for i in range(len(uniprot_numbering)):
+        columns.append(f"{uniprot_sequence[i]}{uniprot_numbering[i]}")
+    
+    return uniprot_numbering, columns
+
+def get_ranges(coverage, uniprot_numbering): 
+    """
+    A function convating the reported coberage ranges of PDBminer
+    to an array of 0 and 1s based on the entire uniprot sequence.
+    Applicable for PDB structures.
+
+    Parameters
+    ----------
+    coverage : From he PDBminer output file, all or filtered. 
+    uniprot_numbering : The full numbering of the protein.
+
+    Returns
+    -------
+    a : An array where the covered position is annotated 1 and the 
+    not covered positions are annotated 0.
+
+    """
+    UN = np.array(uniprot_numbering)
+    a = np.zeros(UN.shape)    
+    for r in (("[", ""), ("]", ""), ("'", ""), ("(", ""), (")", "")): 
+        coverage = coverage.replace(*r)
+    if ";" in coverage:
+        coverage = coverage.split(";")
+    
+        for segment in coverage: 
+            segment = segment.split(", ")
+            start = int(segment[0])
+            stop = int(segment[1])
+            segment_range = np.array(range(start,stop+1))            
+            for j in range(len(segment_range)):
+                a[segment_range[j]-1] = 1
+    else:
+        coverage = coverage.split(", ")
+        start = int(coverage[0])
+        stop = int(coverage[1])
+        coverage_range = np.array(range(start,stop+1))
+        for j in range(len(coverage_range)):
+            a[coverage_range[j]-1] = 1
+    return a
+
+def get_ranges_AF(coverage, uniprot_numbering):
+    """
+    A function convating the reported coberage ranges of PDBminer
+    to an array of 0 and 1s based on the entire uniprot sequence.
+    Applicable for Alphafold structures.
+
+    Parameters
+    ----------
+    coverage : From he PDBminer output file, all or filtered. 
+    uniprot_numbering : The full numbering of the protein.
+
+    Returns
+    -------
+    a : An array where the covered position is annotated 1 and the 
+    not covered positions are annotated 0.
+
+    """
+    UN = np.array(uniprot_numbering)
+    a = np.zeros(UN.shape)
+    for r in (("[", ""), ("]", ""), ("'", ""), ("(", ""), (")", "")): 
+        coverage = coverage.replace(*r)
+    coverage = coverage.split(";")
+    for i in range(len(coverage)):
+        c = coverage[i].split(", ")
+        start = int(c[0])
+        stop = int(c[1])
+        coverage_range = np.array(range(start,stop+1))
+        for j in range(len(coverage_range)):
+            a[coverage_range[j]-1] = 1 
+    return a
+        
+
+def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, sequence):
+    """
+    The plotting function, taking the output files from PDBminer and coverting 
+    them into a plot.
+
+    Parameters
+    ----------
+    path : The path to the relevant Uniprot ID folder in the results.
+    isoform : From the input file of a particular protein.
+    uniprot_id : From the input file of a particular protein.
+    mutations : From the input file of a particular protein.
+    cluster : From the input file of a particular protein.
+    file : The PDBminer output file, either filtered or all
+    name : Filtered or all
+    sequence : User input of area to be plotted.
+
+    Returns
+    -------
+    One or more plots of the coverage. The number of plots depends on the
+    length of the protein (max 500 AA per plot), number of clusters and 
+    availablity of a filtered and all file.
+
+    """
+    uniprot_numbering, columns = get_uniprot_seq(isoform, uniprot_id)
+
+    print("    columns calculated imported from uniprot sequence")
+    f = file[['structure_id', 'chains', 'coverage']]
+    f = f[f["coverage"].str.contains("Mismatch") == False]
+    f = f.reset_index()
+    index = []
+    ranges = []
+    print("    converting ranges on chains to binary values")
+    for i in range(len(f)):
+        a = f.iloc[i]
+        if len(a.chains) == 1:
+            if a.structure_id.startswith('AF'):
+                index.append(a.structure_id)
+                a_range = get_ranges_AF(a.coverage, uniprot_numbering)
+                ranges.append(a_range)
+            else:
+                index.append(a.structure_id)
+                a_range = get_ranges(a.coverage, uniprot_numbering)
+                ranges.append(a_range)
+        else:
+            chains = a.chains.split(";")
+            coverage = a.coverage.split(";")
+            for i in range(len(chains)):
+                index.append(f"{a.structure_id}_{chains[i]}")
+                a_range = get_ranges(coverage[i], uniprot_numbering)
+                ranges.append(a_range)
+    print("    combine to dataframe")
+    heatmap = np.stack(ranges)
+    df = pd.DataFrame(data=heatmap, index=index, columns=columns)
+    
+    if sequence != 0:
+        if len(sequence) > 2:
+            evens = [x for x in range(len(sequence)) if x%2 == 0]
+            df_list = []
+            for i in evens:
+                df_list.append(df.iloc[: , sequence[i]:sequence[i+1]])
+            df = pd.concat(df_list, axis=1, join="inner")
+                
+        else: 
+            df = df.iloc[: , sequence[0]:sequence[1]]
+
+    if type(mutations) == str:
+        print("    finding mutational positions")
+        mutations = mutations.split(";")
+        for i in range(len(mutations)):
+            mutations[i] = int(mutations[i][1:-1])
+        mutational_positions = np.unique(np.array(mutations))
+        print("    assigning new values to mutational positions")
+        UN = np.array(uniprot_numbering)
+        np_mut = np.zeros(UN.shape)
+        if len(mutational_positions) == 1:
+            np_mut[mutational_positions[0]-1] = 1.0
+        else:
+            for j in range(len(mutational_positions)-1):
+                np_mut[mutational_positions[j]-1] = 1.0
+        arrays = [np_mut for _ in range(len(df))]
+        heatmap_mut = np.stack(arrays)
+        df_mut = pd.DataFrame(data=heatmap_mut, index=index, columns=columns)
+        print("    mutations assigned")
+        if sequence != 0:
+            if len(sequence) > 2:
+                evens = [x for x in range(len(sequence)) if x%2 == 0]
+                df_list = []
+                for i in evens:
+                    df_list.append(df_mut.iloc[: , sequence[i]:sequence[i+1]])
+                df_mut = pd.concat(df_list, axis=1, join="inner")
+                    
+            else: 
+                df_mut = df_mut.iloc[: , sequence[0]:sequence[1]]
+
+    print("   plotting")
+
+    length_threshold = 500
+
+    if len(df.columns) > length_threshold:
+        print(f"    sequence > {length_threshold} AA, multiple plots")
+        chunks = len(uniprot_numbering)/length_threshold
+        chunks = math.ceil(chunks)            
+        for i in range(chunks): 
+            print(f"    plotting chunk {i+1} of {chunks}")
+            df_chunk = df.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
+            fig, ax = plt.subplots(figsize=((len(df_chunk.columns)/8),(len(df_chunk.index)/5)))
+            ax = sns.heatmap(df_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', 'grey']), linewidths=1, 
+                        linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
+            try:
+                df_mut_chunk = df_mut.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
+                ax = sns.heatmap(df_mut_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', 'blue']), alpha=0.15, cbar = False)
+            except:
+                df_mut = None
+            
+            ax.xaxis.tick_top()
+            plt.xticks(rotation=90)
+            if cluster == 999: 
+                plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_chunk_{i}.pdf", format="pdf", bbox_inches="tight")
+            else:
+                plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster{cluster}_chunk_{i}.pdf", format="pdf", bbox_inches="tight")
+    else:
+        print(f"    sequence < {length_threshold} AA, one plot")
+        fig, ax = plt.subplots(figsize=((len(df.columns)/8),(len(df.index)/5)))
+        ax = sns.heatmap(df, vmin=0, vmax=1, cmap=ListedColormap(['white', 'grey']), linewidths=1, 
+                    linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
+        try:
+            ax = sns.heatmap(df_mut, vmin=0, vmax=1, cmap=ListedColormap(['white', 'blue']), alpha=0.15, cbar = False)
+        except:
+            df_mut = None
+        
+        ax.xaxis.tick_top() 
+        plt.xticks(rotation=90)
+        if cluster == 999:
+            plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot.pdf", format="pdf", bbox_inches="tight")
+        else:
+            plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster{cluster}.pdf", format="pdf", bbox_inches="tight")
+    return
+
+def run(df):
+    """
+    A run file to generate the plots based on the original input file.
+
+    Parameters
+    ----------
+    df : Dataframe of the inputfile.
+
+    Returns
+    -------
+    None.
+
+    """
+    for i in range(len(df)): 
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
+            print("  filtered file identified")
+            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv")
+            plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
+                          df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
+                          "filtered", sequence)
+            print("  plot done")
+        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
+            print("  filtered cluster file identified")
+            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv")
+            plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
+                          df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
+                          "filtered", sequence)
+            print("  plot done")
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
+            print("  All file identified")
+            full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv")
+            plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
+                          df.iloc[i].mutations, df.iloc[i].cluster_id, full, 
+                          "all", sequence) 
+            print("  plot done")
+    return
+
+run(df)
+

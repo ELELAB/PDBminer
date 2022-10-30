@@ -45,3 +45,21 @@ python PDBminer -g RNH -u P0A7Y7 -m "D134N;D134K" -n 1
 #this is because parallelization via snakemake is done per
 #protein. A generated input_file.csv will be available after 
 #the run as well. 
+
+#Additionally, a plotting module can be run
+
+PDBminer2coverage
+
+#PDBminer2coverage takes up to tree arguments and requires the inputfile, 
+#either supplied or generated and the results folder. 
+
+#If you run PDBminer2coverage in the same directory you ran PDBminer in, you
+#do not need to add any flags. Alternatively you can:
+
+PDBminer2coverage -r PDBminer_run/results/ -i PDBminer_run/inputfile.csv
+
+#If you wish only to plot a section of the protein use the flag -s, example:
+
+PDBminer2coverage -s 1-20,60-140 
+
+#Output: One or more plots illustrating the coverage of the found structures.
