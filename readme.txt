@@ -11,6 +11,8 @@ conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
 conda install -c conda-forge biopandas=0.4.1
+conda install -c conda-forge matplotlib=3.2.2
+conda install -c anaconda seaborn=0.12.0
 
 #all subsequent times
 conda activate PDBminer
@@ -45,3 +47,21 @@ python PDBminer -g RNH -u P0A7Y7 -m "D134N;D134K" -n 1
 #this is because parallelization via snakemake is done per
 #protein. A generated input_file.csv will be available after 
 #the run as well. 
+
+#Additionally, a plotting module can be run
+
+python PDBminer2coverage
+
+#PDBminer2coverage takes up to tree arguments and requires the inputfile, 
+#either supplied or generated and the results folder. 
+
+#If you run PDBminer2coverage in the same directory you ran PDBminer in, you
+#do not need to add any flags. Alternatively you can:
+
+python PDBminer2coverage -r PDBminer_run/results/ -i PDBminer_run/inputfile.csv
+
+#If you wish only to plot a section of the protein use the flag -s, example:
+
+python PDBminer2coverage -s 1-20,60-140 
+
+#Output: One or more plots illustrating the coverage of the found structures.

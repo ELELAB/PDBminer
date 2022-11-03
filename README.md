@@ -17,6 +17,8 @@ conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
 conda install -c conda-forge biopandas=0.4.1
+conda install -c conda-forge matplotlib=3.2.2
+conda install -c anaconda seaborn=0.12.0
 ```
 
 ### All subsequent times
@@ -130,3 +132,19 @@ Output Columns and explanations
 #complex_ligand_details         Details describing which “other” things are in the file.
 
 ```
+# Plotting 
+
+## PDBminer2coverage
+PDBminer2coverage is a plotting tool creating an overview of the protein sequence on the x-axis and the different models covering the sequence on the y-axis. The area the model covers is colored grey. If any positions are mutated, the position will be colored in with a transparent blue hue across all entries on the y-axis. 
+PDBminer2coverage takes the results directory and input file as required input, per default these are input_file.csv and the current working directory/results. Hence, the PDBminer2coverage module can be run in the same place as PDBminer without any arguments.
+The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. If there are multiple clusters, these will be plotted separately. In cases where the protein sequence is longer than 500 amino acids, the plot will be split into multiple output files, termed "chunks". Additionally, it is possible to narrow down the plotting area with the flag -s --sequence. 
+
+PDBminer2coverage -s 1-20,50-95 
+
+Would, for example, only plot the sequence 1-20 and 50-95 in the same plot.  
+
+Additionally you can also set a limit on the x-axis, indicating how many positions you want plotted using -t. 
+
+PDBminer2coverage -t 50 
+
+would, for example only plot 50 amino acids per chunk. Default is 500. 
