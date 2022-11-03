@@ -34,10 +34,17 @@ parser.add_argument("-s", "--sequence",
                     type=str,
                     help="The area to be plotted, e.g., 1-200 or 1-20,50-66, comma seperated")
 
+parser.add_argument("-t", "--threshold",
+                    metavar = "theshold",
+                    default = 500,
+                    type=int,
+                    help="Max number of residues plotted on the y-axis.")
+
 args = parser.parse_args()
 
 path = args.result
 df = pd.read_csv(args.inputfile)
+threshold = args.threshold
 
 if args.sequence: 
     sequence = [int(s) for s in re.findall(r'\b\d+\b', args.sequence)]
@@ -166,7 +173,7 @@ def get_ranges_AF(coverage, uniprot_numbering):
     return a
         
 
-def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, sequence):
+def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, sequence, threshold):
     """
     The plotting function, taking the output files from PDBminer and coverting 
     them into a plot.
@@ -262,7 +269,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
 
     print("   plotting")
 
-    length_threshold = 500
+    length_threshold = threshold
 
     if len(df.columns) > length_threshold:
         print(f"    sequence > {length_threshold} AA, multiple plots")
@@ -330,14 +337,14 @@ def run(df):
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
-                          "filtered", sequence)
+                          "filtered", sequence, threshold)
             print("  plot done")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
             print("  All file identified")
             full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, full, 
-                          "all", sequence) 
+                          "all", sequence, threshold)
             print("  plot done")
     return
 

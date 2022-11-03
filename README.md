@@ -17,6 +17,8 @@ conda activate PDBminer
 conda install -c conda-forge biopython=1.78
 conda install -c bioconda -c conda-forge snakemake=7.7.0
 conda install -c conda-forge biopandas=0.4.1
+conda install -c conda-forge matplotlib=3.2.2
+conda install -c anaconda seaborn=0.12.0
 ```
 
 ### All subsequent times
@@ -140,3 +142,9 @@ The output is one or more plots. If there are both a filtered- and an all-output
 PDBminer2coverage -s 1-20,50-95 
 
 Would, for example, only plot the sequence 1-20 and 50-95 in the same plot.  
+
+Additionally you can also set a limit on the x-axis, indicating how many positions you want plotted using -t. 
+
+PDBminer2coverage -t 50 
+
+would, for example only plot 50 amino acids per chunk. Default is 500. 
