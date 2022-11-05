@@ -330,7 +330,7 @@ def run(df):
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
-                          "filtered", sequence)
+                          "filtered", sequence, threshold)
             print("  plot done")
         elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
             print("  filtered cluster file identified")
