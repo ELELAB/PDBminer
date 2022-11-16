@@ -562,69 +562,69 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
                 AA_pdb.append(seq1(residue.resname)), pos_pdb.append(residue.id[1])
             
             AA_pdb = ['-' if item == '' else item for item in AA_pdb]
-            
-            AA_pdb.reverse()
-            pos_pdb.reverse()
-            
-            while AA_pdb[0] == "X": 
-                AA_pdb = AA_pdb[1:]
-                pos_pdb = pos_pdb[1:]
+            if len(list(set(AA_pdb))) != 1:
+                AA_pdb.reverse()
+                pos_pdb.reverse()
                 
-            AA_pdb.reverse()
-            pos_pdb.reverse()
-            
-            missing_AA = []
-            missing_pos = []
-            #find missing residues
-            if structure.header['has_missing_residues'] == True:
-                for i in enumerate(structure.header['missing_residues']):
-                    if chain.id in structure.header['missing_residues'][i[0]]['chain']:
-                        missing_AA.append(seq1(structure.header['missing_residues'][i[0]]['res_name']))
-                        missing_pos.append(structure.header['missing_residues'][i[0]]['ssseq'])
-            
-            if missing_AA != []:
-                for position in missing_pos:
-                    if position in pos_pdb:
-                        AA_pdb[pos_pdb.index(missing_pos[0])] = "-"
-            
-            uniprot_aligned, pdb_aligned = alignment(uniprot_sequence, AA_pdb)    
-            
-            if uniprot_aligned != []:
-                uniprot_pos_list = numerical_alignment(uniprot_aligned, uniprot_numbering)
-                pdb_pos_list = numerical_alignment(pdb_aligned, pos_pdb)
-            
-                df = pd.DataFrame(data={"uniprot_seq": list(uniprot_aligned), 
-                                        "uniprot_pos": uniprot_pos_list, 
-                                        "pdb_seq": list(pdb_aligned), 
-                                        "pdb_pos": pdb_pos_list})       
-                df = df[df.pdb_seq!="-"]
+                while AA_pdb[0] == "X":
+                    AA_pdb = AA_pdb[1:]
+                    pos_pdb = pos_pdb[1:]
+                    
+                AA_pdb.reverse()
+                pos_pdb.reverse()
+
+                missing_AA = []
+                missing_pos = []
+                #find missing residues
+                if structure.header['has_missing_residues'] == True:
+                    for i in enumerate(structure.header['missing_residues']):
+                        if chain.id in structure.header['missing_residues'][i[0]]['chain']:
+                            missing_AA.append(seq1(structure.header['missing_residues'][i[0]]['res_name']))
+                            missing_pos.append(structure.header['missing_residues'][i[0]]['ssseq'])
                 
-                muts = []
-                if type(mut_pos) == list:
-                    for mutational_positon in list(set(mut_pos)): 
-                        if mutational_positon in list(df.uniprot_pos): 
-                            new_df = df[df.uniprot_pos == mutational_positon]
-                            mutation = list(new_df.uniprot_seq)[0]+str(list(new_df.uniprot_pos)[0])+list(new_df.pdb_seq)[0]
-                            muts.append(str(mutation))
-                        else:
-                            muts.append(f"Mutation on position {mutational_positon} not in range")
-                    
-                #capture the area the PDB covers accourding to the alignment. 
-                ranges_covered = list(to_ranges(list(df.uniprot_pos)))
-                ranges_covered = str(ranges_covered)
-                ranges_covered = ranges_covered.replace("), (", ");(" )
-                coverage.append(ranges_covered)
-                mutational_column.append(muts)
+                if missing_AA != []:
+                    for position in missing_pos:
+                        if position in pos_pdb:
+                            AA_pdb[pos_pdb.index(missing_pos[0])] = "-"
             
-                df = df.reset_index(drop=True)
+                uniprot_aligned, pdb_aligned = alignment(uniprot_sequence, AA_pdb)    
+            
+                if uniprot_aligned != []:
+                    uniprot_pos_list = numerical_alignment(uniprot_aligned, uniprot_numbering)
+                    pdb_pos_list = numerical_alignment(pdb_aligned, pos_pdb)
+            
+                    df = pd.DataFrame(data={"uniprot_seq": list(uniprot_aligned), 
+                                            "uniprot_pos": uniprot_pos_list, 
+                                            "pdb_seq": list(pdb_aligned), 
+                                            "pdb_pos": pdb_pos_list})       
+                    df = df[df.pdb_seq!="-"]
+                
+                    muts = []
+                    if type(mut_pos) == list:
+                        for mutational_positon in list(set(mut_pos)): 
+                            if mutational_positon in list(df.uniprot_pos): 
+                                new_df = df[df.uniprot_pos == mutational_positon]
+                                mutation = list(new_df.uniprot_seq)[0]+str(list(new_df.uniprot_pos)[0])+list(new_df.pdb_seq)[0]
+                                muts.append(str(mutation))
+                            else:
+                                muts.append(f"Mutation on position {mutational_positon} not in range")
                     
-                #capture all mutations in PDBfile compared to the specified 
-                #protein isoform. 
-                mutations_in_all = []
-                for i,_ in enumerate(df):
-                    if df["uniprot_seq"][i] != df["pdb_seq"][i]: 
-                        mutations_in_all.append(f"{list(df.uniprot_seq)[i]}{str(list(df.uniprot_pos)[i])}{list(df.pdb_seq)[i]}")
-                        mutation_list.append(mutations_in_all)
+                    #capture the area the PDB covers accourding to the alignment. 
+                    ranges_covered = list(to_ranges(list(df.uniprot_pos)))
+                    ranges_covered = str(ranges_covered)
+                    ranges_covered = ranges_covered.replace("), (", ");(" )
+                    coverage.append(ranges_covered)
+                    mutational_column.append(muts)
+            
+                    df = df.reset_index(drop=True)
+                    
+                    #capture all mutations in PDBfile compared to the specified 
+                    #protein isoform. 
+                    mutations_in_all = []
+                    for i,_ in enumerate(df):
+                        if df["uniprot_seq"][i] != df["pdb_seq"][i]: 
+                            mutations_in_all.append(f"{list(df.uniprot_seq)[i]}{str(list(df.uniprot_pos)[i])}{list(df.pdb_seq)[i]}")
+                            mutation_list.append(mutations_in_all)
         
             else:
                 coverage.append("NA")
