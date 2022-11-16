@@ -1,5 +1,21 @@
 #!/usr/bin/env python3
 
+# Copyright (C) 2022, Kristine Degn
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 #coverage and mutation coverage
 import pandas as pd
 import numpy as np
@@ -40,11 +56,26 @@ parser.add_argument("-t", "--threshold",
                     type=int,
                     help="Max number of residues plotted on the y-axis.")
 
+parser.add_argument("-c", "--color_coverage",
+                    metavar = "color for coverage",
+                    default = "grey",
+                    type=str,
+                    help="plot color for coverage")
+
+parser.add_argument("-m", "--color_mutations",
+                    metavar = "color for mutations",
+                    default = "blue",
+                    type=str,
+                    help="plot color for coverage")
+
 args = parser.parse_args()
 
 path = args.result
 df = pd.read_csv(args.inputfile)
 threshold = args.threshold
+
+cover_color = args.color_coverage
+mutation_color = args.color_mutations
 
 if args.sequence: 
     sequence = [int(s) for s in re.findall(r'\b\d+\b', args.sequence)]
@@ -53,6 +84,9 @@ if args.sequence:
         sequence[number] = sequence[number]-1
 else:
     sequence = 0
+
+print(args)
+
     
 def get_uniprot_seq(isoform, uniprot_id):
     """
@@ -126,19 +160,25 @@ def get_ranges(coverage, uniprot_numbering):
         coverage = coverage.split(";")
     
         for segment in coverage: 
-            segment = segment.split(", ")
-            start = int(segment[0])
-            stop = int(segment[1])
-            segment_range = np.array(range(start,stop+1))            
-            for j in range(len(segment_range)):
-                a[segment_range[j]-1] = 1
+            if segment == "NA":
+                continue
+            else:
+                segment = segment.split(", ")
+                start = int(segment[0])
+                stop = int(segment[1])
+                segment_range = np.array(range(start,stop+1))            
+                for j in range(len(segment_range)):
+                    a[segment_range[j]-1] = 1
     else:
-        coverage = coverage.split(", ")
-        start = int(coverage[0])
-        stop = int(coverage[1])
-        coverage_range = np.array(range(start,stop+1))
-        for j in range(len(coverage_range)):
-            a[coverage_range[j]-1] = 1
+        if coverage == "NA":
+            a = []
+        else:
+            coverage = coverage.split(", ")
+            start = int(coverage[0])
+            stop = int(coverage[1])
+            coverage_range = np.array(range(start,stop+1))
+            for j in range(len(coverage_range)):
+                a[coverage_range[j]-1] = 1
     return a
 
 def get_ranges_AF(coverage, uniprot_numbering):
@@ -163,13 +203,16 @@ def get_ranges_AF(coverage, uniprot_numbering):
     for r in (("[", ""), ("]", ""), ("'", ""), ("(", ""), (")", "")): 
         coverage = coverage.replace(*r)
     coverage = coverage.split(";")
-    for i in range(len(coverage)):
-        c = coverage[i].split(", ")
-        start = int(c[0])
-        stop = int(c[1])
-        coverage_range = np.array(range(start,stop+1))
-        for j in range(len(coverage_range)):
-            a[coverage_range[j]-1] = 1 
+    for segment in coverage:
+        if segment == "NA":
+            continue
+        else:
+            c = segment.split(", ")
+            start = int(c[0])
+            stop = int(c[1])
+            coverage_range = np.array(range(start,stop+1))
+            for j in range(len(coverage_range)):
+                a[coverage_range[j]-1] = 1 
     return a
         
 
@@ -209,25 +252,28 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         a = f.iloc[i]
         if len(a.chains) == 1:
             if a.structure_id.startswith('AF'):
-                index.append(a.structure_id)
                 a_range = get_ranges_AF(a.coverage, uniprot_numbering)
-                ranges.append(a_range)
+                if np.array_equal(a_range, []) == False:
+                    index.append(a.structure_id) 
+                    ranges.append(a_range)
             else:
-                index.append(a.structure_id)
                 a_range = get_ranges(a.coverage, uniprot_numbering)
-                ranges.append(a_range)
+                if np.array_equal(a_range, []) == False:
+                    index.append(a.structure_id)
+                    ranges.append(a_range)
         else:
             chains = a.chains.split(";")
             coverage = a.coverage.split(";")
             for i in range(len(chains)):
-                index.append(f"{a.structure_id}_{chains[i]}")
                 a_range = get_ranges(coverage[i], uniprot_numbering)
-                ranges.append(a_range)
+                if np.array_equal(a_range, []) == False:
+                    index.append(f"{a.structure_id}_{chains[i]}")                
+                    ranges.append(a_range)
     print("    combine to dataframe")
     heatmap = np.stack(ranges)
     df = pd.DataFrame(data=heatmap, index=index, columns=columns)
     
-    if sequence != 0:
+    if np.array_equal(sequence, 0) == False:
         if len(sequence) > 2:
             evens = [x for x in range(len(sequence)) if x%2 == 0]
             df_list = []
@@ -256,7 +302,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         heatmap_mut = np.stack(arrays)
         df_mut = pd.DataFrame(data=heatmap_mut, index=index, columns=columns)
         print("    mutations assigned")
-        if sequence != 0:
+        if np.array_equal(sequence, 0) == False:
             if len(sequence) > 2:
                 evens = [x for x in range(len(sequence)) if x%2 == 0]
                 df_list = []
@@ -278,12 +324,12 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         for i in range(chunks): 
             print(f"    plotting chunk {i+1} of {chunks}")
             df_chunk = df.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
-            fig, ax = plt.subplots(figsize=((len(df_chunk.columns)/8),(len(df_chunk.index)/5)))
-            ax = sns.heatmap(df_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', 'grey']), linewidths=1, 
+            fig, ax = plt.subplots(figsize=((len(df_chunk.columns)/6),(len(df_chunk.index)/4)))
+            ax = sns.heatmap(df_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', cover_color]), linewidths=1, 
                         linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
             try:
                 df_mut_chunk = df_mut.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
-                ax = sns.heatmap(df_mut_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', 'blue']), alpha=0.15, cbar = False)
+                ax = sns.heatmap(df_mut_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', mutation_color]), alpha=0.15, cbar = False)
             except:
                 df_mut = None
             
@@ -295,11 +341,11 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
                 plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster{cluster}_chunk_{i}.pdf", format="pdf", bbox_inches="tight")
     else:
         print(f"    sequence < {length_threshold} AA, one plot")
-        fig, ax = plt.subplots(figsize=((len(df.columns)/8),(len(df.index)/5)))
-        ax = sns.heatmap(df, vmin=0, vmax=1, cmap=ListedColormap(['white', 'grey']), linewidths=1, 
+        fig, ax = plt.subplots(figsize=((len(df.columns)/6),(len(df.index)/4)))
+        ax = sns.heatmap(df, vmin=0, vmax=1, cmap=ListedColormap(['white', cover_color]), linewidths=1, 
                     linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
         try:
-            ax = sns.heatmap(df_mut, vmin=0, vmax=1, cmap=ListedColormap(['white', 'blue']), alpha=0.15, cbar = False)
+            ax = sns.heatmap(df_mut, vmin=0, vmax=1, cmap=ListedColormap(['white', mutation_color]), alpha=0.15, cbar = False)
         except:
             df_mut = None
         

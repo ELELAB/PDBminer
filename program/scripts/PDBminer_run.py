@@ -1,3 +1,22 @@
+#!/usr/bin/env python
+
+# PDBminer_run: classes and functions for the snakefile.
+# Copyright (C) 2022, Kristine Degn
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 import os
 import pandas as pd
 import shutil
@@ -77,24 +96,28 @@ def run_list(full_path):
             all_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_all.csv")
             
             #prep and export the filered file
-            filtered_df = filter_all(structural_df, input_dataframe)   
+            if input_dataframe['mutations'].isnull().values.any() == False:
+                if input_dataframe['mutations'][0] not in ["N/A", "NA"]:
+                    filtered_df = filter_all(structural_df, input_dataframe)   
             
-            if len(filtered_df) == 1:            
-                if len(filtered_df[0]) > 0:
-                    if set(input_dataframe.cluster_id) == {999}:
-                        filtered_df[0] = filtered_df[0].drop(columns=('cluster_id'))
-                    filtered_df[0].to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.csv")
-            else:
-                for cluster_df in filtered_df:
-                    if len(cluster_df) > 0:
-                        cluster_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv")
-            
+                if len(filtered_df) == 1:            
+                    if len(filtered_df[0]) > 0:
+                        if set(input_dataframe.cluster_id) == {999}:
+                            filtered_df[0] = filtered_df[0].drop(columns=('cluster_id'))
+                        filtered_df[0].to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.csv")
+                else:
+                    for cluster_df in filtered_df:
+                        if len(cluster_df) > 0:
+                            cluster_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv")
+                
             #remove the alphafold model
             os.chdir(f"{path}/results/{uniprot_id}")
             os.system("find . -maxdepth 1 -name '*.pdb*' -type f -delete")
             
             if os.path.exists("structure"):
                 shutil.rmtree("structure")
+            if os.path.exists("obsolete"):
+                shutil.rmtree("obsolete")
                 
             if os.path.getsize("missing_ID.txt") == 0:
                 os.remove("missing_ID.txt")            
