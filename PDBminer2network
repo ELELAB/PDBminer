@@ -1,0 +1,156 @@
+#!/usr/bin/env python
+
+# PDBminer_functions: classes and functions for PDBminer_run.py
+# Copyright (C) 2022, Kristine Degn
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+#============================================================================#
+#Importing relevant packages
+#============================================================================#
+import pandas as pd
+import networkx as nx
+import matplotlib.pyplot as plt
+from pylab import rcParams
+import numpy as np
+import argparse
+import os
+#============================================================================#
+parser = argparse.ArgumentParser(prog = "PDBminer2network",
+                                 usage = "PDBminer2network [-h] help, all flags are optional: [-r] results path, [-i] input file, [-c] color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. [-p] protein color is grey by default but any color can be used, e.g '#183233’. [-s] PDBid color is blue by default but any color can be used, e.g '#1fc6cc'")
+
+parser.add_argument("-r", '--result',
+                    metavar = 'result path',
+                    type=str,
+                    default = "./results/",
+                    help='The path to the result path, deafault ./results')
+
+parser.add_argument("-i", "--inputfile",
+                    metavar = 'input file',
+                    type=str,
+                    default = "input_file.csv",
+                    help="input file created in the PDBminer run or original file")
+
+parser.add_argument("-c", "--color_center",
+                    metavar = "color for center of graph",
+                    default = "darkblue",
+                    type=str,
+                    help="plot color for center")
+
+parser.add_argument("-p", "--color_proteins",
+                    metavar = "color for proteins",
+                    default = "grey",
+                    type=str,
+                    help="plot color for proteins")
+
+parser.add_argument("-s", "--color_structures",
+                    metavar = "color for structures",
+                    default = "blue",
+                    type=str,
+                    help="plot color for structures")
+
+
+args = parser.parse_args()
+
+path = args.result
+df = pd.read_csv(args.inputfile)
+
+center_color = args.color_center
+protein_color = args.color_proteins
+structure_color = args.color_structures
+
+def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
+
+    from_list = []
+    to_list = []
+    
+    replacements = [("[", ""), ("]", ""), ("'", ""), ('"', '')]
+    
+    #protein complexes 
+    p = file_name[file_name.complex_protein == 'protein complex']
+    if len(p) > 0:
+        p = p[['structure_id', 'complex_protein_details']]
+        p = p.reset_index(drop = True)
+        for i, info in enumerate(p.values):
+            structure = info[0]
+            i = info[1]
+            i = [i := i.replace(a, b) for a, b in replacements][-1]
+            i = i.split(";")
+            for item in i:
+                if uniprot in item:
+                    i.remove(item)
+            if len(i) > 0:
+                for protein in i:                
+                    from_list.append("Protein Complex")
+                    protein_specifics = protein.split(", ")[0]
+                    to_list.append(f"p. {protein_specifics.split('_')[0]}") 
+                    from_list.append(f"p. {protein_specifics.split('_')[0]}")
+                    to_list.append(structure)
+
+
+    f = pd.DataFrame({'from':from_list, 'to':to_list})
+    
+    # Build your graph
+    G=nx.from_pandas_edgelist(f, 'from', 'to')
+    
+    rcParams['figure.figsize'] = 20, 20
+    pos = nx.spring_layout(G, scale=20, k=3/np.sqrt(G.order()))
+    colors = [[structure_color, protein_color][node.startswith('p')]
+              for node in G.nodes()]
+    colors[0] = center_color
+    d = dict(G.degree)
+    nx.draw(G, pos, 
+            with_labels=True, 
+            nodelist=d, 
+            node_size=[d[k]*300 for k in d],
+            node_color=colors)
+    
+    plt.savefig(f"{path}/{uniprot}/{output_name}_network.pdf", format="pdf", bbox_inches="tight")
+    return
+
+
+def run(df):
+    """
+    A run file to generate the plots based on the original input file.
+
+    Parameters
+    ----------
+    df : Dataframe of the inputfile.
+
+    Returns
+    -------
+    None.
+
+    """
+    for i in range(len(df)): 
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
+            print("  filtered file identified")
+            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv")
+            print("filtered is loaded")
+            plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered")
+            print("  plot done")
+        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
+            print("  filtered cluster file identified")
+            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv")
+            plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered")
+            print("  plot done")
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
+            print("  All file identified")
+            full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv")
+            plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all")
+            print("  plot done")
+    return
+
+run(df)

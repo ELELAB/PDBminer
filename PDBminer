@@ -21,6 +21,7 @@ import pandas as pd
 from sys import exit
 import requests
 from requests.exceptions import ConnectionError
+from datetime import datetime
 
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-g] hugo_name and [-u] uniprot id')
@@ -132,6 +133,7 @@ def check_input_file(df):
     return df, problems
 
 with open (f"{path}/log.txt", "w") as f:
+    start = datetime.now()
     f.write("PDBminer is starting\n")
 
     if args.inputfile:
@@ -183,9 +185,12 @@ with open (f"{path}/log.txt", "w") as f:
         exit(1)
 
     f.write("Pipeline is starting\n")
-
+    snake = datetime.now()
     os.system(f"snakemake --cores {args.cores} --snakefile {args.snakefile} --config input_file={input_file} path={path}")
 
     os.system(f"rm {path}/results/*/*done.txt")
     os.system(f"rm {path}/results/*/*input.csv")
+    finished = datetime.now() 
+    f.write(f"time: {finished-start}\n")
+    f.write(f"before snakemake: {snake-start}\n")
     f.write("PDBminer has finished.\n")
