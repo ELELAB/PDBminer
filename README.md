@@ -153,10 +153,16 @@ Flags:
 
 -r: choosing the results path if not default.
 -i: The input file.
+-u: uniprot id can be added if only one of the proteins in a multi protein run should be visualized.
 -s: sequence, dash and comma separated values such as 1-10 or 1-20,30-40 for the sequence of the protein to plot. 
 -t: threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad. 
 -c: color coverage, the plot is white and the coverage of each structure is colored in. Default is grey, but any color can be used, e.g '#64b2b5'. 
 -m: mutation color, is the overlay color on the sites of mutation. It is blue per default but any color can be used, e.g '#183233'
+
+All options, example:
+
+PDBminer2coverage -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -s 30-120 -t 100 -c '#64b2b5' -m '#183233'
+
 
 ## PDBminer2network
 PDBminer2network is a plotting tool creating an overview of the protein complexes within the protein data bank for the protein of interest.
@@ -174,6 +180,11 @@ The plot can be adjusted using the following flags:
 
 -r: choosing the results path if not default. 
 -i: The input file. 
+-u: uniprot id can be added if only one of the proteins in a multi protein run should be visualized.
 -c: color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. 
 -p: protein color is grey by default but any color can be used, e.g '#183233’. 
 -s: PDBid color is blue by default but any color can be used, e.g '#1fc6cc'.
+
+All options, example:
+
+PDBminer2network -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -c '#64b2b5' -p '#183233' -s '#1fc6cc'
