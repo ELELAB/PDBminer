@@ -49,9 +49,12 @@ python PDBminer -g RNH -u P0A7Y7 -m "D134N;D134K" -n 1
 #protein. A generated input_file.csv will be available after 
 #the run as well. 
 
-#Additionally, a plotting module can be run
+#Additionally, a plotting modules can be run
 
 python PDBminer2coverage
+
+#Plotting of the sequence of the protein and the relative mapping of the 
+#structural coverage.
 
 #PDBminer2coverage takes up to tree arguments and requires the inputfile, 
 #either supplied or generated and the results folder. 
@@ -66,3 +69,15 @@ python PDBminer2coverage -r PDBminer_run/results/ -i PDBminer_run/inputfile.csv
 python PDBminer2coverage -s 1-20,60-140 
 
 #Output: One or more plots illustrating the coverage of the found structures.
+
+python PDBminer2network
+
+#plotting of the protein complexes in the output file. 
+
+#PDBminer2network requires the inputfile and result folder.
+#If you run PDBminer2network in the same directory you ran PDBminer in, you
+#do not need to add any flags. Alternatively you can:
+
+python PDBminer2network -r PDBminer_run/results/ -i PDBminer_run/inputfile.csv
+
+

@@ -117,14 +117,13 @@ Output Columns and explanations
 #chains				Letter describing the chains covering the Uniprot ID 
 #coverage			For structures from the Protein Data bank, this indicates the range where the 
 #				PDB file and uniprot ID are aligned. The alignment is done based on the reported 
-#				sequence in the PDB and does not take low quality areas or breaks in the model into account. 
+#				sequence in the PDB and omits missing residues. 
 #				A quality control should ALWAYS be conducted on PDB structures. For the alphafold models 
 #				the coverage is based on pLDDT scores > 70, which means that the coverage of a single chain 
 #				can be split for different domains, such as [(9,22),(30,60)] indicating that the positions 
 #				within these intervals are of high quality. “;” separated for multiple chains.			 
 #mutations_in_pdb		All mutations found in the pdb file compared to the uniprot sequence if none: 
 #				[] indicating WT structure.
-#missing_residues		A string of all the missing residues on the different chains, e.g. 'chain c: M1;L2;W3;W4;E5;E6;V7;E8'
 #complex_protein                Binary, either “NA” or “Protein in complex” indicates if the PDB file contains a protein complex.
 #complex_protein_details        Details regarding the protein complex indicating the Uniprot ID of the other protein and the chains.
 #complex_nucleotide             Binary, indicates if the protein is bound to a nucleotide string such as DNA.
@@ -149,3 +148,32 @@ Additionally you can also set a limit on the x-axis, indicating how many positio
 PDBminer2coverage -t 50 
 
 would, for example only plot 50 amino acids per chunk. Default is 500. 
+
+Flags:
+
+-r: choosing the results path if not default.
+-i: The input file.
+-s: sequence, dash and comma separated values such as 1-10 or 1-20,30-40 for the sequence of the protein to plot. 
+-t: threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad. 
+-c: color coverage, the plot is white and the coverage of each structure is colored in. Default is grey, but any color can be used, e.g '#64b2b5'. 
+-m: mutation color, is the overlay color on the sites of mutation. It is blue per default but any color can be used, e.g '#183233'
+
+## PDBminer2network
+PDBminer2network is a plotting tool creating an overview of the protein complexes within the protein data bank for the protein of interest.
+PDBminer2network takes the current working directory/results directory as default input, just as the PDBminer2coverage module.
+The output is a network with "protein complex" at the center, the different proteins the protein of interest is bound to as a first node, 
+and from these nodes the PDB ID of the structures covering the complex.   
+The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. If there are multiple clusters, 
+they will be plotted seperately.
+
+PDBminer2network -h
+
+Would, for example, write out the help information.
+
+The plot can be adjusted using the following flags: 
+
+-r: choosing the results path if not default. 
+-i: The input file. 
+-c: color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. 
+-p: protein color is grey by default but any color can be used, e.g '#183233’. 
+-s: PDBid color is blue by default but any color can be used, e.g '#1fc6cc'.
