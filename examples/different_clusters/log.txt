@@ -1,4 +1,6 @@
 PDBminer is starting
 input file mode is choosen and input file has been identified.
+APIs are checked
+   APIs controlled and accepted
 Pipeline is starting
 PDBminer has finished.

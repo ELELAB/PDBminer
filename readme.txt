@@ -13,6 +13,7 @@ conda install -c bioconda -c conda-forge snakemake=7.7.0
 conda install -c conda-forge biopandas=0.4.1
 conda install -c conda-forge matplotlib=3.2.2
 conda install -c anaconda seaborn=0.12.0
+conda install -c anaconda networkx=2.8.4
 
 #all subsequent times
 conda activate PDBminer
@@ -48,20 +49,48 @@ python PDBminer -g RNH -u P0A7Y7 -m "D134N;D134K" -n 1
 #protein. A generated input_file.csv will be available after 
 #the run as well. 
 
-#Additionally, a plotting module can be run
+#Additionally, a plotting modules can be run
 
+#regular use:
 python PDBminer2coverage
+
+#Plotting of the sequence of the protein and the relative mapping of the 
+#structural coverage.
 
 #PDBminer2coverage takes up to tree arguments and requires the inputfile, 
 #either supplied or generated and the results folder. 
 
 #If you run PDBminer2coverage in the same directory you ran PDBminer in, you
-#do not need to add any flags. Alternatively you can:
+#do not need to add any flags. 
 
-python PDBminer2coverage -r PDBminer_run/results/ -i PDBminer_run/inputfile.csv
+#alternatives:
+
+python PDBminer2coverage -r PDBminer_run/results/ -i PDBminer_run/input_file.csv
 
 #If you wish only to plot a section of the protein use the flag -s, example:
 
 python PDBminer2coverage -s 1-20,60-140 
 
+#If you wish to run for just one uniprot id in a multi protein run
+
+python PDBminer2coverage -u P00000
+
+#if you also wish to alter the colors:
+
+PDBminer2coverage -u P00000 -s 30-120 -t 100 -c '#64b2b5' -m '#183233'
+
 #Output: One or more plots illustrating the coverage of the found structures.
+
+#regular use
+python PDBminer2network
+
+#plotting of the protein complexes in the output file. 
+
+#PDBminer2network requires the inputfile and result folder.
+#If you run PDBminer2network in the same directory you ran PDBminer in, you
+#do not need to add any flags. Alternatively you can (examples)
+
+python PDBminer2network -r PDBminer_run/results/ -i PDBminer_run/input_file.csv
+python PDBminer2network -u P00000
+python PDBminer2network -c '#64b2b5' -p '#183233' -s '#1fc6cc'
+

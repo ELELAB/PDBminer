@@ -1,3 +1,22 @@
+#!/usr/bin/env python
+
+# PDBminer_functions: classes and functions for PDBminer_run.py
+# Copyright (C) 2022, Kristine Degn
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 #============================================================================#
 #Importing relevant packages
 #============================================================================#
@@ -13,6 +32,7 @@ from Bio import SeqIO
 from io import StringIO
 from biopandas.pdb import PandasPdb
 from Bio.SeqUtils import seq1
+from Bio import PDB
 
 #============================================================================#
 # Following the Documentation from PDBminer_run.py
@@ -199,10 +219,8 @@ def get_structure_df(uniprot_id):
     
         #make a for loop to populate the empty df with metadata for each pdb
         for pdb in pdb_list:
-            
             #retrive all metadata        
             structure_metadata = get_structure_metadata(pdb)
-          
             if type(structure_metadata) == tuple:
                 
                 data = [(structure_metadata[0]), (structure_metadata[1]), (structure_metadata[2])]
@@ -211,7 +229,7 @@ def get_structure_df(uniprot_id):
                                                                       'experimental_method', 
                                                                       'resolution'])
                 
-                structure_df = structure_df.append(structure_metadata_df)
+                structure_df = pd.concat([structure_df, structure_metadata_df])               
                 currated_pdb_list.append(pdb)
         
             else: 
@@ -232,11 +250,14 @@ def get_structure_df(uniprot_id):
             if method_dfs[method].experimental_method[0] == 'X-RAY DIFFRACTION':
                 method_dfs[method].insert(0, "Rank", sorted(range(1000,1000+len(method_dfs[method]))), True)
                 
-            elif method_dfs[method].experimental_method[0] == 'ELECTRON MICROSCOPY':
+            elif "ELECTRON" in method_dfs[method].experimental_method[0]:
                 method_dfs[method].insert(0, "Rank", sorted(range(2000,2000+len(method_dfs[method]))), True)
                 
             elif "NMR" in method_dfs[method].experimental_method[0]:
                 method_dfs[method].insert(0, "Rank", sorted(range(3000,3000+len(method_dfs[method]))), True)
+            
+            else:
+                method_dfs[method].insert(0, "Rank", sorted(range(4000,4000+len(method_dfs[method]))), True)
 
         #concatenate all the dataframes
         structure_df = pd.concat(method_dfs)
@@ -395,7 +416,150 @@ def to_ranges(iterable):
         group = list(group)
         yield group[0][1], group[-1][1]
         
-def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
+        
+def alignment(uniprot_sequence, AA_pdb):
+    #1) Local alignment: Aim to find the area of the uniprot
+    #   sequence the PDB covers.
+    #2) Match (identical amino acids) =  1 point
+    #3) Non-match (not identical) = -10 points
+    #4) Opening a gap: -20 points
+    #5) keeping a gap open: -10 
+    
+    #reasoning: we may be OK with a mutation, but a missing residue
+    #insertion or deleting will be punished much harder.                
+    #The options have been chosen to force the best fit locally
+    #and highly discourage gaps, as they do not make sense in 
+    #this structral space. 
+    pdb_sequence = ''.join(AA_pdb)
+    alignments = pairwise2.align.localms(uniprot_sequence, pdb_sequence, 1, -10, -20, -10)
+    
+    if alignments != [] and alignments[0][2] > 10:
+        uniprot_aligned = alignments[0][0]
+        pdb_aligned = alignments[0][1]
+        
+    else:
+        uniprot_aligned = []
+        pdb_aligned = []
+    
+    return uniprot_aligned, pdb_aligned
+
+def numerical_alignment(aligned, positions):
+    pos_list = np.array([])             
+    for i in range(len(aligned)): 
+        if list(aligned)[i] == '-': 
+            pos_list=np.append(pos_list,[0], axis=0)
+        elif list(aligned)[i] != '-':
+            pos_list=np.append(pos_list,positions, axis=0)
+            break
+    if len(aligned) > len(pos_list):
+        N = len(aligned) - len(pos_list)
+        pos_list = np.pad(pos_list, (0, N), 'constant') 
+    pos_list = pos_list.astype(int)
+    return pos_list
+
+def get_uniprot_sequence(uniprot_id, isoform):
+    uniprot_Url="https://rest.uniprot.org/uniprotkb/"
+    
+    #Alignment to correct isoform:
+    if isoform == 1:
+    
+        fasta_url=uniprot_Url+uniprot_id+".fasta"
+        response = requests.post(fasta_url)
+        sequence_data=''.join(response.text)
+        Seq=StringIO(sequence_data)
+        pSeq=list(SeqIO.parse(Seq,'fasta'))
+        uniprot_sequence = str(pSeq[0].seq)
+        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+        #gaining a list of aminoacids and a list of numberical values 
+        #indicating the number of each position. 
+    
+    else:
+    
+        fasta_url=uniprot_Url+uniprot_id+"-"+str(isoform)+".fasta"
+        response = requests.post(fasta_url)
+        sequence_data=''.join(response.text)
+        Seq=StringIO(sequence_data)
+        pSeq=list(SeqIO.parse(Seq,'fasta'))
+        uniprot_sequence = str(pSeq[0].seq)
+        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+    
+    return uniprot_sequence, uniprot_numbering
+
+def download_pdb(pdb_id):
+    pdb = PDBList()
+    pdb.retrieve_pdb_file(pdb_id, file_format="pdb", pdir='structure')
+    pdbfile = (f"structure/pdb{pdb_id.lower()}.ent")
+    pdb_parser = PDB.PDBParser()
+    
+    try:
+        structure = pdb_parser.get_structure(" ", pdbfile)
+        model = structure[0]
+        return model, structure
+    except IOError:
+        print("PDBfile cannot be downloaded")
+        return np.array([0, 0])
+
+def get_AA_pos(chain_str, model):
+    chain = model[chain_str]
+    pos_pdb = []
+    AA_pdb = []
+    for i, residue in enumerate(chain.get_residues()):
+        AA_pdb.append(seq1(residue.resname)), pos_pdb.append(residue.id[1])
+    
+    AA_pdb = ['-' if item == '' else item for item in AA_pdb]
+    if len(list(set(AA_pdb))) != 1:
+        AA_pdb.reverse()
+        pos_pdb.reverse()
+        
+        while AA_pdb[0] == "X":
+            AA_pdb = AA_pdb[1:]
+            pos_pdb = pos_pdb[1:]
+            
+        AA_pdb.reverse()
+        pos_pdb.reverse()
+    return AA_pdb, pos_pdb 
+    
+def remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str):
+    missing_AA = []
+    missing_pos = []
+    #find missing residues
+    for i in enumerate(structure.header['missing_residues']):
+        if chain_str in structure.header['missing_residues'][i[0]]['chain']:
+            missing_AA.append(seq1(structure.header['missing_residues'][i[0]]['res_name']))
+            missing_pos.append(structure.header['missing_residues'][i[0]]['ssseq'])
+    
+    if missing_AA != []:
+        for position in missing_pos:
+            if position in pos_pdb:
+                AA_pdb[pos_pdb.index(position)] = "-"
+    
+    return AA_pdb
+    
+def get_mutations(mut_pos, df):
+    muts = []
+    for mutational_positon in list(set(mut_pos)): 
+        if mutational_positon in list(df.uniprot_pos): 
+            new_df = df[df.uniprot_pos == mutational_positon]
+            mutation = list(new_df.uniprot_seq)[0]+str(list(new_df.uniprot_pos)[0])+list(new_df.pdb_seq)[0]
+            muts.append(str(mutation))
+        else:
+            muts.append(f"Mutation on position {mutational_positon} not in range")    
+    return muts
+
+def get_all_discrepancies(df):
+    mutations_in_all = []
+    for item in df.index:
+        if df["uniprot_seq"][item] != df["pdb_seq"][item]: 
+            mutations_in_all.append(f"{list(df.uniprot_seq)[item]}{str(list(df.uniprot_pos)[item])}{list(df.pdb_seq)[item]}")
+    return mutations_in_all
+
+def get_coverage(df):
+    ranges_covered = list(to_ranges(list(df.uniprot_pos)))
+    ranges_covered = str(ranges_covered)
+    ranges_covered = ranges_covered.replace("), (", ");(" )
+    return ranges_covered
+        
+def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path):
     """
     ...
 
@@ -423,39 +587,10 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
     if os.path.exists("structure") == False:
         os.mkdir("structure")
     
-    os.chdir("structure")
-    
     ########################################
     
     #Get the uniprot sequence for alignment
-    
-    ########################################
-    
-    #setting the fasta path for the API (updated may 2022, novel Uniprot format)
-    uniprot_Url="https://rest.uniprot.org/uniprotkb/"
-    
-    #Alignment to correct isoform:
-    if isoform == 1:
-    
-        fasta_url=uniprot_Url+uniprot_id+".fasta"
-        response = requests.post(fasta_url)
-        sequence_data=''.join(response.text)
-        Seq=StringIO(sequence_data)
-        pSeq=list(SeqIO.parse(Seq,'fasta'))
-        uniprot_sequence = str(pSeq[0].seq)
-        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-        #gaining a list of aminoacids and a list of numberical values 
-        #indicating the number of each position. 
-    
-    else:
-    
-        fasta_url=uniprot_Url+uniprot_id+"-"+str(isoform)+".fasta"
-        response = requests.post(fasta_url)
-        sequence_data=''.join(response.text)
-        Seq=StringIO(sequence_data)
-        pSeq=list(SeqIO.parse(Seq,'fasta'))
-        uniprot_sequence = str(pSeq[0].seq)
-        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+    # variables needed: Uniprot_id and isoform
     
     ########################################
     
@@ -464,153 +599,72 @@ def align_uniprot_pdb(pdb_id, uniprot_id, isoform, mut_pos, path):
     ########################################    
         
     # Empty lists for popultion by function
-    pdb = PDBList()
-
-    alignment_score = []
-    coverage = []
     muts = []
-    chains = []
-    alignment_score = []
+    coverage = []
     mutational_column = []
     mutation_list = []
+    chains = []
     
     ########################################
     
     #Get the PDB sequence for the alignment
-    
+    # variable: PDB_id
     ########################################
-    #retrive the PDB structure, downloading the pdb files
-    pdb.retrieve_pdb_file(pdb_id, file_format="pdb")
-    pdb_dir = pdb_id[1:3]
-    pdb_dir = pdb_dir.lower()
+    model, structure = download_pdb(pdb_id)
+    if model == 0: 
+        return ['']
+    
+    #find all chains in the structure
+    chainlist = []
+    for i in enumerate(structure.header['compound']):
+        segment_chains = structure.header['compound'][i[1]]['chain'].upper().split(", ")
+        for chain in segment_chains:
+            chainlist.append(chain)
+    
+    for chain_str in chainlist:  
+        AA_pdb, pos_pdb = get_AA_pos(chain_str, model)
 
-    if os.path.exists(f'./{pdb_dir}/pdb{pdb_id.lower()}.ent') == True:
-        os.chdir(pdb_dir)     
-    # for loop to retrive sequence from sturcture
-        missing_residues = [] 
-    
-        for record in SeqIO.parse(f"pdb{pdb_id.lower()}.ent", "pdb-seqres"):
-            if record.seq != '' and len(set(str(record.seq))) != 1:
-                pdb_seq = list(record.seq)
-                
-                h = parse_pdb_header(f"pdb{pdb_id.lower()}.ent")
-                chain = record.id.split(":")[-1].lower()
-                
-                if h['has_missing_residues'] == True:
-                    missing_list = []
-                    print(f"MISSING RESIDUES IN CHAIN {chain}")
-                    missing = h['missing_residues']
-                    for i in range(len(missing)):
-                        if chain in missing[i]['chain'].lower():
-                            missing_list.append(f"{seq1(missing[i]['res_name'])}{missing[i]['ssseq']}")
-                    missing_list = ";".join(missing_list)
-                    print(missing_list)
-                    missing_residues.append(f"chain {chain}: {missing_list}")
-                        
-                else:
-                    missing_residues.append(f"chain {chain}: no missing residues")
+        if structure.header['has_missing_residues'] == True:
+            AA_pdb = remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str)
 
-            
-            #alignment. The alignemet parameters are set as: 
+        uniprot_aligned, pdb_aligned = alignment(uniprot_sequence, AA_pdb)    
+
                 
-                #1) Local alignment: Aim to find the area of the uniprot
-                #   sequence the PDB covers.
-                #2) Match (identical amino acids) =  1 point
-                #3) Non-match (not identical) = -10 points
-                #4) Opening a gap: -20 points
-                #5) keeping a gap open: -10 
-                
-                #reasoning: we may be OK with a mutation, but a missing residue
-                #insertion or deleting will be punished much harder.                
-                #The options have been chosen to force the best fit locally
-                #and highly discourage gaps, as they do not make sense in 
-                #this structral space. 
-            
-            ########################################
+        if uniprot_aligned != []:
+            chains.append(chain_str)
+            uniprot_pos_list = numerical_alignment(uniprot_aligned, uniprot_numbering)
+            pdb_pos_list = numerical_alignment(pdb_aligned, pos_pdb)
     
-            # Align
-    
-            ########################################    
-                pdb_sequence_string = ''.join(pdb_seq)
-                alignments = pairwise2.align.localms(uniprot_sequence, pdb_sequence_string, 1, -10, -20, -10)  
+            df = pd.DataFrame(data={"uniprot_seq": list(uniprot_aligned), 
+                                    "uniprot_pos": uniprot_pos_list, 
+                                    "pdb_seq": list(pdb_aligned), 
+                                    "pdb_pos": pdb_pos_list})       
             
-            #sometimes a stucture where the wanted uniprot id is only included 
-            #as a ligand or very small sequence is included in the structural list
-            #these are removed if the overall alignment score is less than 10. 
-            #10 is an arbitrary number chosen based on observations. 
-                if alignments != [] and alignments[0][2] > 10:
-                    chains.append(record.annotations['chain'])
-                    alignment_score.append(alignments[0][2])
-                    uniprot_aligned = alignments[0][0]
-                    pdb_aligned = alignments[0][1]
-                
-                #trim first part of alignment strings if pdb contains
-                #amino acids that are not in the uniprot at the begining.         
-                    while uniprot_aligned[0] == "-":
-                        uniprot_aligned = uniprot_aligned[1:]
-                        pdb_aligned = pdb_aligned[1:]
-                
-                ########################################
-    
-                #Capture information from alignment
-                
-                ########################################
-                            
-                    if len(pdb_aligned) == len(uniprot_numbering):
-                        #create a dataframe with three columns and remove all where the PDB does not cover. 
-                        df = pd.DataFrame({"uni": list(uniprot_aligned), "num": uniprot_numbering, "seq": list(pdb_aligned)})
-                        df = df[df.seq!="-"]
-                    
-                        muts = []
-                    
-                    #capture the amino acid in all the mutational sites of interest. 
-                        for mutational_positon in list(set(mut_pos)):
-                            if mutational_positon in list(df.num):
-                                new_df = df[df.num == mutational_positon]
-                                mutation = list(new_df.uni)[0]+str(list(new_df.num)[0])+list(new_df.seq)[0]
-                                muts.append(str(mutation))
-                            else:
-                                muts.append("Mutation not in range")
-                    
-                        #capture the area the PDB covers accourding to the alignment. 
-                        ranges_covered = list(to_ranges(list(df.num)))
-                        ranges_covered = str(ranges_covered)
-                        ranges_covered = ranges_covered.replace("), (", ");(" )
-                        coverage.append(ranges_covered)
-                        mutational_column.append(muts)
-                    
-                        df = df.reset_index(drop=True)
-                    
-                    #capture all mutations in PDBfile compared to the specified 
-                    #protein isoform. 
-                        mutations_in_all = []
-                        for i in range(len(df)):
-                            if df["uni"][i] != df["seq"][i]:
-                                mutations_in_all.append(f"{list(df.uni)[i]}{str(list(df.num)[i])}{list(df.seq)[i]}")
-                    
-                        mutation_list.append(mutations_in_all)
+            df = df[df.pdb_seq!="-"]
         
-                    else:
-                        coverage.append("Mismatch in alignment")
-                        mutational_column.append("Mutations not covered")
-            
-        chains_string = ';'.join([str(elem) for elem in chains])
-        #alignment_score_string = ';'.join([str(elem) for elem in alignment_score])
-        coverage_string = ';'.join([str(elem) for elem in coverage])
-        mutational_column_string = ';'.join([str(elem) for elem in mutational_column])        
-        mutation_list_string = ';'.join([str(elem) for elem in mutation_list])
-                                                    
-        #directory administration to return to previous directory and 
-        #avoid creating a russian doll of directories
-            
-        output_array = np.array([chains_string, coverage_string, mutational_column_string, mutation_list_string, missing_residues], dtype=object)
+            if type(mut_pos) == list:
+                muts = get_mutations(mut_pos, df)
+                mutational_column.append(muts)
+            #capture all mutations in PDBfile compared to the specified 
+            #protein isoform.
+            df = df.reset_index(drop=True)
+        
+            mutations_in_all = get_all_discrepancies(df)
+            mutation_list.append(mutations_in_all)
 
-        os.chdir(path)
+            #capture the area the PDB covers accourding to the alignment. 
+            ranges_covered = get_coverage(df)
+            coverage.append(ranges_covered)
 
-    else:
-        output_array = np.array([''])
-    
+    chains_string = ';'.join([str(elem) for elem in chains])
+    coverage_string = ';'.join([str(elem) for elem in coverage])
+    mutational_column_string = ';'.join([str(elem) for elem in mutational_column])    
+    mutation_list_string = ';'.join([str(elem) for elem in mutation_list])
+        
+    output_array = np.array([chains_string, coverage_string, mutational_column_string, mutation_list_string], dtype=object)
+    os.chdir(path)
     return output_array
+
 
 def align_alphafold(alphafold_id, mutation_positions):
     """
@@ -714,7 +768,6 @@ def align(combined_structure, path):
     combined_structure["coverage"] = " "
     combined_structure["AA_in_PDB"] = " "
     combined_structure["mutations_in_pdb"] = " "
-    combined_structure["missing_residues"] = " "
 
     for i in range(len(combined_structure)):
         
@@ -730,13 +783,13 @@ def align(combined_structure, path):
             combined_structure.at[i, 'coverage'] = alignment_info[0] 
             combined_structure.at[i, 'AA_in_PDB'] = alignment_info[1] 
             combined_structure.at[i, 'mutations_in_pdb'] = "[]" 
-            combined_structure.at[i, 'missing_residues'] = "see coverage"
             
         else:    
-                 
+            uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id[i], int(combined_structure['uniprot_isoform'][i]))     
+            
             alignment_info = align_uniprot_pdb(combined_structure.structure_id[i],
-                                           combined_structure.uniprot_id[i], 
-                                           int(combined_structure['uniprot_isoform'][i]),
+                                           uniprot_sequence, 
+                                           uniprot_numbering,
                                            combined_structure['mutation_positions'][i],
                                            path)
 
@@ -745,7 +798,6 @@ def align(combined_structure, path):
                 combined_structure.at[i, 'coverage'] = alignment_info[1] 
                 combined_structure.at[i, 'AA_in_PDB'] = alignment_info[2] 
                 combined_structure.at[i, 'mutations_in_pdb'] = alignment_info[3] 
-                combined_structure.at[i, 'missing_residues'] = alignment_info[4] 
         
             #drop missing values. 
             else:
@@ -803,14 +855,12 @@ def get_complex_information(pdb_id):
         protein_segment_dictionary = response_text[pdb_id.lower()]
     
         if len(protein_segment_dictionary['UniProt']) > 1:
-            protein_complex_list = ['protein complex']
+            protein_complex_list = 'protein complex'
 
             info = []
         
             for i in protein_segment_dictionary['UniProt']:
                 prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
-                for r in (("[", ""), ("]", ""), ("'", "")): 
-                    prot_info = prot_info.replace(*r)
                 info.append(prot_info)
         
             info = ';'.join(info)
@@ -838,15 +888,11 @@ def get_complex_information(pdb_id):
         
         if "nucleotide" in molecule_dictionary[i]['molecule_type']:
             n = f"[{molecule_dictionary[i]['molecule_type']}, {molecule_dictionary[i]['in_chains']}]"
-            for r in (("[", ""), ("]", ""), ("'", "")): 
-                n = n.replace(*r)
             nucleotide_info.append(n)
         
         elif molecule_dictionary[i]['molecule_type'] != 'polypeptide(L)':
             if molecule_dictionary[i]['molecule_type'] != 'water': 
                 l = f"[{molecule_dictionary[i]['molecule_name'][0]}, {molecule_dictionary[i]['in_chains']}]"
-                for r in (("[", ""), ("]", ""), ("'", "")): 
-                    l = l.replace(*r)
                 ligand_info.append(l)
    
     if len(nucleotide_info) > 0:
@@ -973,36 +1019,39 @@ def filter_all(structural_df, input_dataframe):
     final_dfs = []
     
     #remove sturctures where no mutations are within range    
-    for i in range(len(structural_df.AA_in_PDB)):
-        chains = structural_df.AA_in_PDB[i].replace(";",",")
-        chains = chains.replace("[", "")
-        chains = chains.replace("]", "")
-        chains = chains.replace("'", "")
-        chains = chains.replace(" M", "M")
-        chains = chains.split(',')
-            
-        if list(set(chains)) == ['Mutation not in range']:
-                
-            structural_df = structural_df.drop([i])
+    replacements = [(";",","), ("[", ""), ("]", ""), ("'", ""), (" M", "M")]
+
+    for i in range(len(structural_df.mutation_positions)):
+        chains = structural_df.AA_in_PDB[i]
+        chains = [chains := chains.replace(a, b) for a, b in replacements]
+        chains = chains[-1]
+        while chains[0] == ",":
+            chains = chains[1:]
+
+        if "," in chains: 
+            chains = chains.split(",")
+            t = [x.split()[0] for x in chains]
+            if list(set(t)) == ['Mutation']:  
+                structural_df = structural_df.drop([i])
+        else: 
+            if chains == '':
+                structural_df = structural_df.drop([i])
+            elif chains.split()[0] == 'Mutation':
+                structural_df = structural_df.drop([i])
     
     structural_df = structural_df.reset_index(drop=True)  
-    
-#    structural_df = structural_df.loc[structural_df.astype(str).drop_duplicates().index]
-    
-#structural_df = structural_df.drop_duplicates(keep='first')      
-    
+        
     #Remove structures with only mismatch in alignment
     for i in range(len(structural_df.coverage)):
         if list(set(structural_df.coverage[i].split(";"))) == ['Mismatch in alignment']:
             structural_df = structural_df.drop([i])
     
+    structural_df = structural_df.drop(columns=['mutation_positions'])
     structural_df = structural_df.reset_index(drop=True)
     
     for i in range(len(structural_df.mutations_in_pdb)):
         if set(structural_df.mutations_in_pdb[i].split(";")) == {'[]'}:
             structural_df.iloc[i, structural_df.columns.get_loc('mutations_in_pdb')] = '[]'
-            
-    structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions'])
     
     structural_df = structural_df.reset_index(drop=True)
     

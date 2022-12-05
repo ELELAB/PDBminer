@@ -1,11 +1,27 @@
 #!/usr/bin/env python3
 
+# Copyright (C) 2022, Kristine Degn
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import os
 import argparse
 import pandas as pd
 from sys import exit
 import requests
 from requests.exceptions import ConnectionError
+from datetime import datetime
 
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-g] hugo_name and [-u] uniprot id')
@@ -117,6 +133,7 @@ def check_input_file(df):
     return df, problems
 
 with open (f"{path}/log.txt", "w") as f:
+    start = datetime.now()
     f.write("PDBminer is starting\n")
 
     if args.inputfile:
@@ -168,9 +185,12 @@ with open (f"{path}/log.txt", "w") as f:
         exit(1)
 
     f.write("Pipeline is starting\n")
-
+    snake = datetime.now()
     os.system(f"snakemake --cores {args.cores} --snakefile {args.snakefile} --config input_file={input_file} path={path}")
 
     os.system(f"rm {path}/results/*/*done.txt")
     os.system(f"rm {path}/results/*/*input.csv")
+    finished = datetime.now() 
+    f.write(f"time: {finished-start}\n")
+    f.write(f"before snakemake: {snake-start}\n")
     f.write("PDBminer has finished.\n")
