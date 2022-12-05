@@ -62,7 +62,7 @@ python PDBminer2coverage
 #If you run PDBminer2coverage in the same directory you ran PDBminer in, you
 #do not need to add any flags. Alternatively you can:
 
-python PDBminer2coverage -r PDBminer_run/results/ -i PDBminer_run/inputfile.csv
+python PDBminer2coverage -r PDBminer_run/results/ -i PDBminer_run/input_file.csv
 
 #If you wish only to plot a section of the protein use the flag -s, example:
 
@@ -78,6 +78,6 @@ python PDBminer2network
 #If you run PDBminer2network in the same directory you ran PDBminer in, you
 #do not need to add any flags. Alternatively you can:
 
-python PDBminer2network -r PDBminer_run/results/ -i PDBminer_run/inputfile.csv
+python PDBminer2network -r PDBminer_run/results/ -i PDBminer_run/input_file.csv
 
 

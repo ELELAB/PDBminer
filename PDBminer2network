@@ -29,7 +29,7 @@ import argparse
 import os
 #============================================================================#
 parser = argparse.ArgumentParser(prog = "PDBminer2network",
-                                 usage = "PDBminer2network [-h] help, all flags are optional: [-r] results path, [-i] input file, [-c] color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. [-p] protein color is grey by default but any color can be used, e.g '#183233’. [-s] PDBid color is blue by default but any color can be used, e.g '#1fc6cc'")
+                                 usage = "PDBminer2network [-h] help, all flags are optional: [-r] results path, [-i] input file, [-u] uniprot id, can be added if the user wish to visualize only one protein network, [-c] color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. [-p] protein color is grey by default but any color can be used, e.g '#183233’. [-s] PDBid color is blue by default but any color can be used, e.g '#1fc6cc'")
 
 parser.add_argument("-r", '--result',
                     metavar = 'result path',
@@ -42,6 +42,12 @@ parser.add_argument("-i", "--inputfile",
                     type=str,
                     default = "input_file.csv",
                     help="input file created in the PDBminer run or original file")
+
+parser.add_argument("-u", "--uniprot",
+                    metavar = 'uniprot',
+                    default = "none",
+                    type=str,
+                    help="Uniprot id when multiple proteins are run")
 
 parser.add_argument("-c", "--color_center",
                     metavar = "color for center of graph",
@@ -67,6 +73,11 @@ args = parser.parse_args()
 path = args.result
 df = pd.read_csv(args.inputfile)
 
+uniprot_id = args.uniprot
+if uniprot_id != "none":
+    df = df[df.uniprot == uniprot_id]
+    df = df.reset_index()
+    
 center_color = args.color_center
 protein_color = args.color_proteins
 structure_color = args.color_structures
@@ -79,7 +90,9 @@ def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
     replacements = [("[", ""), ("]", ""), ("'", ""), ('"', '')]
     
     #protein complexes 
-    p = file_name[file_name.complex_protein == 'protein complex']
+    p1 = file_name[file_name.complex_protein == "['protein complex']"] #old format support
+    p2 = file_name[file_name.complex_protein == 'protein complex']
+    p = pd.concat([p1, p2])
     if len(p) > 0:
         p = p[['structure_id', 'complex_protein_details']]
         p = p.reset_index(drop = True)
@@ -137,6 +150,7 @@ def run(df):
     None.
 
     """
+    
     for i in range(len(df)): 
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
             print("  filtered file identified")
