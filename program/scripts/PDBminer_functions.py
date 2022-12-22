@@ -517,7 +517,17 @@ def get_AA_pos(chain_str, model):
             
         AA_pdb.reverse()
         pos_pdb.reverse()
-    return AA_pdb, pos_pdb 
+
+    if sorted(pos_pdb) == list(range(min(pos_pdb), max(pos_pdb)+1)):
+        return AA_pdb, pos_pdb 
+    
+    else: 
+        for i in range(len(pos_pdb)-1):
+            if pos_pdb[i]+1 != pos_pdb[i+1]:
+                pos_pdb.insert(i+1, pos_pdb[i]+1)
+                AA_pdb.insert(i+1, "-")
+    
+        return AA_pdb, pos_pdb 
     
 def remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str):
     missing_AA = []

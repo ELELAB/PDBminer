@@ -74,6 +74,12 @@ parser.add_argument("-m", "--color_mutations",
                     type=str,
                     help="plot color for coverage")
 
+parser.add_argument("-d", "--color_inherent_mutations",
+                    metavar = "color for mutations in the PDBfile",
+                    default = "lightgrey",
+                    type=str,
+                    help="plot color for mutations in the PDB")
+
 args = parser.parse_args()
 
 path = args.result
@@ -88,6 +94,7 @@ threshold = args.threshold
 
 cover_color = args.color_coverage
 mutation_color = args.color_mutations
+mutation_pdb = args.color_inherent_mutations
 
 if args.sequence: 
     sequence = [int(s) for s in re.findall(r'\b\d+\b', args.sequence)]
@@ -226,7 +233,43 @@ def get_ranges_AF(coverage, uniprot_numbering):
             for j in range(len(coverage_range)):
                 a[coverage_range[j]-1] = 1 
     return a
-        
+
+def get_mutations(mutations_in_pdb, a_range): 
+    """
+    A function convating the reported coberage ranges of PDBminer
+    to an array of 0 and 1s based on the entire uniprot sequence.
+    Applicable for PDB structures.
+
+    Parameters
+    ----------
+    coverage : From he PDBminer output file, all or filtered. 
+    uniprot_numbering : The full numbering of the protein.
+
+    Returns
+    -------
+    a : An array where the covered position is annotated 1 and the 
+    not covered positions are annotated 0.
+
+    """
+    if mutations_in_pdb == [] or mutations_in_pdb == '[]':
+        return a_range
+    
+    else:
+        replacements = [("[", ""), ("]", ""), ("'", "")]
+        mutations_in_pdb = [mutations_in_pdb := mutations_in_pdb.replace(a, b) for a, b in replacements]
+        mutations_in_pdb = mutations_in_pdb[-1]
+        mutations_in_pdb = mutations_in_pdb.split(", ")
+        for i in range(len(mutations_in_pdb)):
+            mutations_in_pdb[i] = int(mutations_in_pdb[i][1:-1])
+        mutations_in_pdb = list(set(mutations_in_pdb))
+    
+        for j in range(len(mutations_in_pdb)):
+            if a_range[mutations_in_pdb[j]-1] == 1:
+                a_range[mutations_in_pdb[j]-1] = 2
+            else:
+                print("mutation outside coverage??")
+            
+        return a_range       
 
 def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, sequence, threshold):
     """
@@ -254,7 +297,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
     uniprot_numbering, columns = get_uniprot_seq(isoform, uniprot_id)
 
     print("    columns calculated imported from uniprot sequence")
-    f = file[['structure_id', 'chains', 'coverage']]
+    f = file[['structure_id', 'chains', 'coverage', 'mutations_in_pdb']]
     f = f[f["coverage"].str.contains("Mismatch") == False]
     f = f.reset_index()
     index = []
@@ -265,19 +308,27 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         if len(a.chains) == 1:
             if a.structure_id.startswith('AF'):
                 a_range = get_ranges_AF(a.coverage, uniprot_numbering)
+                a_range = get_mutations(a.mutations_in_pdb, a_range)
                 if np.array_equal(a_range, []) == False:
                     index.append(a.structure_id) 
                     ranges.append(a_range)
             else:
                 a_range = get_ranges(a.coverage, uniprot_numbering)
+                a_range = get_mutations(a.mutations_in_pdb, a_range)
                 if np.array_equal(a_range, []) == False:
                     index.append(a.structure_id)
                     ranges.append(a_range)
         else:
             chains = a.chains.split(";")
-            coverage = a.coverage.split(";")
+            coverage = a.coverage.split("];[")
+            mutations = a.mutations_in_pdb.split(";")
             for i in range(len(chains)):
                 a_range = get_ranges(coverage[i], uniprot_numbering)
+                
+                if len(mutations) == 1:                      
+                    a_range = get_mutations(mutations[0], a_range)
+                else: 
+                    a_range = get_mutations(mutations[i], a_range)
                 if np.array_equal(a_range, []) == False:
                     index.append(f"{a.structure_id}_{chains[i]}")                
                     ranges.append(a_range)
@@ -337,11 +388,11 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
             print(f"    plotting chunk {i+1} of {chunks}")
             df_chunk = df.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
             fig, ax = plt.subplots(figsize=((len(df_chunk.columns)/6),(len(df_chunk.index)/4)))
-            ax = sns.heatmap(df_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', cover_color]), linewidths=1, 
+            ax = sns.heatmap(df_chunk, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), linewidths=1, 
                         linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
             try:
                 df_mut_chunk = df_mut.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
-                ax = sns.heatmap(df_mut_chunk, vmin=0, vmax=1, cmap=ListedColormap(['white', mutation_color]), alpha=0.15, cbar = False)
+                ax = sns.heatmap(df_mut_chunk, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), alpha=0.15, cbar = False)
             except:
                 df_mut = None
             
@@ -354,10 +405,10 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
     else:
         print(f"    sequence < {length_threshold} AA, one plot")
         fig, ax = plt.subplots(figsize=((len(df.columns)/6),(len(df.index)/4)))
-        ax = sns.heatmap(df, vmin=0, vmax=1, cmap=ListedColormap(['white', cover_color]), linewidths=1, 
+        ax = sns.heatmap(df, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), linewidths=1, 
                     linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
         try:
-            ax = sns.heatmap(df_mut, vmin=0, vmax=1, cmap=ListedColormap(['white', mutation_color]), alpha=0.15, cbar = False)
+            ax = sns.heatmap(df_mut, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), alpha=0.15, cbar = False)
         except:
             df_mut = None
         
