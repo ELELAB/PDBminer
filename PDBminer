@@ -95,6 +95,8 @@ def check_APIs():
 
 def check_input_file(df):
 
+    df = df.fillna("N/A")
+
     problems = []
     
     for i in range(len(df)):
