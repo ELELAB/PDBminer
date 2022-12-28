@@ -416,7 +416,6 @@ def to_ranges(iterable):
         group = list(group)
         yield group[0][1], group[-1][1]
         
-        
 def alignment(uniprot_sequence, AA_pdb):
     #1) Local alignment: Aim to find the area of the uniprot
     #   sequence the PDB covers.
@@ -433,7 +432,7 @@ def alignment(uniprot_sequence, AA_pdb):
     pdb_sequence = ''.join(AA_pdb)
     alignments = pairwise2.align.localms(uniprot_sequence, pdb_sequence, 1, -10, -20, -10)
     
-    if alignments != [] and alignments[0][2] > 10:
+    if alignments != []: # and alignments[0][2] >= 10:
         uniprot_aligned = alignments[0][0]
         pdb_aligned = alignments[0][1]
         
@@ -569,7 +568,7 @@ def get_coverage(df):
     ranges_covered = ranges_covered.replace("), (", ");(" )
     return ranges_covered
         
-def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path):
+def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, uniprot_id):
     """
     ...
 
@@ -626,11 +625,19 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     
     #find all chains in the structure
     chainlist = []
-    for i in enumerate(structure.header['compound']):
-        segment_chains = structure.header['compound'][i[1]]['chain'].upper().split(", ")
-        for chain in segment_chains:
-            chainlist.append(chain)
     
+    #relevant_chains
+    if complex_protein_details != "NA":
+        cp = complex_protein_details[0].split(";")
+        for chain in cp:
+            if uniprot_id in chain:
+                chainlist.append(chain[-1].upper())
+    else: 
+        for i in enumerate(structure.header['compound']): 
+            segment_chains = structure.header['compound'][i[1]]['chain'].upper().split(", ") 
+            for chain in segment_chains:
+                chainlist.append(chain)
+   
     for chain_str in chainlist:  
         AA_pdb, pos_pdb = get_AA_pos(chain_str, model)
 
@@ -638,7 +645,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
             AA_pdb = remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str)
 
         uniprot_aligned, pdb_aligned = alignment(uniprot_sequence, AA_pdb)    
-
                 
         if uniprot_aligned != []:
             chains.append(chain_str)
@@ -801,7 +807,9 @@ def align(combined_structure, path):
                                            uniprot_sequence, 
                                            uniprot_numbering,
                                            combined_structure['mutation_positions'][i],
-                                           path)
+                                           path,
+                                           combined_structure.complex_protein_details[i], 
+                                           combined_structure.uniprot_id[i])
 
             if alignment_info[0] != '':
                 combined_structure.at[i, 'chains'] = alignment_info[0]  
@@ -832,7 +840,7 @@ def align(combined_structure, path):
 #   a structural dataframe including complex and ligand columns. 
 #
 
-def get_complex_information(pdb_id):
+def get_complex_information(pdb_id, uniprot):
     """
     This function takes a PDB id and analyzes its content to estabilish if 
     there is any other elements within the file such as a ligand. 
@@ -864,21 +872,34 @@ def get_complex_information(pdb_id):
     
         protein_segment_dictionary = response_text[pdb_id.lower()]
     
-        if len(protein_segment_dictionary['UniProt']) > 1:
-            protein_complex_list = 'protein complex'
-
+        if len(protein_segment_dictionary['UniProt']) <= 1:
+            protein_complex_list = "NA"
+            protein_info = "NA"    
+            
+        else: 
             info = []
-        
+            fusion_test = []
             for i in protein_segment_dictionary['UniProt']:
                 prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
                 info.append(prot_info)
+                
+            for item in enumerate(info):
+                fusion_test.append(item[1][-1])
+                if uniprot in item[1]:
+                    value = item[0]
+            
+            if len(set(fusion_test)) == 1:
+                protein_complex_list = 'fusion product'
+            elif len(fusion_test) > len(set(fusion_test)):
+                if fusion_test.count(fusion_test[value]) > 1:
+                    protein_complex_list = 'fusion product in protein complex'
+                else:
+                    protein_complex_list = 'protein complex with fusion product'
+            else:
+                protein_complex_list = 'protein complex'
         
             info = ';'.join(info)
-            protein_info = [info]
-
-        else: 
-            protein_complex_list = "NA"
-            protein_info = "NA"    
+            protein_info = [info] 
 
     else:
         protein_complex_list = "NA"
@@ -897,12 +918,20 @@ def get_complex_information(pdb_id):
     for i in range(len(molecule_dictionary)):
         
         if "nucleotide" in molecule_dictionary[i]['molecule_type']:
-            n = f"[{molecule_dictionary[i]['molecule_type']}, {molecule_dictionary[i]['in_chains']}]"
+            n1 = molecule_dictionary[i]['molecule_name'][0]
+            n2 = molecule_dictionary[i]['in_chains']
+            n2 = ",".join(n2)
+            n = f"{n1}, chain {n2}"
+            #n = f"[{molecule_dictionary[i]['molecule_type']}, {molecule_dictionary[i]['in_chains']}]"
             nucleotide_info.append(n)
         
         elif molecule_dictionary[i]['molecule_type'] != 'polypeptide(L)':
             if molecule_dictionary[i]['molecule_type'] != 'water': 
-                l = f"[{molecule_dictionary[i]['molecule_name'][0]}, {molecule_dictionary[i]['in_chains']}]"
+                l1 = molecule_dictionary[i]['molecule_name'][0]
+                l2 = molecule_dictionary[i]['in_chains']
+                l2 = ",".join(l2)
+                l = f"{l1}, chain {l2}"
+                #l = f"[{molecule_dictionary[i]['molecule_name'][0]}, {molecule_dictionary[i]['in_chains']}]"
                 ligand_info.append(l)
    
     if len(nucleotide_info) > 0:
@@ -944,6 +973,8 @@ def collect_complex_info(structural_df):
 
     """
     
+    uniprot_id = structural_df['uniprot_id'][0]
+    
     df = pd.DataFrame(columns=['structure_id','complex_protein',
                            'complex_protein_details', 'complex_nucleotide',
                            'complex_nucleotide_details','complex_ligand', 
@@ -958,13 +989,13 @@ def collect_complex_info(structural_df):
                               'NA']
             
         else:
-            complex_info = get_complex_information(pdb)
+            complex_info = get_complex_information(pdb, uniprot_id)
     
             list_of_values = [pdb, complex_info[0], 
                               complex_info[1], complex_info[2], 
                               complex_info[3], complex_info[4], 
                               complex_info[5]]
-
+        
         df.loc[pdb] = np.array(list_of_values, dtype="object") 
     
     df_combined = pd.merge(structural_df, df, how='inner', on = 'structure_id')
@@ -1077,4 +1108,3 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
-

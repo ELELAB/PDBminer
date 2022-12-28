@@ -28,6 +28,7 @@ import numpy as np
 import argparse
 import os
 #============================================================================#
+
 parser = argparse.ArgumentParser(prog = "PDBminer2network",
                                  usage = "PDBminer2network [-h] help, all flags are optional: [-r] results path, [-i] input file, [-u] uniprot id, can be added if the user wish to visualize only one protein network, [-c] color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. [-p] protein color is grey by default but any color can be used, e.g '#183233’. [-s] PDBid color is blue by default but any color can be used, e.g '#1fc6cc'")
 
@@ -63,10 +64,15 @@ parser.add_argument("-p", "--color_proteins",
 
 parser.add_argument("-s", "--color_structures",
                     metavar = "color for structures",
-                    default = "blue",
+                    default = "lightblue",
                     type=str,
                     help="plot color for structures")
 
+parser.add_argument("-t", "--type_color",
+                    metavar = "color for the protein and fusion clades",
+                    default = "blue",
+                    type=str,
+                    help="plot color for structures")
 
 args = parser.parse_args()
 
@@ -81,22 +87,31 @@ if uniprot_id != "none":
 center_color = args.color_center
 protein_color = args.color_proteins
 structure_color = args.color_structures
+type_color = args.type_color
 
 def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
 
     from_list = []
     to_list = []
     
+    #f_from_list = []
+    #f_to_list = []
+    
     replacements = [("[", ""), ("]", ""), ("'", ""), ('"', '')]
     
-    #protein complexes 
-    p1 = file_name[file_name.complex_protein == "['protein complex']"] #old format support
-    p2 = file_name[file_name.complex_protein == 'protein complex']
-    p = pd.concat([p1, p2])
-    if len(p) > 0:
-        p = p[['structure_id', 'complex_protein_details']]
-        p = p.reset_index(drop = True)
-        for i, info in enumerate(p.values):
+    p=file_name.dropna(subset=['complex_protein'])    
+    #regular protein complex
+    protein_complex=p[p.complex_protein.str.startswith('protein complex')]
+    
+    #fusion products
+    fusion=p[p.complex_protein.str.startswith('fusion product')]
+    
+    if len(protein_complex) > 0:
+        from_list.append(uniprot)
+        to_list.append("Protein Complex")
+        protein_complex = protein_complex[['structure_id', 'complex_protein_details']]
+        protein_complex = protein_complex.reset_index(drop = True)
+        for i, info in enumerate(protein_complex.values):
             structure = info[0]
             i = info[1]
             i = [i := i.replace(a, b) for a, b in replacements][-1]
@@ -107,10 +122,35 @@ def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
             if len(i) > 0:
                 for protein in i:                
                     from_list.append("Protein Complex")
-                    protein_specifics = protein.split(", ")[0]
-                    to_list.append(f"p. {protein_specifics.split('_')[0]}") 
-                    from_list.append(f"p. {protein_specifics.split('_')[0]}")
+                    protein_specifics = protein.split(", ")[1]
+                    to_list.append(protein_specifics)
+                    from_list.append(protein_specifics)
+                    #to_list.append(f"p. {protein_specifics.split('_')[0]}") 
+                    #from_list.append(f"p. {protein_specifics.split('_')[0]}")
                     to_list.append(structure)
+        
+        if len(fusion) > 0:
+            from_list.append(uniprot)
+            to_list.append("Fusion Product")
+            fusion = fusion[['structure_id', 'complex_protein_details']]
+            fusion = fusion.reset_index(drop = True)
+            for i, info in enumerate(fusion.values):
+                structure = info[0]
+                i = info[1]
+                i = [i := i.replace(a, b) for a, b in replacements][-1]
+                i = i.split(";")
+                for item in i:
+                    if uniprot in item:
+                        i.remove(item)
+                if len(i) > 0:
+                    for protein in i:                
+                        from_list.append("Fusion Product")
+                        protein_specifics = protein.split(", ")[1]
+                        to_list.append(protein_specifics)
+                        from_list.append(protein_specifics)
+                        #to_list.append(f"p. {protein_specifics.split('_')[0]}") 
+                        #from_list.append(f"p. {protein_specifics.split('_')[0]}")
+                        to_list.append(structure)
 
 
         f = pd.DataFrame({'from':from_list, 'to':to_list})
@@ -120,16 +160,33 @@ def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
     
         rcParams['figure.figsize'] = 20, 20
         pos = nx.spring_layout(G, scale=20, k=3/np.sqrt(G.order()))
-        colors = [[structure_color, protein_color][node.startswith('p')]
-                  for node in G.nodes()]
-        colors[0] = center_color
-        d = dict(G.degree)
+        
+        colors = []
+        size = []
+        for node in G.nodes():
+            if len(node) == 4: #pdb id
+                colors.append(structure_color)
+                size.append(700)
+            elif node == "Protein Complex": # or "Fusion Product":
+                colors.append(type_color)
+                size.append(6000)
+            elif node == "Fusion Product":
+                colors.append(type_color)
+                size.append(6000)
+            elif node == uniprot:
+                colors.append(center_color)
+                size.append(10000)
+            else:
+                colors.append(protein_color) #uniprot
+                size.append(1500)
+        
+        #d = dict(G.degree)
+                
         nx.draw(G, pos, 
                 with_labels=True, 
-                nodelist=d, 
-                node_size=[d[k]*300 for k in d],
+                node_size = size,
                 node_color=colors)
-    
+        
         plt.savefig(f"{path}/{uniprot}/{output_name}_network.pdf", format="pdf", bbox_inches="tight")
         out = f"plot for {uniprot}/{output_name} done"
     else:
