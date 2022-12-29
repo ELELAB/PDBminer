@@ -159,7 +159,7 @@ with open (f"{path}/log.txt", "w") as f:
         uniprot_id = [args.uniprot_id]
         df = pd.DataFrame({'hugo_name':hugo_name,'uniprot':uniprot_id})
         if args.uniprot_isoform:
-            isoform = [args.isoform]
+            isoform = [args.uniprot_isoform]
             df['uniprot_isoform'] = isoform
         else: df['uniprot_isoform'] = [1]
         if args.mutations:
