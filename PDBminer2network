@@ -181,6 +181,7 @@ def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
                     node_color=colors)
         
             plt.savefig(f"{path}/{uniprot}/{output_name}_network.pdf", format="pdf", bbox_inches="tight")
+            plt.clf()
             out = f"plot for {uniprot}/{output_name} done"
         else:
             out = f"plot for {uniprot}/{output_name} omitted, no protein complex found"
