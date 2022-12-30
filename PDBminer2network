@@ -90,51 +90,28 @@ structure_color = args.color_structures
 type_color = args.type_color
 
 def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
-
     from_list = []
     to_list = []
-    
-    #f_from_list = []
-    #f_to_list = []
     
     replacements = [("[", ""), ("]", ""), ("'", ""), ('"', '')]
     
     p=file_name.dropna(subset=['complex_protein'])    
-    #regular protein complex
-    protein_complex=p[p.complex_protein.str.startswith('protein complex')]
+    if len(p) == 0:
+        out = f"plot for {uniprot}/{output_name} omitted, no protein complex found"
+
+    else:
+        #regular protein complex
+        protein_complex=p[p.complex_protein.str.startswith('protein complex')]
     
-    #fusion products
-    fusion=p[p.complex_protein.str.startswith('fusion product')]
+        #fusion products
+        fusion=p[p.complex_protein.str.startswith('fusion product')]
     
-    if len(protein_complex) > 0:
-        from_list.append(uniprot)
-        to_list.append("Protein Complex")
-        protein_complex = protein_complex[['structure_id', 'complex_protein_details']]
-        protein_complex = protein_complex.reset_index(drop = True)
-        for i, info in enumerate(protein_complex.values):
-            structure = info[0]
-            i = info[1]
-            i = [i := i.replace(a, b) for a, b in replacements][-1]
-            i = i.split(";")
-            for item in i:
-                if uniprot in item:
-                    i.remove(item)
-            if len(i) > 0:
-                for protein in i:                
-                    from_list.append("Protein Complex")
-                    protein_specifics = protein.split(", ")[1]
-                    to_list.append(protein_specifics)
-                    from_list.append(protein_specifics)
-                    #to_list.append(f"p. {protein_specifics.split('_')[0]}") 
-                    #from_list.append(f"p. {protein_specifics.split('_')[0]}")
-                    to_list.append(structure)
-        
-        if len(fusion) > 0:
+        if len(protein_complex) > 0:
             from_list.append(uniprot)
-            to_list.append("Fusion Product")
-            fusion = fusion[['structure_id', 'complex_protein_details']]
-            fusion = fusion.reset_index(drop = True)
-            for i, info in enumerate(fusion.values):
+            to_list.append("Protein Complex")
+            protein_complex = protein_complex[['structure_id', 'complex_protein_details']]
+            protein_complex = protein_complex.reset_index(drop = True)
+            for i, info in enumerate(protein_complex.values):
                 structure = info[0]
                 i = info[1]
                 i = [i := i.replace(a, b) for a, b in replacements][-1]
@@ -144,53 +121,69 @@ def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
                         i.remove(item)
                 if len(i) > 0:
                     for protein in i:                
-                        from_list.append("Fusion Product")
+                        from_list.append("Protein Complex")
                         protein_specifics = protein.split(", ")[1]
                         to_list.append(protein_specifics)
                         from_list.append(protein_specifics)
-                        #to_list.append(f"p. {protein_specifics.split('_')[0]}") 
-                        #from_list.append(f"p. {protein_specifics.split('_')[0]}")
                         to_list.append(structure)
-
-
-        f = pd.DataFrame({'from':from_list, 'to':to_list})
-    
-        # Build your graph
-        G=nx.from_pandas_edgelist(f, 'from', 'to')
-    
-        rcParams['figure.figsize'] = 20, 20
-        pos = nx.spring_layout(G, scale=20, k=3/np.sqrt(G.order()))
         
-        colors = []
-        size = []
-        for node in G.nodes():
-            if len(node) == 4: #pdb id
-                colors.append(structure_color)
-                size.append(700)
-            elif node == "Protein Complex": # or "Fusion Product":
-                colors.append(type_color)
-                size.append(6000)
-            elif node == "Fusion Product":
-                colors.append(type_color)
-                size.append(6000)
-            elif node == uniprot:
-                colors.append(center_color)
-                size.append(10000)
-            else:
-                colors.append(protein_color) #uniprot
-                size.append(1500)
+            if len(fusion) > 0:
+                from_list.append(uniprot)
+                to_list.append("Fusion Product")
+                fusion = fusion[['structure_id', 'complex_protein_details']]
+                fusion = fusion.reset_index(drop = True)
+                for i, info in enumerate(fusion.values):
+                    structure = info[0]
+                    i = info[1]
+                    i = [i := i.replace(a, b) for a, b in replacements][-1]
+                    i = i.split(";")
+                    for item in i:
+                        if uniprot in item:
+                            i.remove(item)
+                    if len(i) > 0:
+                        for protein in i:                
+                            from_list.append("Fusion Product")
+                            protein_specifics = protein.split(", ")[1]
+                            to_list.append(protein_specifics)
+                            from_list.append(protein_specifics)
+                            to_list.append(structure)
+
+            f = pd.DataFrame({'from':from_list, 'to':to_list})
+    
+            # Build your graph
+            G=nx.from_pandas_edgelist(f, 'from', 'to')
+    
+            rcParams['figure.figsize'] = 20, 20
+            pos = nx.spring_layout(G, scale=20, k=3/np.sqrt(G.order()))
         
-        #d = dict(G.degree)
+            colors = []
+            size = []
+            for node in G.nodes():
+                if len(node) == 4:
+                    colors.append(structure_color)
+                    size.append(700)
+                elif node == "Protein Complex":
+                    colors.append(type_color)
+                    size.append(6000)
+                elif node == "Fusion Product":
+                    colors.append(type_color)
+                    size.append(6000)
+                elif node == uniprot:
+                    colors.append(center_color)
+                    size.append(10000)
+                else:
+                    colors.append(protein_color)
+                    size.append(1500)
                 
-        nx.draw(G, pos, 
-                with_labels=True, 
-                node_size = size,
-                node_color=colors)
+            nx.draw(G, pos, 
+                    with_labels=True, 
+                    node_size = size,
+                    node_color=colors)
         
-        plt.savefig(f"{path}/{uniprot}/{output_name}_network.pdf", format="pdf", bbox_inches="tight")
-        out = f"plot for {uniprot}/{output_name} done"
-    else:
-        out = f"plot for {uniprot}/{output_name} omitted, no protein complex found"
+            plt.savefig(f"{path}/{uniprot}/{output_name}_network.pdf", format="pdf", bbox_inches="tight")
+            out = f"plot for {uniprot}/{output_name} done"
+        else:
+            out = f"plot for {uniprot}/{output_name} omitted, no protein complex found"
     return out
 
 
@@ -209,6 +202,7 @@ def run(df):
     """
     
     for i in range(len(df)): 
+        print(f"{df.iloc[i].uniprot}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
             print("  filtered file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv")
