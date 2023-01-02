@@ -266,8 +266,6 @@ def get_mutations(mutations_in_pdb, a_range):
         for j in range(len(mutations_in_pdb)):
             if a_range[mutations_in_pdb[j]-1] == 1:
                 a_range[mutations_in_pdb[j]-1] = 2
-            else:
-                print("mutation outside coverage??")
             
         return a_range       
 

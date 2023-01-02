@@ -70,23 +70,26 @@ def run_list(full_path):
     os.chdir(f"{path}/results/{uniprot_id}")
 
     input_dataframe = pd.read_csv(f"{uniprot_id}_input.csv", index_col=0)
+    print(input_dataframe)
     #only one of each 
     
     #prior issue with one uniprot id, still to be fixed this is a patch
     found_structures = find_structure_list(input_dataframe)
+    print("structures found")
     
     if len(found_structures) != 0:
         
         combined_structure = combine_structure_dfs(found_structures, input_dataframe)
-
+        print("files combined")
+        combined_structure = collect_complex_info(combined_structure)
+        print("complexes found")
         structural_df = align(combined_structure, os.getcwd())
+        print("files downloaded and aligned")
         
         if len(structural_df) != 0:
-
-            structural_df = collect_complex_info(structural_df)
-            
             #prep and export all file
             all_df = cleanup_all(structural_df)
+            print("filed cleaned")
             
             if type(input_dataframe.mutations[0]) != str: 
                 all_df = all_df.drop(columns=('mutations'))
