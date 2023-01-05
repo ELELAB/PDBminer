@@ -498,6 +498,7 @@ def download_pdb(pdb_id):
         print("PDBfile cannot be downloaded")
         return np.array([0, 0])
 
+
 def get_AA_pos(chain_str, model):
     chain = model[chain_str]
     pos_pdb = []
@@ -521,28 +522,43 @@ def get_AA_pos(chain_str, model):
         return AA_pdb, pos_pdb 
     
     else: 
-        for i in range(len(pos_pdb)-1):
-            if pos_pdb[i]+1 != pos_pdb[i+1]:
-                pos_pdb.insert(i+1, pos_pdb[i]+1)
-                AA_pdb.insert(i+1, "-")
+        while sorted(pos_pdb) != list(range(min(pos_pdb), max(pos_pdb)+1)):
+            for i in range(len(pos_pdb)-1):
+                if pos_pdb[i]+1 != pos_pdb[i+1]:
+                    pos_pdb.insert(i+1, pos_pdb[i]+1)
+                    AA_pdb.insert(i+1, "-")
     
         return AA_pdb, pos_pdb 
     
 def remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str):
     missing_AA = []
     missing_pos = []
-    #find missing residues
+    
+    #find reported missing residues
     for i in enumerate(structure.header['missing_residues']):
         if chain_str in structure.header['missing_residues'][i[0]]['chain']:
             missing_AA.append(seq1(structure.header['missing_residues'][i[0]]['res_name']))
             missing_pos.append(structure.header['missing_residues'][i[0]]['ssseq'])
     
+    #check if these are part of a tag
+    t = ("").join(missing_AA)
+    if "HHH" in t:
+        warning = "The structure likely contains an expression tag"
+    else:
+        warning = ""
+    
+    #handle the reported missing residues
     if missing_AA != []:
         for position in missing_pos:
             if position in pos_pdb:
                 AA_pdb[pos_pdb.index(position)] = "-"
     
-    return AA_pdb
+    #handle the missing residues annotated "X"
+    for AA in AA_pdb:
+        if AA == "X":
+            AA_pdb[AA_pdb.index(AA)] = "-"
+    
+    return AA_pdb, warning
     
 def get_mutations(mut_pos, df):
     muts = []
@@ -556,11 +572,58 @@ def get_mutations(mut_pos, df):
     return muts
 
 def get_all_discrepancies(df):
+    #creating empty lists
     mutations_in_all = []
+    mut_hotspot = []
+    removal_values = []
+    warnings = []
+    
+    #find all the discrepancies between the uniprot and pdb sequence
+    for item in df.index:
+        if df["uniprot_seq"][item] != df["pdb_seq"][item]: 
+            mut_hotspot.append(list(df.uniprot_pos)[item])
+    
+    #identify start and end values
+    seq_start = list(df.uniprot_pos)[0]
+    seq_end = list(df.uniprot_pos)[-1]
+
+    #Coversion to array
+    mut_hotspot = np.array(mut_hotspot)
+    
+    #if the PDB covers the very begining of the canonical sequence
+    #any additions to the n-terminal is mutations at position "0". 
+    stepsize = 0
+    n_ter_0 = np.split(mut_hotspot, np.where(np.diff(mut_hotspot) != stepsize)[0]+1)
+    if 0 in n_ter_0[0]:
+        l = len(n_ter_0[0])
+        removal_values.append(0)
+        warnings.append(f"attachment at N-terminal with length {l}  have been removed from coverage")
+    
+    #altenatively, the PDB may cover a different part of the canonical 
+    #sequence, and any addition will be numbered consequtively.
+    stepsize = 1
+    hotspot = np.split(mut_hotspot, np.where(np.diff(mut_hotspot) != stepsize)[0]+1)
+    for i in hotspot:
+        if len(i) > 2:
+            if seq_start in i:
+                l = len(i)
+                removal_values.append(i)
+                warnings.append(f"attachment at N-terminal with length {l} have been removed from coverage")
+            if seq_end in i:
+                l = len(i)
+                removal_values.append(i)
+                warnings.append(f"attachment at C-terminal with length {l} have been removed from coverage")
+    
+    removal_values = [item for sublist in removal_values for item in sublist]    
+    df = df[~df['uniprot_pos'].isin(removal_values)]
+    
+    df = df.reset_index(drop=True)
+    
     for item in df.index:
         if df["uniprot_seq"][item] != df["pdb_seq"][item]: 
             mutations_in_all.append(f"{list(df.uniprot_seq)[item]}{str(list(df.uniprot_pos)[item])}{list(df.pdb_seq)[item]}")
-    return mutations_in_all
+
+    return df, mutations_in_all, warnings
 
 def get_coverage(df):
     ranges_covered = list(to_ranges(list(df.uniprot_pos)))
@@ -613,6 +676,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     mutational_column = []
     mutation_list = []
     chains = []
+    warning_column = []
     
     ########################################
     
@@ -639,10 +703,12 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
                 chainlist.append(chain)
    
     for chain_str in chainlist:  
+        chain_warning = [] 
         AA_pdb, pos_pdb = get_AA_pos(chain_str, model)
 
         if structure.header['has_missing_residues'] == True:
-            AA_pdb = remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str)
+            AA_pdb, warning = remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str)
+            chain_warning.append(warning)
 
         uniprot_aligned, pdb_aligned = alignment(uniprot_sequence, AA_pdb)    
                 
@@ -665,19 +731,38 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
             #protein isoform.
             df = df.reset_index(drop=True)
         
-            mutations_in_all = get_all_discrepancies(df)
-            mutation_list.append(mutations_in_all)
+            df, mutations_in_all, warnings = get_all_discrepancies(df)
+            chain_warning.append(warnings)
+            chain_warning = ",".join([str(elem) for elem in chain_warning])
+            
+            replacements = [("[", ""), ("]", ""), ("'", "")] 
+            chain_warning = [chain_warning := chain_warning.replace(a, b) for a, b in replacements]
+            chain_warning = chain_warning[-1]
+            
+            warning_column.append(chain_warning)
+                        
+            #multiple warnings in one chain
+            #warning_column = ",".join([str(elem) for elem in warning_column])
+            if mutations_in_all == []:
+                mutation_list.append("NA")
+            else:
+                mutation_list.append(mutations_in_all)
 
             #capture the area the PDB covers accourding to the alignment. 
             ranges_covered = get_coverage(df)
             coverage.append(ranges_covered)
-
+            
     chains_string = ';'.join([str(elem) for elem in chains])
     coverage_string = ';'.join([str(elem) for elem in coverage])
     mutational_column_string = ';'.join([str(elem) for elem in mutational_column])    
     mutation_list_string = ';'.join([str(elem) for elem in mutation_list])
+    warning_column_string = ";".join([str(elem) for elem in warning_column])
+    if warning_column_string == ",":
+        warning_column_string = "NA"
+    elif warning_column_string.startswith(","):
+        warning_column_string = warning_column_string[1:]
         
-    output_array = np.array([chains_string, coverage_string, mutational_column_string, mutation_list_string], dtype=object)
+    output_array = np.array([chains_string, coverage_string, mutational_column_string, mutation_list_string, warning_column_string], dtype=object)
     os.chdir(path)
     return output_array
 
@@ -784,6 +869,7 @@ def align(combined_structure, path):
     combined_structure["coverage"] = " "
     combined_structure["AA_in_PDB"] = " "
     combined_structure["mutations_in_pdb"] = " "
+    combined_structure["warnings"] = " "
 
     for i in range(len(combined_structure)):
         
@@ -798,7 +884,8 @@ def align(combined_structure, path):
             combined_structure.at[i, 'chains'] = "A"  
             combined_structure.at[i, 'coverage'] = alignment_info[0] 
             combined_structure.at[i, 'AA_in_PDB'] = alignment_info[1] 
-            combined_structure.at[i, 'mutations_in_pdb'] = "[]" 
+            combined_structure.at[i, 'mutations_in_pdb'] = "NA"
+            combined_structure.at[i, 'warnings'] = "NA"
             
         else:    
             uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id[i], int(combined_structure['uniprot_isoform'][i]))     
@@ -815,7 +902,8 @@ def align(combined_structure, path):
                 combined_structure.at[i, 'chains'] = alignment_info[0]  
                 combined_structure.at[i, 'coverage'] = alignment_info[1] 
                 combined_structure.at[i, 'AA_in_PDB'] = alignment_info[2] 
-                combined_structure.at[i, 'mutations_in_pdb'] = alignment_info[3] 
+                combined_structure.at[i, 'mutations_in_pdb'] = alignment_info[3]
+                combined_structure.at[i, 'warnings'] = alignment_info[4]
         
             #drop missing values. 
             else:
@@ -1108,3 +1196,4 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
+
