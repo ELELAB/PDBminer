@@ -101,37 +101,31 @@ See examples of the in- and  output of the example directories.
 
 #content of {unipot_id}_clean.csv and {unipot_id}_all.csv:
 
-```
-Output Columns and explanations
-================================================================
-#structure_rank			Index, the lower the value the seemingly better the model.
-#hugo_name			Gene name from the input.
-#uniprot_id			Uniprot id from the input.	
-#uniprot_isoform		Uniprot isoform from the input or 1 if none given.
-#mutations			The mutations from the input if any. 
-#cluster_id			The cluster from the input if any.
-#structure_id			Identifier of the PDB file or Alphafold Model.
-#deposition_date		Timing of file placement in PDB or model generation in the Alphafold Database
-#experimental_method		By which the PDB was generated. 
-#resolution			Estimation of PDB quality (for X-ray structures)
-#chains				Letter describing the chains covering the Uniprot ID 
-#coverage			For structures from the Protein Data bank, this indicates the range where the 
-#				PDB file and uniprot ID are aligned. The alignment is done based on the reported 
-#				sequence in the PDB and omits missing residues. 
-#				A quality control should ALWAYS be conducted on PDB structures. For the alphafold models 
-#				the coverage is based on pLDDT scores > 70, which means that the coverage of a single chain 
-#				can be split for different domains, such as [(9,22),(30,60)] indicating that the positions 
-#				within these intervals are of high quality. “;” separated for multiple chains.			 
-#mutations_in_pdb		All mutations found in the pdb file compared to the uniprot sequence if none: 
-#				[] indicating WT structure.
-#complex_protein                Binary, either “NA” or “Protein in complex” indicates if the PDB file contains a protein complex.
-#complex_protein_details        Details regarding the protein complex indicating the Uniprot ID of the other protein and the chains.
-#complex_nucleotide             Binary, indicates if the protein is bound to a nucleotide string such as DNA.
-#complex_nucleotide_details     Details regarding the DNA or RNA binding. 
-#complex_ligand                 Binary indicating if metal or small molecules are present in the pdb file.
-#complex_ligand_details         Details describing which “other” things are in the file.
+## Output Columns and Explanations:
 
-```
+* structure_rank: Index, the lower the value the seemingly better the model.
+* hugo_name: Gene name from the input.
+* uniprot_id: Uniprot id from the input.
+* uniprot_isoform: Uniprot isoform from the input or 1 if none given.
+* mutations: A list of input mutations, only visible in the filtered output.
+* cluster_id: If clusters are specified, the cluster will be visible in this column.  
+* structure_id: Identifier of the PDB file or Alphafold Model.
+* deposition_date: Timing of file placement in PDB or model generation in the Alphafold Database.
+* experimental_method: By which the PDB was generated. For AlphaFold model "predicted" is used. 
+* resolution: Estimation of PDB quality (for X-ray structures).
+* complex_protein: A column defining if a complex or fusion is present in the PDB file.
+* complex_protein_details: Details regarding the protein complex indicating the Uniprot ID of the other protein and the chains.
+* complex_nucleotide: Binary, indicates if the protein is bound to a nucleotide string such as DNA.
+* complex_nucleotide_details: Details regarding the DNA or RNA binding.
+* complex_ligand: Binary indicating if metal or small molecules are present in the pdb file.
+* complex_ligand_details: Details describing which “other” things are in the file.
+* chains: Letter or letters describing the chains covering the Uniprot ID 
+* coverage: Coverage is a range of numbers indicating the area the model covers the uniprot sequence using the uniprot numbering of the sequence. One chain can have multiple sequences, for PDB structures indicating missing residues and for AlphaFold structures when the pLDDT score is below 70.  
+* mutations_in_pdb: When structures contain amino acid sequence that differ from the sequence specified with the isoform, they are annotated as mutations and can be found here. 
+* warnings: This coloumn contains information regarding dissimilarities or discrepancies that cannot be explained by fusions or other known alterations. This includes expression tags and amino acids added to terminals for structure solving purposes.
+
+For all columns ";" seperate data on the annotated chains and "NA" indicates that no relevant data is present.
+
 # Plotting 
 
 ## PDBminer2coverage
@@ -158,17 +152,18 @@ Flags:
 -t: threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad. 
 -c: color coverage, the plot is white and the coverage of each structure is colored in. Default is grey, but any color can be used, e.g '#64b2b5'. 
 -m: mutation color, is the overlay color on the sites of mutation. It is blue per default but any color can be used, e.g '#183233'
+-d: color for mutations in the PDBfile, meaning the inherent mutations within the file. These can be colored different from the WT amino acids. Deafault is light grey.
 
 All options, example:
 
-PDBminer2coverage -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -s 30-120 -t 100 -c '#64b2b5' -m '#183233'
+PDBminer2coverage -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -s 30-120 -t 100 -c '#64b2b5' -m '#183233' -d '#a3cacc'
 
 
 ## PDBminer2network
 PDBminer2network is a plotting tool creating an overview of the protein complexes within the protein data bank for the protein of interest.
 PDBminer2network takes the current working directory/results directory as default input, just as the PDBminer2coverage module.
-The output is a network with "protein complex" at the center, the different proteins the protein of interest is bound to as a first node, 
-and from these nodes the PDB ID of the structures covering the complex.   
+The output is a network with the Uniprot ID of your protein at the center, branching out to "protein complexes" and/or "fusion products" depending
+on the content of the output file. From here each bound or fused protein is the first node and the second is the PDBid with the complex or fusion. 
 The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. If there are multiple clusters, 
 they will be plotted seperately.
 
@@ -181,10 +176,13 @@ The plot can be adjusted using the following flags:
 -r: choosing the results path if not default. 
 -i: The input file. 
 -u: uniprot id can be added if only one of the proteins in a multi protein run should be visualized.
--c: color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. 
--p: protein color is grey by default but any color can be used, e.g '#183233’. 
--s: PDBid color is blue by default but any color can be used, e.g '#1fc6cc'.
+-c: node color for center of graph
+-p: node color for proteins (fused and bound)
+-s: node color for structures (PDBid)
+-t: color for the nodes with "protein complex" and "fusion product".
+
+The edges of the graph are black. Any color can be used e.g. '#183233’.
 
 All options, example:
 
-PDBminer2network -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -c '#64b2b5' -p '#183233' -s '#1fc6cc'
+PDBminer2network -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -c '#64b2b5' -p '#183233' -s '#1fc6cc' -t '#a3cacc'

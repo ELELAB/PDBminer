@@ -92,5 +92,5 @@ python PDBminer2network
 
 python PDBminer2network -r PDBminer_run/results/ -i PDBminer_run/input_file.csv
 python PDBminer2network -u P00000
-python PDBminer2network -c '#64b2b5' -p '#183233' -s '#1fc6cc'
+python PDBminer2network -c '#64b2b5' -p '#183233' -s '#1fc6cc' -t '#a3cacc'
 
