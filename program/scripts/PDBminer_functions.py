@@ -1123,6 +1123,15 @@ def collect_complex_info(structural_df):
 def cleanup_all(structural_df):
 
     structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions'])
+    
+    for i in range(len(structural_df.mutations_in_pdb)):
+        if set(structural_df.mutations_in_pdb[i].split(";")) == {'NA'}:
+            structural_df.iloc[i, structural_df.columns.get_loc('mutations_in_pdb')] = 'NA'
+        
+    for i in range(len(structural_df.warnings)):
+        if set(structural_df.warnings[i].split(";")) == {'', ','}:
+            structural_df.iloc[i, structural_df.columns.get_loc('warnings')] = 'NA'
+    
     structural_df.index.name = 'structure_rank'
 
     return structural_df
@@ -1175,13 +1184,17 @@ def filter_all(structural_df, input_dataframe):
         if list(set(structural_df.coverage[i].split(";"))) == ['Mismatch in alignment']:
             structural_df = structural_df.drop([i])
     
-    structural_df = structural_df.drop(columns=['mutation_positions'])
     structural_df = structural_df.reset_index(drop=True)
     
     for i in range(len(structural_df.mutations_in_pdb)):
-        if set(structural_df.mutations_in_pdb[i].split(";")) == {'[]'}:
-            structural_df.iloc[i, structural_df.columns.get_loc('mutations_in_pdb')] = '[]'
-    
+        if set(structural_df.mutations_in_pdb[i].split(";")) == {'NA'}:
+            structural_df.iloc[i, structural_df.columns.get_loc('mutations_in_pdb')] = 'NA'
+        
+    for i in range(len(structural_df.warnings)):
+        if set(structural_df.warnings[i].split(";")) == {'', ','}:
+            structural_df.iloc[i, structural_df.columns.get_loc('warnings')] = 'NA'
+
+    structural_df = structural_df.drop(columns=['mutation_positions'])
     structural_df = structural_df.reset_index(drop=True)
     
     if len(set(input_dataframe.cluster_id)) != 1:
