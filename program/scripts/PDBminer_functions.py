@@ -575,7 +575,7 @@ def get_all_discrepancies(df):
     #creating empty lists
     mutations_in_all = []
     mut_hotspot = []
-    removal_values = []
+    removal_values = np.array([])
     warnings = []
     
     #find all the discrepancies between the uniprot and pdb sequence
@@ -596,8 +596,9 @@ def get_all_discrepancies(df):
     n_ter_0 = np.split(mut_hotspot, np.where(np.diff(mut_hotspot) != stepsize)[0]+1)
     if 0 in n_ter_0[0]:
         l = len(n_ter_0[0])
-        removal_values.append(0)
-        warnings.append(f"attachment at N-terminal with length {l}  have been removed from coverage")
+        removal_values = np.insert(removal_values, 0, 0)
+        #removal_values.append(0)
+        warnings.append(f"attachment at N-terminal with length {l} have been removed from coverage")
     
     #altenatively, the PDB may cover a different part of the canonical 
     #sequence, and any addition will be numbered consequtively.
@@ -607,14 +608,14 @@ def get_all_discrepancies(df):
         if len(i) > 2:
             if seq_start in i:
                 l = len(i)
-                removal_values.append(i)
+                removal_values = np.insert(removal_values, 0, i)
                 warnings.append(f"attachment at N-terminal with length {l} have been removed from coverage")
             if seq_end in i:
                 l = len(i)
-                removal_values.append(i)
+                removal_values = np.insert(removal_values, 0, i)
                 warnings.append(f"attachment at C-terminal with length {l} have been removed from coverage")
     
-    removal_values = [item for sublist in removal_values for item in sublist]    
+    removal_values = removal_values.flatten() 
     df = df[~df['uniprot_pos'].isin(removal_values)]
     
     df = df.reset_index(drop=True)
@@ -659,17 +660,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     if os.path.exists("structure") == False:
         os.mkdir("structure")
     
-    ########################################
-    
-    #Get the uniprot sequence for alignment
-    # variables needed: Uniprot_id and isoform
-    
-    ########################################
-    
-    #Prepare empty lists
-    
-    ########################################    
-        
     # Empty lists for popultion by function
     muts = []
     coverage = []
@@ -678,11 +668,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     chains = []
     warning_column = []
     
-    ########################################
-    
-    #Get the PDB sequence for the alignment
-    # variable: PDB_id
-    ########################################
+    #download model
     model, structure = download_pdb(pdb_id)
     if model == 0: 
         return ['']
@@ -742,7 +728,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
             warning_column.append(chain_warning)
                         
             #multiple warnings in one chain
-            #warning_column = ",".join([str(elem) for elem in warning_column])
             if mutations_in_all == []:
                 mutation_list.append("NA")
             else:

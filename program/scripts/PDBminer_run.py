@@ -71,8 +71,6 @@ def run_list(full_path):
 
     input_dataframe = pd.read_csv(f"{uniprot_id}_input.csv", index_col=0)
 
-    
-    #prior issue with one uniprot id, still to be fixed this is a patch
     found_structures = find_structure_list(input_dataframe)
     print("structures found")
     
