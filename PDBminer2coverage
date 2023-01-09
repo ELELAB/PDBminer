@@ -106,7 +106,6 @@ else:
 
 print(args)
 
-    
 def get_uniprot_seq(isoform, uniprot_id):
     """
     Function with an API to Uniprot retriving the fasta file,
@@ -251,7 +250,9 @@ def get_mutations(mutations_in_pdb, a_range):
     not covered positions are annotated 0.
 
     """
-    if mutations_in_pdb == [] or mutations_in_pdb == '[]':
+    if type(mutations_in_pdb) == float:
+        return a_range
+    elif type(mutations_in_pdb) == np.float64:
         return a_range
     
     else:
@@ -269,7 +270,7 @@ def get_mutations(mutations_in_pdb, a_range):
             
         return a_range       
 
-def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, sequence, threshold):
+def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, sequence, threshold, cover_color, mutation_color, mutation_pdb):
     """
     The plotting function, taking the output files from PDBminer and coverting 
     them into a plot.
@@ -306,7 +307,12 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         if len(a.chains) == 1:
             if a.structure_id.startswith('AF'):
                 a_range = get_ranges_AF(a.coverage, uniprot_numbering)
-                a_range = get_mutations(a.mutations_in_pdb, a_range)
+                if type(a.mutations_in_pdb) == np.float64:
+                    a_range = a_range
+                elif type(a.mutations_in_pdb) == float:
+                    a_range = a_range
+                else: 
+                    a_range = get_mutations(a.mutations_in_pdb, a_range)
                 if np.array_equal(a_range, []) == False:
                     index.append(a.structure_id) 
                     ranges.append(a_range)
@@ -319,13 +325,19 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         else:
             chains = a.chains.split(";")
             coverage = a.coverage.split("];[")
-            mutations = a.mutations_in_pdb.split(";")
+            if type(a.mutations_in_pdb) == float:
+                mutations = "NA"
+            elif type(a.mutations_in_pdb) == np.float64:
+                mutations = "NA"
+            else:           
+                mutations = a.mutations_in_pdb.split(";")
             for i in range(len(chains)):
                 a_range = get_ranges(coverage[i], uniprot_numbering)
-                
-                if len(mutations) == 1:                      
+                if mutations == "NA":
+                    a_range = a_range
+                elif len(mutations) == 1:                      
                     a_range = get_mutations(mutations[0], a_range)
-                else: 
+                else:
                     a_range = get_mutations(mutations[i], a_range)
                 if np.array_equal(a_range, []) == False:
                     index.append(f"{a.structure_id}_{chains[i]}")                
@@ -341,15 +353,14 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
             for i in evens:
                 df_list.append(df.iloc[: , sequence[i]:sequence[i+1]])
             df = pd.concat(df_list, axis=1, join="inner")
-                
         else: 
             df = df.iloc[: , sequence[0]:sequence[1]]
 
-    if type(mutations) == str:
+    if type(mutations) == str and mutations != "NA":
         print("    finding mutational positions")
         mutations = mutations.split(";")
         for i in range(len(mutations)):
-            mutations[i] = int(mutations[i][1:-1])
+            mutations[i] = int(mutations[i][1:-1]) ##this to fix?
         mutational_positions = np.unique(np.array(mutations))
         print("    assigning new values to mutational positions")
         UN = np.array(uniprot_numbering)
@@ -370,7 +381,6 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
                 for i in evens:
                     df_list.append(df_mut.iloc[: , sequence[i]:sequence[i+1]])
                 df_mut = pd.concat(df_list, axis=1, join="inner")
-                    
             else: 
                 df_mut = df_mut.iloc[: , sequence[0]:sequence[1]]
 
@@ -432,28 +442,31 @@ def run(df):
 
     """
     for i in range(len(df)): 
+        print(df.iloc[i].uniprot)
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
             print("  filtered file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
-                          "filtered", sequence, threshold)
+                          "filtered", sequence, threshold,
+                          cover_color, mutation_color, mutation_pdb)
             print("  plot done")
         elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
             print("  filtered cluster file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
-                          "filtered", sequence, threshold)
+                          "filtered", sequence, threshold,
+                          cover_color, mutation_color, mutation_pdb)
             print("  plot done")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
             print("  All file identified")
             full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, full, 
-                          "all", sequence, threshold)
+                          "all", sequence, threshold,
+                          cover_color, mutation_color, mutation_pdb)
             print("  plot done")
     return
 
 run(df)
-

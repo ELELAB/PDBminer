@@ -1,2 +1,2 @@
-structure_rank,hugo_name,uniprot_id,uniprot_isoform,mutations,cluster_id,structure_id,deposition_date,experimental_method,resolution,chains,coverage,mutations_in_pdb,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details
-0,RNH,P0A7Y7,1,D134N,1,AF-P0A7Y7-F1-model_v4,2022-06-01,Predicted,NA,A,"[(1, 123);(126, 153)]",[],NA,NA,NA,NA,NA,NA
+structure_rank,hugo_name,uniprot_id,uniprot_isoform,mutations,cluster_id,structure_id,deposition_date,experimental_method,resolution,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details,chains,coverage,mutations_in_pdb,warnings
+0,RNH,P0A7Y7,1,D134N,1,AF-P0A7Y7-F1-model_v4,2022-06-01,Predicted,NA,NA,NA,NA,NA,NA,NA,A,"[(1, 123);(126, 153)]",NA,NA
