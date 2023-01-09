@@ -7,19 +7,14 @@ Protein Data Bank and the most current version of the Alphafold2 model, if any.
 ## Dependencies
 
 It is recommended to create a virtual environment to run PDBminer. The environment can be created using 
-environment_python.yml as described below:
+environment.yml as described below:
 
 ### First time:
 
 ```
-conda env create -f program/environment_python.yml 
+git clone https://github.com/ELELAB/PDBminer.git
+conda env create -f environment.yml
 conda activate PDBminer
-conda install -c conda-forge biopython=1.78
-conda install -c bioconda -c conda-forge snakemake=7.7.0
-conda install -c conda-forge biopandas=0.4.1
-conda install -c conda-forge matplotlib=3.2.2
-conda install -c anaconda seaborn=0.12.0
-conda install -c anaconda networkx=2.8.4
 ```
 
 ### All subsequent times
@@ -28,15 +23,17 @@ conda install -c anaconda networkx=2.8.4
 conda activate PDBminer
 ```
 
-PDBminer is dependent on the following packs (as described in program/envrionment_python.yml):
-
-* python=3.8.8
-* pandas=1.2.4
-* requests=2.25.1
-
 ## Setup
+
+When running PDBminer, you have to specify the location of the program using the -f flag, however, if you wish to avoid this. 
+You can change the default placement in the PDBminer script. The default is default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile" when you clone, which may not 
+fit your setup.
+
+## Running PDBminer the first time.
 There are two ways of running PDBminer. Either by using and input file listing one or more proteins, or by using the command line
 to find the available structures for a single protein. 
+In the directory examples are three examples and their commands in the do.sh file. Consider testing the installation and use
+by running one or more of these. Notice that the -f flag is used in the do.sh files. 
 
 ### Using an input file
 
@@ -69,9 +66,9 @@ commandline. To do so, a input file does not need to be constructured and the co
 with flags. Agian is the hugo_name and uniprot options mandatory while the rest is optional. 
 
 ```
-$ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores]
+$ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores] -f [path to snakefile]
 
-$ python PDBminer -g TP53 -u P04637 -m "P278L;R337C;L344P" -n 1
+$ python PDBminer -g TP53 -u P04637 -m "P278L;R337C;L344P" -n 1 -f program/snakefile
 ``` 
 
 NOTICE: when isoform is not specified 1 is assumed.

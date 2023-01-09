@@ -1,4 +1,3 @@
-module load conda/4.9.2/modulefile
 conda activate PDBminer
 
 #require input file to run
