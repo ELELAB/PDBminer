@@ -27,7 +27,7 @@ conda activate PDBminer
 
 When running PDBminer, you have to specify the location of the program using the -f flag, however, if you wish to avoid this. 
 You can change the default placement in the PDBminer script. The default is default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile" when you clone, which may not 
-fit your setup.
+fit your setup. If you choose to make this change, disregard -f in the following and the examples. 
 
 ## Running PDBminer the first time.
 There are two ways of running PDBminer. Either by using and input file listing one or more proteins, or by using the command line
