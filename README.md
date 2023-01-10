@@ -4,6 +4,11 @@
 PDBminer is a snakemake pipeline that generates a ranked overview of the available structural models in the 
 Protein Data Bank and the most current version of the Alphafold2 model, if any.
 
+[Go to Installation](#-dependencies)
+[Go to Setup](#-setup)
+[Go to running the program](#-running-pdbminer-the-first-time)
+[Go to understanding the output](#-the-output)
+
 ## Dependencies
 
 It is recommended to create a virtual environment to run PDBminer. The environment can be installed 
@@ -46,7 +51,7 @@ When running PDBminer, you have to specify the location of the program using the
 You can change the default placement in the PDBminer script. The default is default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile" when you clone, which may not 
 fit your setup. If you choose to make this change, disregard -f in the following and the examples. 
 
-## Running PDBminer the first time.
+## Running PDBminer the first time
 There are two ways of running PDBminer. Either by using and input file listing one or more proteins, or by using the command line
 to find the available structures for a single protein. 
 In the directory examples are three examples and their commands in the do.sh file. Consider testing the installation and use
