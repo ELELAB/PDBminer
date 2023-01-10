@@ -8,7 +8,9 @@ Protein Data Bank and the most current version of the Alphafold2 model, if any.
 * [Go to Setup](#-setup)
 * [Go to running the program](#-running-pdbminer-the-first-time)
 * [Go to understanding the output](#-the-output)
+* [Go to how to plot the results](#-plotting)
 
+<a name="-dependencies"></a>
 ## Dependencies
 
 It is recommended to create a virtual environment to run PDBminer. The environment can be installed 
@@ -44,13 +46,14 @@ python3 -m pip --default-timeout=1000 install -r requirements.txt
 source PDBminer/bin/activate
 ```
 
-
+<a name="-setup"></a>
 ## Setup
 
 When running PDBminer, you have to specify the location of the program using the -f flag, however, if you wish to avoid this. 
 You can change the default placement in the PDBminer script. The default is default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile" when you clone, which may not 
 fit your setup. If you choose to make this change, disregard -f in the following and the examples. 
 
+<a name="-running-pdbminer-the-first-time"></a>
 ## Running PDBminer the first time
 There are two ways of running PDBminer. Either by using and input file listing one or more proteins, or by using the command line
 to find the available structures for a single protein. 
@@ -94,6 +97,7 @@ $ python PDBminer -g TP53 -u P04637 -m "P278L;R337C;L344P" -n 1 -f program/snake
 
 NOTICE: when isoform is not specified 1 is assumed.
 
+<a name="-the-output"></a>
 ## The Output
 A log.txt file is created for each run. 
 
@@ -144,6 +148,7 @@ See examples of the in- and  output of the example directories.
 
 For all columns ";" seperate data on the annotated chains and "NA" indicates that no relevant data is present.
 
+<a name="-plotting"></a>
 # Plotting 
 
 ## PDBminer2coverage
