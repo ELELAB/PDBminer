@@ -4,11 +4,11 @@
 PDBminer is a snakemake pipeline that generates a ranked overview of the available structural models in the 
 Protein Data Bank and the most current version of the Alphafold2 model, if any.
 
-* [Go to Installation](#-dependencies)
-* [Go to Setup](#-setup)
-* [Go to running the program](#-running-pdbminer-the-first-time)
-* [Go to understanding the output](#-the-output)
-* [Go to how to plot the results](#-plotting)
+* Installation
+* Setup
+* Running PDBminer
+* Understanding the Output
+* Plotting the Output
 
 <a name="-dependencies"></a>
 ## Dependencies
@@ -148,7 +148,7 @@ See examples of the in- and  output of the example directories.
 
 For all columns ";" seperate data on the annotated chains and "NA" indicates that no relevant data is present.
 
-<a name="-plotting"></a>
+<a name="plotting"></a>
 # Plotting 
 
 ## PDBminer2coverage
