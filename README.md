@@ -146,18 +146,21 @@ PDBminer2coverage is a plotting tool creating an overview of the protein sequenc
 PDBminer2coverage takes the results directory and input file as required input, per default these are input_file.csv and the current working directory/results. Hence, the PDBminer2coverage module can be run in the same place as PDBminer without any arguments.
 The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. If there are multiple clusters, these will be plotted separately. In cases where the protein sequence is longer than 500 amino acids, the plot will be split into multiple output files, termed "chunks". Additionally, it is possible to narrow down the plotting area with the flag -s --sequence. 
 
-PDBminer2coverage -s 1-20,50-95 
+```
+$ PDBminer2coverage -s 1-20,50-95 
+```
 
 Would, for example, only plot the sequence 1-20 and 50-95 in the same plot.  
 
 Additionally you can also set a limit on the x-axis, indicating how many positions you want plotted using -t. 
 
-PDBminer2coverage -t 50 
-
+```
+$ PDBminer2coverage -t 50 
+```
 would, for example only plot 50 amino acids per chunk. Default is 500. 
 
 Flags:
-
+```
 -r: choosing the results path if not default.
 -i: The input file.
 -u: uniprot id can be added if only one of the proteins in a multi protein run should be visualized.
@@ -166,11 +169,12 @@ Flags:
 -c: color coverage, the plot is white and the coverage of each structure is colored in. Default is grey, but any color can be used, e.g '#64b2b5'. 
 -m: mutation color, is the overlay color on the sites of mutation. It is blue per default but any color can be used, e.g '#183233'
 -d: color for mutations in the PDBfile, meaning the inherent mutations within the file. These can be colored different from the WT amino acids. Deafault is light grey.
-
+```
 All options, example:
 
-PDBminer2coverage -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -s 30-120 -t 100 -c '#64b2b5' -m '#183233' -d '#a3cacc'
-
+```
+$ PDBminer2coverage -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -s 30-120 -t 100 -c '#64b2b5' -m '#183233' -d '#a3cacc'
+```
 
 ## PDBminer2network
 PDBminer2network is a plotting tool creating an overview of the protein complexes within the protein data bank for the protein of interest.
@@ -180,12 +184,15 @@ on the content of the output file. From here each bound or fused protein is the 
 The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. If there are multiple clusters, 
 they will be plotted seperately.
 
-PDBminer2network -h
+```
+$ PDBminer2network -h
+```
 
 Would, for example, write out the help information.
 
 The plot can be adjusted using the following flags: 
 
+```
 -r: choosing the results path if not default. 
 -i: The input file. 
 -u: uniprot id can be added if only one of the proteins in a multi protein run should be visualized.
@@ -193,9 +200,11 @@ The plot can be adjusted using the following flags:
 -p: node color for proteins (fused and bound)
 -s: node color for structures (PDBid)
 -t: color for the nodes with "protein complex" and "fusion product".
-
+```
 The edges of the graph are black. Any color can be used e.g. '#183233’.
 
 All options, example:
 
-PDBminer2network -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -c '#64b2b5' -p '#183233' -s '#1fc6cc' -t '#a3cacc'
+```
+$ PDBminer2network -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -c '#64b2b5' -p '#183233' -s '#1fc6cc' -t '#a3cacc'
+```
