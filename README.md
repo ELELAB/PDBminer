@@ -6,10 +6,11 @@ Protein Data Bank and the most current version of the Alphafold2 model, if any.
 
 ## Dependencies
 
-It is recommended to create a virtual environment to run PDBminer. The environment can be created using 
-environment.yml as described below:
+It is recommended to create a virtual environment to run PDBminer. The environment can be installed 
+via conda using the environment.yml or via pip with requirements.txt.
 
-### First time:
+### Conda 
+#### First time:
 
 ```
 git clone https://github.com/ELELAB/PDBminer.git
@@ -17,11 +18,27 @@ conda env create -f environment.yml
 conda activate PDBminer
 ```
 
-### All subsequent times
+#### All subsequent times
 
 ```
 conda activate PDBminer
 ```
+
+### Pip
+#### First time:
+```
+git clone https://github.com/ELELAB/PDBminer.git
+python3 -m venv PDBminer
+source PDBminer/bin/activate
+python3 -m pip --default-timeout=1000 install -r requirements.txt
+```
+
+#### All subsequent times
+
+```
+source PDBminer/bin/activate
+```
+
 
 ## Setup
 
@@ -49,7 +66,6 @@ TP53      |  P04637 |         2       | P278L;R337C;L344P | 1
 MAT1A     |  Q00266 |         1       | P30N;W300H        | 1
 SSTR3     |  P05543 |         1       | T11S;C191S;R330L  | 1
 SAMD4A    |  Q9UPU9 |         3       | L10R;I80A         | 1
-
         
 ```
 The name of the input file should be specified in the commandline: 
