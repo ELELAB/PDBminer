@@ -63,10 +63,12 @@ def run_list(full_path):
     """
 
     full_path = str(full_path)
+
+    print(full_path)
     
     path = full_path.split("/results")[0]
     uniprot_id = full_path.split("/")[-2]
-
+    print(uniprot_id)
     os.chdir(f"{path}/results/{uniprot_id}")
 
     input_dataframe = pd.read_csv(f"{uniprot_id}_input.csv", index_col=0)

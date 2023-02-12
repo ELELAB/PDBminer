@@ -196,3 +196,4 @@ with open (f"{path}/log.txt", "w") as f:
     f.write(f"time: {finished-start}\n")
     f.write(f"before snakemake: {snake-start}\n")
     f.write("PDBminer has finished.\n")
+

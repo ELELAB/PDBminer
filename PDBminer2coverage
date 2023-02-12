@@ -304,7 +304,9 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
     print("    converting ranges on chains to binary values")
     for i in range(len(f)):
         a = f.iloc[i]
+        print(f"        {a.structure_id}")
         if len(a.chains) == 1:
+            print(f"        1 chain, {a.chains}")
             if a.structure_id.startswith('AF'):
                 a_range = get_ranges_AF(a.coverage, uniprot_numbering)
                 if type(a.mutations_in_pdb) == np.float64:
@@ -323,6 +325,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
                     index.append(a.structure_id)
                     ranges.append(a_range)
         else:
+            print(f"        multi chain, {a.chains}")
             chains = a.chains.split(";")
             coverage = a.coverage.split("];[")
             if type(a.mutations_in_pdb) == float:
@@ -331,11 +334,14 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
                 mutations = "NA"
             else:           
                 mutations = a.mutations_in_pdb.split(";")
+            
             for i in range(len(chains)):
                 a_range = get_ranges(coverage[i], uniprot_numbering)
                 if mutations == "NA":
                     a_range = a_range
-                elif len(mutations) == 1:                      
+                elif mutations[i] == "NA":
+                    a_range = a_range
+                elif len(mutations[i]) == 1:                      
                     a_range = get_mutations(mutations[0], a_range)
                 else:
                     a_range = get_mutations(mutations[i], a_range)
@@ -360,7 +366,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         print("    finding mutational positions")
         mutations = mutations.split(";")
         for i in range(len(mutations)):
-            mutations[i] = int(mutations[i][1:-1]) ##this to fix?
+            mutations[i] = int(mutations[i][1:-1])
         mutational_positions = np.unique(np.array(mutations))
         print("    assigning new values to mutational positions")
         UN = np.array(uniprot_numbering)
