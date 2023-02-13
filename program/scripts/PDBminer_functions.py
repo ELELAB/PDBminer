@@ -522,6 +522,11 @@ def get_AA_pos(chain_str, model):
     
     AA_pdb = ['-' if item == '' else item for item in AA_pdb]
     if len(list(set(AA_pdb))) != 1:
+        
+        while AA_pdb[0] == "X":
+            AA_pdb = AA_pdb[1:]
+            pos_pdb = pos_pdb[1:]
+        
         AA_pdb.reverse()
         pos_pdb.reverse()
         
@@ -531,6 +536,15 @@ def get_AA_pos(chain_str, model):
             
         AA_pdb.reverse()
         pos_pdb.reverse()
+        
+        AA_pdb = ['-' if item == 'X' else item for item in AA_pdb] 
+        
+        if '-' in AA_pdb and len(AA_pdb) < 5:
+            #arbitrary number, if that short, unlikely 
+            #to be a true fragment. 
+            AA_pdb = []
+            pos_pdb = []
+            return AA_pdb, pos_pdb 
     
     else: 
         AA_pdb = []
@@ -655,7 +669,7 @@ def get_coverage(df):
     ranges_covered = ranges_covered.replace("), (", ");(" )
     return ranges_covered
         
-def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, complex_nucleotide_details, uniprot_id):
+def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, complex_nucleotide_details, self_chains, uniprot_id):
     print("===========================================")
     print(pdb_id)
     print("===========================================")
@@ -702,6 +716,10 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
         return ['']
     
     #find all chains in the structure
+    
+    """
+    #old chainlist code, kept at testing. 
+
     chainlist = []
     
     #relevant_chains
@@ -729,8 +747,10 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
             for l in letter:
                 if l in chainlist:
                     chainlist.remove(l)
+   """
+    
    
-    for chain_str in chainlist:  
+    for chain_str in self_chains:  
         print(f"CHAIN: {chain_str}")
         chain_warning = [] 
         AA_pdb, pos_pdb = get_AA_pos(chain_str, model)
@@ -932,6 +952,7 @@ def align(combined_structure, path):
                                            path,
                                            combined_structure.complex_protein_details[i], 
                                            combined_structure.complex_nucleotide_details[i],
+                                           combined_structure.self_chains[i],
                                            combined_structure.uniprot_id[i])
 
             if alignment_info[0] != '':
@@ -980,10 +1001,11 @@ def get_complex_information(pdb_id, uniprot):
     output_array: A np.array contoning of 
                 1) protein_complex_list: binary  
                 2) protein_info; description of complex if any
-                3) nucleotide_complex_list: binary 
-                4) nuleotide_info: description of complex if any 
-                5) ligand_complex_list: binart 
-                6) ligand_info: description of complex if any. Include metal.
+                3) self_chain; a double check list of chains annotated as self
+                4) nucleotide_complex_list: binary 
+                5) nuleotide_info: description of complex if any 
+                6) ligand_complex_list: binart 
+                7) ligand_info: description of complex if any. Include metal.
 
     """    
     #finding protein complexes and their related uniprot_ids 
@@ -996,35 +1018,60 @@ def get_complex_information(pdb_id, uniprot):
     if response_text != {}:
     
         protein_segment_dictionary = response_text[pdb_id.lower()]
+        
+        self_chain = []
     
         if len(protein_segment_dictionary['UniProt']) <= 1:
             protein_complex_list = "NA"
             protein_info = "NA"    
             
-        else: 
-            info = []
-            fusion_test = []
-            for i in protein_segment_dictionary['UniProt']:
-                prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
-                info.append(prot_info)
-                
-            for item in enumerate(info):
-                fusion_test.append(item[1][-1])
-                if uniprot in item[1]:
-                    value = item[0]
+            #check that uniprot found the correct PDB:
+            if list(protein_segment_dictionary['UniProt'].keys())[0] != uniprot:
+                output_array = np.array(['NA', 'NA', 'NA', 'NA', 
+                                         'NA', 'NA', 'NA'], dtype=object)
+                return output_array
             
-            if len(set(fusion_test)) == 1:
-                protein_complex_list = 'fusion product'
-            elif len(fusion_test) > len(set(fusion_test)):
-                if fusion_test.count(fusion_test[value]) > 1:
-                    protein_complex_list = 'fusion product in protein complex'
+            else:               
+                #allow isoforms
+                for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
+                    self_chain.append(i['chain_id'])
+                self_chain = list(set(self_chain))
+                
+        else: 
+            if uniprot not in list(protein_segment_dictionary['UniProt'].keys()):
+                output_array = np.array(['NA', 'NA', 'NA', 'NA', 
+                                         'NA', 'NA', 'NA'], dtype=object)
+                return output_array
+
+            else:            
+                #allow isoforms
+                for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
+                    self_chain.append(i['chain_id'])
+                self_chain = list(set(self_chain))
+                
+                info = []
+                fusion_test = []
+                for i in protein_segment_dictionary['UniProt']:
+                    prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
+                    info.append(prot_info)
+                    
+                for item in enumerate(info):
+                    fusion_test.append(item[1][-1])
+                    if uniprot in item[1]:
+                        value = item[0]
+                
+                if len(set(fusion_test)) == 1:
+                    protein_complex_list = 'fusion product'
+                elif len(fusion_test) > len(set(fusion_test)):
+                    if fusion_test.count(fusion_test[value]) > 1:
+                        protein_complex_list = 'fusion product in protein complex'
+                    else:
+                        protein_complex_list = 'protein complex with fusion product'
                 else:
-                    protein_complex_list = 'protein complex with fusion product'
-            else:
-                protein_complex_list = 'protein complex'
-        
-            info = ';'.join(info)
-            protein_info = [info] 
+                    protein_complex_list = 'protein complex'
+            
+                info = ';'.join(info)
+                protein_info = [info] 
 
     else:
         protein_complex_list = "NA"
@@ -1077,7 +1124,7 @@ def get_complex_information(pdb_id, uniprot):
         ligand_complex_list = "NA"
         ligand_info = "NA"
             
-    output_array = np.array([protein_complex_list, protein_info, nucleotide_complex_list, 
+    output_array = np.array([protein_complex_list, protein_info, self_chain, nucleotide_complex_list, 
                              nucleotide_info, ligand_complex_list, ligand_info], dtype=object)
     
     return output_array
@@ -1102,7 +1149,7 @@ def collect_complex_info(structural_df):
     uniprot_id = structural_df['uniprot_id'][0]
     
     df = pd.DataFrame(columns=['structure_id','complex_protein',
-                           'complex_protein_details', 'complex_nucleotide',
+                           'complex_protein_details', 'self_chains', 'complex_nucleotide',
                            'complex_nucleotide_details','complex_ligand', 
                            'complex_ligand_details'])
 
@@ -1110,9 +1157,9 @@ def collect_complex_info(structural_df):
         
         if pdb.startswith("AF"):
             list_of_values = [pdb,'NA',
+                              'NA',['A'],
                               'NA','NA',
-                              'NA','NA',
-                              'NA']
+                              'NA','NA']
             
         else:
             complex_info = get_complex_information(pdb, uniprot_id)
@@ -1120,9 +1167,11 @@ def collect_complex_info(structural_df):
             list_of_values = [pdb, complex_info[0], 
                               complex_info[1], complex_info[2], 
                               complex_info[3], complex_info[4], 
-                              complex_info[5]]
+                              complex_info[5], complex_info[6]]
+            
+        if list_of_values[3] != 'NA':
         
-        df.loc[pdb] = np.array(list_of_values, dtype="object") 
+            df.loc[pdb] = np.array(list_of_values, dtype="object") 
     
     df_combined = pd.merge(structural_df, df, how='inner', on = 'structure_id')
     
@@ -1161,7 +1210,7 @@ def collect_complex_info(structural_df):
 def cleanup_all(structural_df):
     print("FUNCTION: cleanup_all(structural_df)")
 
-    structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions'])
+    structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions', 'self_chains'])
     
     for i in range(len(structural_df.mutations_in_pdb)):
         if set(structural_df.mutations_in_pdb[i].split(";")) == {'NA'}:
