@@ -56,6 +56,7 @@ from Bio import PDB
 #   structure including their metadata for further analysis. 
 
 def get_pdbs(uniprot_id):
+    print("FUNCTION: get_pdbs(uniprot_id)")
     """
     Function is taken from SLiMfast, documentation and comments there.
     Credit: Valentina Sora
@@ -78,7 +79,9 @@ def get_pdbs(uniprot_id):
 
     return pdbs
 
-def get_structure_metadata(pdb_id): 
+def get_structure_metadata(pdb_id):
+    print(f"FUNCTION: get_structure_metadata(pdb_id), {pdb_id}")
+    
     """
     Function that takes each pdb_id and retrive metadata from the PDBe.
     The metadata consist of desposition date to the PDB, the experimental
@@ -136,6 +139,7 @@ def get_structure_metadata(pdb_id):
     return deposition_date, experimental_method, resolution
 
 def get_alphafold_basics(uniprot_id):
+    print("FUNCTION: get_alphafold_basics(uniprot_id)")
     """
     Function that takes a uniprot id and retrieve data from the alphafold
     database, and prepare the basic information of that model in alignment 
@@ -173,6 +177,7 @@ def get_alphafold_basics(uniprot_id):
 
 
 def get_structure_df(uniprot_id): 
+    print("FUNCTION: get_structure_df(uniprot_id)")
     """
     This function takes a single uniprot ID and outputs a 
     dataframe containing a sorted list of PDB ids and their metadata. 
@@ -275,7 +280,8 @@ def get_structure_df(uniprot_id):
                                                             
         return structure_df 
 
-def find_structure_list(input_dataframe):    
+def find_structure_list(input_dataframe):  
+    print("FUNCTION: find_structure_list(input_dataframe)")
     """
     Takes the input file and the path where it is placed and outputs
     a directory with a csv file for each uniprot id input and a txt file 
@@ -336,6 +342,7 @@ def find_structure_list(input_dataframe):
 
 
 def combine_structure_dfs(found_structures, input_dataframe):
+    print("FUNCTION: combine_structure_dfs(found_structures, input_dataframe)")
     """
     This function takes the found structures and the input dataframe
     and combine these for continues computation. 
@@ -400,6 +407,7 @@ def combine_structure_dfs(found_structures, input_dataframe):
 #
 
 def to_ranges(iterable):
+    print("FUNCTION: to_ranges(iterable)")
     """
     Function to make each mutational group iterable, called to make a range
     interable.
@@ -417,6 +425,7 @@ def to_ranges(iterable):
         yield group[0][1], group[-1][1]
         
 def alignment(uniprot_sequence, AA_pdb):
+    print("FUNCTION: alignment(uniprot_sequence, AA_pdb)")
     #1) Local alignment: Aim to find the area of the uniprot
     #   sequence the PDB covers.
     #2) Match (identical amino acids) =  1 point
@@ -443,6 +452,7 @@ def alignment(uniprot_sequence, AA_pdb):
     return uniprot_aligned, pdb_aligned
 
 def numerical_alignment(aligned, positions):
+    print("FUNCTION: numerical_alignment(aligned, positions)")
     pos_list = np.array([])             
     for i in range(len(aligned)): 
         if list(aligned)[i] == '-': 
@@ -457,6 +467,7 @@ def numerical_alignment(aligned, positions):
     return pos_list
 
 def get_uniprot_sequence(uniprot_id, isoform):
+    print("FUNCTION: get_uniprot_sequence(uniprot_id, isoform)")
     uniprot_Url="https://rest.uniprot.org/uniprotkb/"
     
     #Alignment to correct isoform:
@@ -485,6 +496,8 @@ def get_uniprot_sequence(uniprot_id, isoform):
     return uniprot_sequence, uniprot_numbering
 
 def download_pdb(pdb_id):
+    print("FUNCTION: download_pdb(pdb_id)")
+    
     pdb = PDBList()
     pdb.retrieve_pdb_file(pdb_id, file_format="pdb", pdir='structure')
     pdbfile = (f"structure/pdb{pdb_id.lower()}.ent")
@@ -500,6 +513,7 @@ def download_pdb(pdb_id):
 
 
 def get_AA_pos(chain_str, model):
+    print("FUNCTION: get_AA_pos(chain_str, model)")
     chain = model[chain_str]
     pos_pdb = []
     AA_pdb = []
@@ -508,6 +522,11 @@ def get_AA_pos(chain_str, model):
     
     AA_pdb = ['-' if item == '' else item for item in AA_pdb]
     if len(list(set(AA_pdb))) != 1:
+        
+        while AA_pdb[0] == "X":
+            AA_pdb = AA_pdb[1:]
+            pos_pdb = pos_pdb[1:]
+        
         AA_pdb.reverse()
         pos_pdb.reverse()
         
@@ -517,6 +536,20 @@ def get_AA_pos(chain_str, model):
             
         AA_pdb.reverse()
         pos_pdb.reverse()
+        
+        AA_pdb = ['-' if item == 'X' else item for item in AA_pdb] 
+        
+        if '-' in AA_pdb and len(AA_pdb) < 5:
+            #arbitrary number, if that short, unlikely 
+            #to be a true fragment. 
+            AA_pdb = []
+            pos_pdb = []
+            return AA_pdb, pos_pdb 
+    
+    else: 
+        AA_pdb = []
+        pos_pdb = []
+        return AA_pdb, pos_pdb 
 
     if sorted(pos_pdb) == list(range(min(pos_pdb), max(pos_pdb)+1)):
         return AA_pdb, pos_pdb 
@@ -531,6 +564,7 @@ def get_AA_pos(chain_str, model):
         return AA_pdb, pos_pdb 
     
 def remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str):
+    print("FUNCTION: remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str)")
     missing_AA = []
     missing_pos = []
     
@@ -561,6 +595,7 @@ def remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str):
     return AA_pdb, warning
     
 def get_mutations(mut_pos, df):
+    print("FUNCTION: get_mutations(mut_pos, df)")
     muts = []
     for mutational_positon in list(set(mut_pos)): 
         if mutational_positon in list(df.uniprot_pos): 
@@ -572,6 +607,7 @@ def get_mutations(mut_pos, df):
     return muts
 
 def get_all_discrepancies(df):
+    print("FUNCTION: get_all_discrepancies(df)")
     #creating empty lists
     mutations_in_all = []
     mut_hotspot = []
@@ -627,12 +663,18 @@ def get_all_discrepancies(df):
     return df, mutations_in_all, warnings
 
 def get_coverage(df):
+    print("FUNCTION: get_coverage(df)")
     ranges_covered = list(to_ranges(list(df.uniprot_pos)))
     ranges_covered = str(ranges_covered)
     ranges_covered = ranges_covered.replace("), (", ");(" )
     return ranges_covered
         
-def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, uniprot_id):
+def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, complex_nucleotide_details, self_chains, uniprot_id):
+    print("===========================================")
+    print(pdb_id)
+    print("===========================================")
+    
+    print("FUNCTION: align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, uniprot_id)")
     """
     ...
 
@@ -674,6 +716,10 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
         return ['']
     
     #find all chains in the structure
+    
+    """
+    #old chainlist code, kept at testing. 
+
     chainlist = []
     
     #relevant_chains
@@ -682,15 +728,36 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
         for chain in cp:
             if uniprot_id in chain:
                 chainlist.append(chain[-1].upper())
+
     else: 
         for i in enumerate(structure.header['compound']): 
             segment_chains = structure.header['compound'][i[1]]['chain'].upper().split(", ") 
             for chain in segment_chains:
                 chainlist.append(chain)
+    
+    if complex_nucleotide_details != "NA":
+        if type(complex_nucleotide_details) == list:
+            cp = complex_nucleotide_details[0].split(";")
+        else: 
+            cp = complex_nucleotide_details.split(";")
+        for chain in cp:
+            letter = chain.split(", chain ")[1]
+            if len(letter) > 1:
+                letter.split(",")
+            for l in letter:
+                if l in chainlist:
+                    chainlist.remove(l)
+   """
+    
    
-    for chain_str in chainlist:  
+    for chain_str in self_chains:  
+        print(f"CHAIN: {chain_str}")
         chain_warning = [] 
         AA_pdb, pos_pdb = get_AA_pos(chain_str, model)
+        if AA_pdb == []:
+            os.chdir(path)
+            output_array = np.array(['', '', '', '', ''], dtype=object)
+            return output_array
 
         if structure.header['has_missing_residues'] == True:
             AA_pdb, warning = remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str)
@@ -753,6 +820,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
 
 
 def align_alphafold(alphafold_id, mutation_positions):
+    print("FUNCTION: align_alphafold(alphafold_id, mutation_positions)")
     """
     This function takes an alphafold ID and the mutational positions. 
     The aim is to find the high quality areas of the protein, and set these in 
@@ -833,6 +901,7 @@ def align_alphafold(alphafold_id, mutation_positions):
     return coverage, AA_in_PDB
 
 def align(combined_structure, path):
+    print("FUNCTION: align(combined_structure, path)")
     """
     This functions takes the pandas dataframe containing all the structures, 
     their metadata and information regarding mutations of interest, import 
@@ -855,6 +924,8 @@ def align(combined_structure, path):
     combined_structure["AA_in_PDB"] = " "
     combined_structure["mutations_in_pdb"] = " "
     combined_structure["warnings"] = " "
+    
+    uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id[0], int(combined_structure['uniprot_isoform'][0]))     
 
     for i in range(len(combined_structure)):
         
@@ -873,14 +944,15 @@ def align(combined_structure, path):
             combined_structure.at[i, 'warnings'] = "NA"
             
         else:    
-            uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id[i], int(combined_structure['uniprot_isoform'][i]))     
-            
+            #uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id[i], int(combined_structure['uniprot_isoform'][i]))     
             alignment_info = align_uniprot_pdb(combined_structure.structure_id[i],
                                            uniprot_sequence, 
                                            uniprot_numbering,
                                            combined_structure['mutation_positions'][i],
                                            path,
                                            combined_structure.complex_protein_details[i], 
+                                           combined_structure.complex_nucleotide_details[i],
+                                           combined_structure.self_chains[i],
                                            combined_structure.uniprot_id[i])
 
             if alignment_info[0] != '':
@@ -914,6 +986,7 @@ def align(combined_structure, path):
 #
 
 def get_complex_information(pdb_id, uniprot):
+    print(f"FUNCTION: get_complex_information(pdb_id, uniprot), {pdb_id}, {uniprot}")
     """
     This function takes a PDB id and analyzes its content to estabilish if 
     there is any other elements within the file such as a ligand. 
@@ -928,10 +1001,11 @@ def get_complex_information(pdb_id, uniprot):
     output_array: A np.array contoning of 
                 1) protein_complex_list: binary  
                 2) protein_info; description of complex if any
-                3) nucleotide_complex_list: binary 
-                4) nuleotide_info: description of complex if any 
-                5) ligand_complex_list: binart 
-                6) ligand_info: description of complex if any. Include metal.
+                3) self_chain; a double check list of chains annotated as self
+                4) nucleotide_complex_list: binary 
+                5) nuleotide_info: description of complex if any 
+                6) ligand_complex_list: binart 
+                7) ligand_info: description of complex if any. Include metal.
 
     """    
     #finding protein complexes and their related uniprot_ids 
@@ -944,35 +1018,60 @@ def get_complex_information(pdb_id, uniprot):
     if response_text != {}:
     
         protein_segment_dictionary = response_text[pdb_id.lower()]
+        
+        self_chain = []
     
         if len(protein_segment_dictionary['UniProt']) <= 1:
             protein_complex_list = "NA"
             protein_info = "NA"    
             
-        else: 
-            info = []
-            fusion_test = []
-            for i in protein_segment_dictionary['UniProt']:
-                prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
-                info.append(prot_info)
-                
-            for item in enumerate(info):
-                fusion_test.append(item[1][-1])
-                if uniprot in item[1]:
-                    value = item[0]
+            #check that uniprot found the correct PDB:
+            if list(protein_segment_dictionary['UniProt'].keys())[0] != uniprot:
+                output_array = np.array(['NA', 'NA', 'NA', 'NA', 
+                                         'NA', 'NA', 'NA'], dtype=object)
+                return output_array
             
-            if len(set(fusion_test)) == 1:
-                protein_complex_list = 'fusion product'
-            elif len(fusion_test) > len(set(fusion_test)):
-                if fusion_test.count(fusion_test[value]) > 1:
-                    protein_complex_list = 'fusion product in protein complex'
+            else:               
+                #allow isoforms
+                for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
+                    self_chain.append(i['chain_id'])
+                self_chain = list(set(self_chain))
+                
+        else: 
+            if uniprot not in list(protein_segment_dictionary['UniProt'].keys()):
+                output_array = np.array(['NA', 'NA', 'NA', 'NA', 
+                                         'NA', 'NA', 'NA'], dtype=object)
+                return output_array
+
+            else:            
+                #allow isoforms
+                for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
+                    self_chain.append(i['chain_id'])
+                self_chain = list(set(self_chain))
+                
+                info = []
+                fusion_test = []
+                for i in protein_segment_dictionary['UniProt']:
+                    prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
+                    info.append(prot_info)
+                    
+                for item in enumerate(info):
+                    fusion_test.append(item[1][-1])
+                    if uniprot in item[1]:
+                        value = item[0]
+                
+                if len(set(fusion_test)) == 1:
+                    protein_complex_list = 'fusion product'
+                elif len(fusion_test) > len(set(fusion_test)):
+                    if fusion_test.count(fusion_test[value]) > 1:
+                        protein_complex_list = 'fusion product in protein complex'
+                    else:
+                        protein_complex_list = 'protein complex with fusion product'
                 else:
-                    protein_complex_list = 'protein complex with fusion product'
-            else:
-                protein_complex_list = 'protein complex'
-        
-            info = ';'.join(info)
-            protein_info = [info] 
+                    protein_complex_list = 'protein complex'
+            
+                info = ';'.join(info)
+                protein_info = [info] 
 
     else:
         protein_complex_list = "NA"
@@ -1025,12 +1124,13 @@ def get_complex_information(pdb_id, uniprot):
         ligand_complex_list = "NA"
         ligand_info = "NA"
             
-    output_array = np.array([protein_complex_list, protein_info, nucleotide_complex_list, 
+    output_array = np.array([protein_complex_list, protein_info, self_chain, nucleotide_complex_list, 
                              nucleotide_info, ligand_complex_list, ligand_info], dtype=object)
     
     return output_array
 
 def collect_complex_info(structural_df):
+    print("FUNCTION: collect_complex_info(structural_df)")
     """
     A function that parses all pdbids though the get_complex_information
     function and capture and merge with the input file. 
@@ -1049,7 +1149,7 @@ def collect_complex_info(structural_df):
     uniprot_id = structural_df['uniprot_id'][0]
     
     df = pd.DataFrame(columns=['structure_id','complex_protein',
-                           'complex_protein_details', 'complex_nucleotide',
+                           'complex_protein_details', 'self_chains', 'complex_nucleotide',
                            'complex_nucleotide_details','complex_ligand', 
                            'complex_ligand_details'])
 
@@ -1057,9 +1157,9 @@ def collect_complex_info(structural_df):
         
         if pdb.startswith("AF"):
             list_of_values = [pdb,'NA',
+                              'NA',['A'],
                               'NA','NA',
-                              'NA','NA',
-                              'NA']
+                              'NA','NA']
             
         else:
             complex_info = get_complex_information(pdb, uniprot_id)
@@ -1067,9 +1167,11 @@ def collect_complex_info(structural_df):
             list_of_values = [pdb, complex_info[0], 
                               complex_info[1], complex_info[2], 
                               complex_info[3], complex_info[4], 
-                              complex_info[5]]
+                              complex_info[5], complex_info[6]]
+            
+        if list_of_values[3] != 'NA':
         
-        df.loc[pdb] = np.array(list_of_values, dtype="object") 
+            df.loc[pdb] = np.array(list_of_values, dtype="object") 
     
     df_combined = pd.merge(structural_df, df, how='inner', on = 'structure_id')
     
@@ -1106,8 +1208,9 @@ def collect_complex_info(structural_df):
 #   become obsolete in time, when prior functions are improved. 
 
 def cleanup_all(structural_df):
+    print("FUNCTION: cleanup_all(structural_df)")
 
-    structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions'])
+    structural_df = structural_df.drop(columns=['AA_in_PDB', 'mutation_positions', 'self_chains'])
     
     for i in range(len(structural_df.mutations_in_pdb)):
         if set(structural_df.mutations_in_pdb[i].split(";")) == {'NA'}:
@@ -1122,6 +1225,7 @@ def cleanup_all(structural_df):
     return structural_df
 
 def filter_all(structural_df, input_dataframe):
+    print("FUNCTION: filter_all(structural_df, input_dataframe)")
     """
     This function cleans up sloppy coding from earlier in the pipeline
     which is needed for further investigation by removing structures that 
