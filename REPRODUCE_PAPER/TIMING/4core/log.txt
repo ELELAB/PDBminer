@@ -1,0 +1,8 @@
+PDBminer is starting
+input file mode is choosen and input file has been identified.
+APIs are checked
+   APIs controlled and accepted
+Pipeline is starting
+time: 0:08:29.736099
+before snakemake: 0:00:00.751226
+PDBminer has finished.

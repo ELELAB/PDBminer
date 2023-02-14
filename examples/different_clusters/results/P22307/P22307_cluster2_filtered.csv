@@ -1,4 +1,4 @@
-structure_rank,hugo_name,uniprot_id,uniprot_isoform,mutations,cluster_id,structure_id,deposition_date,experimental_method,resolution,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details,chains,coverage,AA_in_PDB,mutations_in_pdb,warnings
-0,SCP2,P22307,1,A500M;D490T,2,AF-P22307-F1-model_v4,2022-06-01,Predicted,NA,NA,NA,NA,NA,NA,NA,A,"[(10, 412);(430, 539)]","A500A,D490D",NA,NA
-1,SCP2,P22307,1,A500M;D490T,2,2C0L,2005-09-05,X-RAY DIFFRACTION,2.3,protein complex,"['PEX5_HUMAN, P50542, chain_A;SCP2_HUMAN, P22307, chain_B']",NA,NA,NA,NA,B,"[(426, 547)]","['D490D', 'A500A']",NA,NA
-2,SCP2,P22307,1,A500M;D490T,2,1QND,1999-10-14,SOLUTION NMR,NA,NA,NA,NA,NA,NA,NA,A,"[(425, 547)]","['D490D', 'A500A']",NA,
+structure_rank,hugo_name,uniprot_id,uniprot_isoform,mutations,cluster_id,structure_id,deposition_date,experimental_method,resolution,complex_protein,complex_protein_details,self_chains,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details,chains,coverage,AA_in_PDB,mutations_in_pdb,warnings
+0,SCP2,P22307,1,A500M;D490T,2,AF-P22307-F1-model_v4,2022-06-01,Predicted,NA,NA,NA,['A'],NA,NA,NA,NA,A,"[(10, 412);(430, 539)]","A500A,D490D",NA,NA
+1,SCP2,P22307,1,A500M;D490T,2,2C0L,2005-09-05,X-RAY DIFFRACTION,2.3,protein complex,"['PEX5_HUMAN, P50542, chain_A;SCP2_HUMAN, P22307, chain_B']",['B'],NA,NA,NA,NA,B,"[(426, 547)]","['D490D', 'A500A']",NA,NA
+2,SCP2,P22307,1,A500M;D490T,2,1QND,1999-10-14,SOLUTION NMR,NA,NA,NA,['A'],NA,NA,NA,NA,A,"[(425, 547)]","['D490D', 'A500A']",NA,
