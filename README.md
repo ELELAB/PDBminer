@@ -1,8 +1,15 @@
 # PDBminer
 
+Repository associated to the Preprint:
+```
+PDBminer to Find and Annotate Protein Structures for Computational Analysis
+Kristine Degn, Ludovica Beltrame, Matteo Tiberti, Elena Papaleo
+bioRxiv 2023.05.06.539447; doi: https://doi.org/10.1101/2023.05.06.539447
+```
+
 ## Introduction to the Program 
 PDBminer is a snakemake pipeline that generates a ranked overview of the available structural models in the 
-Protein Data Bank and the most current version of the Alphafold2 model, if any.
+Protein Data Bank and the most current version of the AlphaFold2 model, if any.
 
 * Installation
 * Setup
@@ -46,16 +53,15 @@ python3 -m pip --default-timeout=1000 install -r requirements.txt
 source PDBminer/bin/activate
 ```
 
-<a name="-setup"></a>
 ## Setup
 
-When running PDBminer, you have to specify the location of the program using the -f flag, however, if you wish to avoid this. 
-You can change the default placement in the PDBminer script. The default is default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile" when you clone, which may not 
+When running PDBminer, you must specify the location of the program using the -f flag, however, if you wish to avoid this 
+you can change the default placement in the PDBminer script. 
+The default is default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile" when you clone, which may not 
 fit your setup. If you choose to make this change, disregard -f in the following and the examples. 
 
-<a name="-running-pdbminer-the-first-time"></a>
 ## Running PDBminer the first time
-There are two ways of running PDBminer. Either by using and input file listing one or more proteins, or by using the command line
+There are two ways of running PDBminer. Either by using and input file, or by using the command line
 to find the available structures for a single protein. 
 In the directory examples are three examples and their commands in the do.sh file. Consider testing the installation and use
 by running one or more of these. Notice that the -f flag is used in the do.sh files. 
@@ -70,34 +76,33 @@ Example of input_file.csv:
 ```
 hugo_name | uniprot | uniprot_isoform | mutations         | cluster_id
 -----------------------------------------------------------------------
-TP53      |  P04637 |         2       | P278L;R337C;L344P | 1
 MAT1A     |  Q00266 |         1       | P30N;W300H        | 1
 SSTR3     |  P05543 |         1       | T11S;C191S;R330L  | 1
 SAMD4A    |  Q9UPU9 |         3       | L10R;I80A         | 1
+TP53      |  P04637 |         2       | P278L;R337C;L344P | 1
         
 ```
-The name of the input file should be specified in the commandline: 
+The name of the input file should be specified in the command line: 
 
 ### Running the Program with an input file
 
 ```
 $ python PDBminer -i [input file name] -n [cores]
 ```
-### Using the commandline directly
+### Using the command line directly
 
 When PDBminer is run on only a single protein it may sometimes be beneficial to run it directly in the 
 commandline. To do so, a input file does not need to be constructured and the content can be specified 
-with flags. Agian is the hugo_name and uniprot options mandatory while the rest is optional. 
+with flags. Again is the hugo_name and uniprot options mandatory while the rest is optional. 
 
 ```
 $ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores] -f [path to snakefile]
 
-$ python PDBminer -g TP53 -u P04637 -m "P278L;R337C;L344P" -n 1 -f program/snakefile
+$ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1 -f program/snakefile
 ``` 
 
 NOTICE: when isoform is not specified 1 is assumed.
 
-<a name="-the-output"></a>
 ## The Output
 A log.txt file is created for each run. 
 
@@ -110,7 +115,7 @@ After a successful run, this directory can contain the following:
 However, after the advent of alphafold, this is not a very likely output. It is more likely to have 
 a file called {uniprot_id}_all.csv:
 
-* {unipot_id}_all.csv, An output file with all PDBs and alphafold structure associated with the uniprot_id regardless of mutational coverage.
+* {unipot_id}_all.csv, An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
 
 If mutations are included in the input, a filtered version of all will also be available if the mutations
 are covered by any structure.
@@ -148,13 +153,18 @@ See examples of the in- and  output of the example directories.
 
 For all columns ";" seperate data on the annotated chains and "NA" indicates that no relevant data is present.
 
-<a name="plotting"></a>
 # Plotting 
 
 ## PDBminer2coverage
-PDBminer2coverage is a plotting tool creating an overview of the protein sequence on the x-axis and the different models covering the sequence on the y-axis. The area the model covers is colored grey. If any positions are mutated, the position will be colored in with a transparent blue hue across all entries on the y-axis. 
-PDBminer2coverage takes the results directory and input file as required input, per default these are input_file.csv and the current working directory/results. Hence, the PDBminer2coverage module can be run in the same place as PDBminer without any arguments.
-The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. If there are multiple clusters, these will be plotted separately. In cases where the protein sequence is longer than 500 amino acids, the plot will be split into multiple output files, termed "chunks". Additionally, it is possible to narrow down the plotting area with the flag -s --sequence. 
+PDBminer2coverage is a plotting tool creating an overview of the protein sequence on the x-axis and the different models 
+covering the sequence on the y-axis. The area the model covers is colored grey. If any positions are mutated, the position 
+will be colored in with a transparent blue hue across all entries on the y-axis. 
+PDBminer2coverage takes the results directory and input file as required input, per default these are input_file.csv and 
+the current working directory/results. Hence, the PDBminer2coverage module can be run in the same place as PDBminer without any arguments.
+The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. 
+If there are multiple clusters, these will be plotted separately. In cases where the protein sequence is longer than 500 amino acids, 
+the plot will be split into multiple output files, termed "chunks". Additionally, it is possible to narrow down the 
+plotting area with the flag -s --sequence. 
 
 ```
 $ PDBminer2coverage -s 1-20,50-95 
@@ -178,7 +188,7 @@ Flags:
 -t: threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad. 
 -c: color coverage, the plot is white and the coverage of each structure is colored in. Default is grey, but any color can be used, e.g '#64b2b5'. 
 -m: mutation color, is the overlay color on the sites of mutation. It is blue per default but any color can be used, e.g '#183233'
--d: color for mutations in the PDBfile, meaning the inherent mutations within the file. These can be colored different from the WT amino acids. Deafault is light grey.
+-d: color for mutations in the PDBfile, meaning the inherent mutations within the file. These can be colored different from the WT amino acids. fault is light grey.
 ```
 All options, example:
 
