@@ -53,7 +53,6 @@ python3 -m pip --default-timeout=1000 install -r requirements.txt
 source PDBminer/bin/activate
 ```
 
-<a name="-setup"></a>
 ## Setup
 
 When running PDBminer, you must specify the location of the program using the -f flag, however, if you wish to avoid this 
@@ -77,10 +76,10 @@ Example of input_file.csv:
 ```
 hugo_name | uniprot | uniprot_isoform | mutations         | cluster_id
 -----------------------------------------------------------------------
-TP53      |  P04637 |         2       | P278L;R337C;L344P | 1
 MAT1A     |  Q00266 |         1       | P30N;W300H        | 1
 SSTR3     |  P05543 |         1       | T11S;C191S;R330L  | 1
 SAMD4A    |  Q9UPU9 |         3       | L10R;I80A         | 1
+TP53      |  P04637 |         2       | P278L;R337C;L344P | 1
         
 ```
 The name of the input file should be specified in the command line: 
@@ -99,12 +98,11 @@ with flags. Again is the hugo_name and uniprot options mandatory while the rest 
 ```
 $ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores] -f [path to snakefile]
 
-$ python PDBminer -g TP53 -u P04637 -m "P278L;R337C;L344P" -n 1 -f program/snakefile
+$ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1 -f program/snakefile
 ``` 
 
 NOTICE: when isoform is not specified 1 is assumed.
 
-<a name="-the-output"></a>
 ## The Output
 A log.txt file is created for each run. 
 
@@ -155,7 +153,6 @@ See examples of the in- and  output of the example directories.
 
 For all columns ";" seperate data on the annotated chains and "NA" indicates that no relevant data is present.
 
-<a name="plotting"></a>
 # Plotting 
 
 ## PDBminer2coverage
