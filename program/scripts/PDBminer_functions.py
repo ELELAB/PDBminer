@@ -517,8 +517,15 @@ def get_AA_pos(chain_str, model):
     chain = model[chain_str]
     pos_pdb = []
     AA_pdb = []
+    n = 0
     for i, residue in enumerate(chain.get_residues()):
-        AA_pdb.append(seq1(residue.resname)), pos_pdb.append(residue.id[1])
+        AA_pdb.append(seq1(residue.resname)) 
+        if residue.id[2] == ' ':
+            pos_pdb.append(residue.id[1]+n)
+        else:
+            n = n+1
+            pos_pdb.append(residue.id[1]+n)        
+        #pos_pdb.append(residue.id[1])
     
     AA_pdb = ['-' if item == '' else item for item in AA_pdb]
     if len(list(set(AA_pdb))) != 1:
@@ -545,6 +552,11 @@ def get_AA_pos(chain_str, model):
             AA_pdb = []
             pos_pdb = []
             return AA_pdb, pos_pdb 
+        
+        d = pd.DataFrame({'pos':pos_pdb, 'AA': AA_pdb})
+        d = d.drop_duplicates(keep="first")
+        AA_pdb = list(d.AA)
+        pos_pdb = list(d.pos)
     
     else: 
         AA_pdb = []
@@ -554,13 +566,20 @@ def get_AA_pos(chain_str, model):
     if sorted(pos_pdb) == list(range(min(pos_pdb), max(pos_pdb)+1)):
         return AA_pdb, pos_pdb 
     
-    else: 
-        while sorted(pos_pdb) != list(range(min(pos_pdb), max(pos_pdb)+1)):
-            for i in range(len(pos_pdb)-1):
-                if pos_pdb[i]+1 != pos_pdb[i+1]:
-                    pos_pdb.insert(i+1, pos_pdb[i]+1)
-                    AA_pdb.insert(i+1, "-")
-    
+
+    elif len(set(pos_pdb)) != len(pos_pdb): #numbers are used multiple times
+        #in a situation where this is the case, such as 1KMC the model
+        #is not a good representative
+        print("ALIGNMENT SKIPED: PDBfile contains multiple assignments of amino acids to the same residue number")
+        AA_pdb = []
+        pos_pdb = []
+        return AA_pdb, pos_pdb 
+        
+    else:
+        for i in range(len(pos_pdb)-1):
+            if pos_pdb[i]+1 != pos_pdb[i+1]:
+                pos_pdb.insert(i+1, pos_pdb[i]+1)
+                AA_pdb.insert(i+1, "-")
         return AA_pdb, pos_pdb 
     
 def remove_missing_residues(structure, pos_pdb, AA_pdb, chain_str):
@@ -674,7 +693,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     print(pdb_id)
     print("===========================================")
     
-    print("FUNCTION: align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, uniprot_id)")
+    print("FUNCTION: align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, complex_protein_details, complex_nucleotide_details, self_chains, uniprot_id)")
     """
     ...
 
@@ -715,41 +734,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     if model == 0: 
         return ['']
     
-    #find all chains in the structure
-    
-    """
-    #old chainlist code, kept at testing. 
-
-    chainlist = []
-    
-    #relevant_chains
-    if complex_protein_details != "NA":
-        cp = complex_protein_details[0].split(";")
-        for chain in cp:
-            if uniprot_id in chain:
-                chainlist.append(chain[-1].upper())
-
-    else: 
-        for i in enumerate(structure.header['compound']): 
-            segment_chains = structure.header['compound'][i[1]]['chain'].upper().split(", ") 
-            for chain in segment_chains:
-                chainlist.append(chain)
-    
-    if complex_nucleotide_details != "NA":
-        if type(complex_nucleotide_details) == list:
-            cp = complex_nucleotide_details[0].split(";")
-        else: 
-            cp = complex_nucleotide_details.split(";")
-        for chain in cp:
-            letter = chain.split(", chain ")[1]
-            if len(letter) > 1:
-                letter.split(",")
-            for l in letter:
-                if l in chainlist:
-                    chainlist.remove(l)
-   """
-    
-   
+    #find all chains in the structure   
     for chain_str in self_chains:  
         print(f"CHAIN: {chain_str}")
         chain_warning = [] 
