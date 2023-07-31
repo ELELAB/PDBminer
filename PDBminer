@@ -98,25 +98,42 @@ def check_input_file(df):
     df = df.fillna("N/A")
 
     problems = []
+    hugo_name_list = []
     
-    for i in range(len(df)):
-        if type(df.hugo_name[i]) != str:
-            problems.append(f"there is a problem with the input on the line of {df.loc[i]['hugo_name']}")
+    for i in range(len(df)):    
         if type(df.uniprot[i]) != str:
-            problems.append(f"there is a problem with the uniprot input on the line of {df.loc[i]['hugo_name']}")
+            problems.append(f"there is a problem with the uniprot input on the line of {df.loc[i]['uniprot']}")
         
+        if ('hugo_name' in df.columns) == False:
+            uniprot_url = f"https://www.uniprot.org/uniprot/{df.uniprot[i]}.txt"
+            response = requests.get(uniprot_url.format(df.uniprot[i]))
+            for line in response.text.split("\n"):
+                if line.startswith("GN   Name="):
+                    hugo_name_list.append(line.split(";")[0].split("=")[1].split(" ")[0])   
+                    
+        else:
+            if df.hugo_name[i] == "N/A":
+                uniprot_url = f"https://www.uniprot.org/uniprot/{df.uniprot[i]}.txt"
+                response = requests.get(uniprot_url.format(df.uniprot[i]))
+                for line in response.text.split("\n"):
+                    if line.startswith("GN   Name="):
+                        df.hugo_name[i] = line.split(";")[0].split("=")[1].split(" ")[0]    
+    
+            if type(df.hugo_name[i]) != str:
+                problems.append(f"there is a problem with the input on the line of {df.loc[i]['uniprot']}")
+                    
         if ('uniprot_isoform' in df.columns) == True:
             try:
                 int(df.uniprot_isoform[i])
             except ValueError:
-                problems.append(f"there is a problem with the isoform input on the line of {df.loc[i]['hugo_name']}")
+                problems.append(f"there is a problem with the isoform input on the line of {df.loc[i]['uniprot']}")
         else:
             uniprot_isoform = [1] * len(df) 
             df['uniprot_isoform'] = uniprot_isoform
         
         if ('mutations' in df.columns) == True:
             if type(df.mutations[i]) != str:
-                problems.append(f"there is a problem with the mutation input on the line of {df.loc[i]['hugo_name']}")
+                problems.append(f"there is a problem with the mutation input on the line of {df.loc[i]['uniprot']}")
         else:
             mutations = ['N/A'] * len(df)
             df['mutations'] = mutations
@@ -131,6 +148,9 @@ def check_input_file(df):
         else: 
             cluster_id = [999] * len(df)
             df['cluster_id'] = cluster_id
+    
+    if len(hugo_name_list) == len(df):
+        df.insert(0, 'hugo_name', hugo_name_list)    
     
     return df, problems
 
@@ -154,21 +174,34 @@ with open (f"{path}/log.txt", "w") as f:
         else:
             f.write("input file is correctly formatted\n")
 
-    elif args.hugo_name and args.uniprot_id:
-        hugo_name = [args.hugo_name]
+    elif args.uniprot_id:
         uniprot_id = [args.uniprot_id]
+        if args.hugo_name:
+            hugo_name = [args.hugo_name]
+        else:
+            uniprot_url = f"https://www.uniprot.org/uniprot/{args.uniprot_id}.txt"
+            response = requests.get(uniprot_url.format(uniprot_id))
+            for line in response.text.split("\n"):
+                if line.startswith("GN   Name="):
+                    hugo_name = line.split(";")[0].split("=")[1].split(" ")[0]
+                    hugo_name = [hugo_name]        
+        
         df = pd.DataFrame({'hugo_name':hugo_name,'uniprot':uniprot_id})
+        
         if args.uniprot_isoform:
             isoform = [args.uniprot_isoform]
             df['uniprot_isoform'] = isoform
         else: df['uniprot_isoform'] = [1]
+        
         if args.mutations:
             mutations = [args.mutations]
             df['mutations'] = mutations
         else: df['mutations'] = ["N/A"]
+        
         if args.cluster_id:
             cluster = [args.cluster_id]
             df['cluster_id'] = cluster
+        
         else: df['cluster_id'] = [999]
         df.to_csv(f'{path}/input_file.csv')
         input_file = 'input_file.csv'
