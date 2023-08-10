@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "0": {
+      "type": "object",
+      "properties": {
+        "hugo_name": {
+          "type": "string"
+        },
+        "uniprot_id": {
+          "type": "string"
+        },
+        "uniprot_isoform": {
+          "type": "integer"
+        },
+        "structure_id": {
+          "type": "string"
+        },
+        "deposition_date": {
+          "type": "string"
+        },
+        "experimental_method": {
+          "type": "string"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "complex_protein": {
+          "type": "string"
+        },
+        "complex_protein_details": {
+          "type": "string"
+        },
+        "complex_nucleotide": {
+          "type": "string"
+        },
+        "complex_nucleotide_details": {
+          "type": "string"
+        },
+        "complex_ligand": {
+          "type": "string"
+        },
+        "complex_ligand_details": {
+          "type": "string"
+        },
+        "chains": {
+          "type": "string"
+        },
+        "coverage": {
+          "type": "string"
+        },
+        "mutations_in_pdb": {
+          "type": "string"
+        },
+        "warnings": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "hugo_name",
+        "uniprot_id",
+        "uniprot_isoform",
+        "structure_id",
+        "deposition_date",
+        "experimental_method",
+        "resolution",
+        "complex_protein",
+        "complex_protein_details",
+        "complex_nucleotide",
+        "complex_nucleotide_details",
+        "complex_ligand",
+        "complex_ligand_details",
+        "chains",
+        "coverage",
+        "mutations_in_pdb",
+        "warnings"
+      ]
+    }
+  },
+  "required": [
+    "0"
+  ]
+}
