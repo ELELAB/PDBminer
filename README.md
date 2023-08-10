@@ -20,7 +20,6 @@ Protein Data Bank and the most current version of the AlphaFold2 model, if any.
 * Understanding the Output
 * Plotting the Output
 
-<a name="-dependencies"></a>
 ## Dependencies
 
 It is recommended to create a virtual environment to run PDBminer. The environment can be installed 
@@ -31,6 +30,7 @@ via conda using the environment.yml or via pip with requirements.txt.
 
 ```
 git clone https://github.com/ELELAB/PDBminer.git
+cd PDBminer
 conda env create -f environment.yml
 conda activate PDBminer
 ```
@@ -45,6 +45,7 @@ conda activate PDBminer
 #### First time:
 ```
 git clone https://github.com/ELELAB/PDBminer.git
+cd PDBminer
 python3 -m venv PDBminer
 source PDBminer/bin/activate
 python3 -m pip --default-timeout=1000 install -r requirements.txt
@@ -116,20 +117,20 @@ After a successful run, this directory can contain the following:
 * missing_id.txt, If there are no structures from the protein data bank or alphafold structures available for the uniprot_id.
 
 However, after the advent of alphafold, this is not a very likely output. It is more likely to have 
-a file called {uniprot_id}_all.csv:
+a file called {uniprot_id}_all.csv and {uniprot_id}_all.json. Notice that you may validate the json file towards the schema.json.
 
-* {unipot_id}_all.csv, An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
+* {unipot_id}_all.csv and .json, An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
 
 If mutations are included in the input, a filtered version of all will also be available if the mutations
 are covered by any structure.
-* {unipot_id}_filtered.csv, An output file with the PDBs and alphafold structure associated with the uniprot_id that covers at least one mutation.
+* {unipot_id}_filtered.csv and .json, An output file with the PDBs and alphafold structure associated with the uniprot_id that covers at least one mutation.
 
 Notice that multiple filtered files are available when multiple clusters are parsed. 
-* {uniprot_id}_cluster{cluster_id}_filtered.csv
+* {uniprot_id}_cluster{cluster_id}_filtered.csv and .json
 
 See examples of the in- and  output of the example directories.
 
-#content of {unipot_id}_clean.csv and {unipot_id}_all.csv:
+#content of {unipot_id}_clean.csv/json and {unipot_id}_all.csv/json:
 
 ## Output Columns and Explanations:
 
