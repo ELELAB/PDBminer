@@ -72,37 +72,52 @@ by running one or more of these. Notice that the -f flag is used in the do.sh fi
 
 ### Using an input file
 
-The input file should be in a comma-separated values file format, with two mandatory columns; "hugo_name", and "uniprot".
-Additionally the optional columns are "uniprot_isoform", "mutations" and "cluster_id". 
+The input file should be in a comma-separated values file format, with one mandatory column; "uniprot" 
+containing the accession number of the uniprot entry of interest.
+Additionally the optional columns are "hugo_name", "uniprot_isoform", "mutations" and "cluster_id". 
 
-Example of input_file.csv:
+Example of input file as a table:
 
 ```
-hugo_name | uniprot | uniprot_isoform | mutations         | cluster_id
------------------------------------------------------------------------
-MAT1A     |  Q00266 |         1       | P30N;W300H        | 1
-SSTR3     |  P05543 |         1       | T11S;C191S;R330L  | 1
-SAMD4A    |  Q9UPU9 |         3       | L10R;I80A         | 1
-TP53      |  P04637 |         2       | P278L;R337C;L344P | 1
+hugo_name,uniprot,uniprot_isoform,mutations,cluster_id
+MAT1A,Q00266,1,P30N;W300H,1
+SSTR3,P05543,1,T11S;C191S;R330L,1
+SAMD4A,Q9UPU9,3,L10R;I80A,1
+TP53,P04637,2,P278L;R337C;L344P,1
         
 ```
+
+The minimal required content for the input file: 
+
+```
+uniprot
+Q00266
+P05543
+Q9UPU9
+P04637
+
+```
+
+
 The name of the input file should be specified in the command line: 
 
 ### Running the Program with an input file
 
 ```
-$ python PDBminer -i [input file name] -n [cores]
+$ python PDBminer -i [input file name] -n [cores] -f [snakefile]
 ```
 ### Using the command line directly
 
 When PDBminer is run on only a single protein it may sometimes be beneficial to run it directly in the 
 commandline. To do so, a input file does not need to be constructured and the content can be specified 
-with flags. Again is the hugo_name and uniprot options mandatory while the rest is optional. 
+with flags. Again, the uniprot option is mandatory while the rest is optional. 
 
 ```
 $ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores] -f [path to snakefile]
 
 $ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1 -f program/snakefile
+
+$ python PDBminer -u P05543 -f program/snakefile
 ``` 
 
 NOTICE: when isoform is not specified 1 is assumed.

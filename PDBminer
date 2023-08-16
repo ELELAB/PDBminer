@@ -22,6 +22,7 @@ from sys import exit
 import requests
 from requests.exceptions import ConnectionError
 from datetime import datetime
+import json
 
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-g] hugo_name and [-u] uniprot id')
@@ -95,42 +96,57 @@ def check_APIs():
 
 def check_input_file(df):
 
-    df = df.fillna("N/A")
-
     problems = []
     
-    for i in range(len(df)):
-        if type(df.hugo_name[i]) != str:
-            problems.append(f"there is a problem with the input on the line of {df.loc[i]['hugo_name']}")
+    for i in range(len(df)):    
         if type(df.uniprot[i]) != str:
-            problems.append(f"there is a problem with the uniprot input on the line of {df.loc[i]['hugo_name']}")
+            problems.append(f"there is a problem with the uniprot input on the line of {df.loc[i]['uniprot']}")
         
-        if ('uniprot_isoform' in df.columns) == True:
-            try:
-                int(df.uniprot_isoform[i])
-            except ValueError:
-                problems.append(f"there is a problem with the isoform input on the line of {df.loc[i]['hugo_name']}")
+        if ('hugo_name' in df.columns) == False:
+            uniprot_url = f"https://www.uniprot.org/uniprot/{df.uniprot[i]}.json"
+            response = requests.get(uniprot_url)
+            uniprot_file_content = json.loads(response.text)
+            df.loc[i,"hugo_name"] = uniprot_file_content['genes'][0]['geneName']['value']
+                    
         else:
-            uniprot_isoform = [1] * len(df) 
-            df['uniprot_isoform'] = uniprot_isoform
+            if df.hugo_name[i] == "N/A":
+                uniprot_url = f"https://www.uniprot.org/uniprot/{df.uniprot[i]}.json"
+                response = requests.get(uniprot_url)
+                uniprot_file_content = json.loads(response.text)
+                df.loc[i,"hugo_name"] = uniprot_file_content['genes'][0]['geneName']['value']
+    
+            if type(df.hugo_name[i]) != str:
+                problems.append(f"there is a problem with the hugo name input on the line of {df.loc[i]['uniprot']}")
+                    
+        if ('uniprot_isoform' in df.columns) == True:
+            if df.uniprot_isoform[i] == "N/A":
+                df.loc[i,"uniprot_isoform"] = 1
+            else:
+                try:
+                    int(df.uniprot_isoform[i])
+                except ValueError:
+                    problems.append(f"there is a problem with the isoform input on the line of {df.loc[i]['uniprot']}")
+        else:
+            df.loc[i,"uniprot_isoform"] = 1
         
         if ('mutations' in df.columns) == True:
             if type(df.mutations[i]) != str:
-                problems.append(f"there is a problem with the mutation input on the line of {df.loc[i]['hugo_name']}")
+                problems.append(f"there is a problem with the mutation input on the line of {df.loc[i]['uniprot']}")
         else:
-            mutations = ['N/A'] * len(df)
-            df['mutations'] = mutations
+            df.loc[i,"mutations"] = "N/A"
             
         if ('cluster_id' in df.columns) == True:
-            if len(set(df.cluster_id)) == 1 and df.cluster_id[0] == "N/A":
-                df.cluster_id = 999
-            try:
-                int(df.cluster_id[i])
-            except ValueError:
-                problems.append(f"there is a problem with the cluster_id input on the line of {df.loc[i]['hugo_name']}") 
+            if df.cluster_id[i] == "N/A":
+                df.loc[i,"cluster_id"] = 999            
+            else:
+                try:
+                    int(df.cluster_id[i])
+                except ValueError:
+                    problems.append(f"there is a problem with the cluster_id input on the line of {df.loc[i]['uniprot']}") 
         else: 
-            cluster_id = [999] * len(df)
-            df['cluster_id'] = cluster_id
+            df.loc[i,"cluster_id"] = 999
+            
+    df = df[['hugo_name', 'uniprot', 'uniprot_isoform', 'mutations', 'cluster_id']]
     
     return df, problems
 
@@ -154,21 +170,32 @@ with open (f"{path}/log.txt", "w") as f:
         else:
             f.write("input file is correctly formatted\n")
 
-    elif args.hugo_name and args.uniprot_id:
-        hugo_name = [args.hugo_name]
+    elif args.uniprot_id:
         uniprot_id = [args.uniprot_id]
+        if args.hugo_name:
+            hugo_name = [args.hugo_name]
+        else:  
+            uniprot_url = f"https://www.uniprot.org/uniprot/{args.uniprot_id}.json"
+            response = requests.get(uniprot_url)
+            uniprot_file_content = json.loads(response.text)
+            hugo_name =[uniprot_file_content['genes'][0]['geneName']['value']]
+        
         df = pd.DataFrame({'hugo_name':hugo_name,'uniprot':uniprot_id})
+        
         if args.uniprot_isoform:
             isoform = [args.uniprot_isoform]
             df['uniprot_isoform'] = isoform
         else: df['uniprot_isoform'] = [1]
+        
         if args.mutations:
             mutations = [args.mutations]
             df['mutations'] = mutations
         else: df['mutations'] = ["N/A"]
+        
         if args.cluster_id:
             cluster = [args.cluster_id]
             df['cluster_id'] = cluster
+        
         else: df['cluster_id'] = [999]
         df.to_csv(f'{path}/input_file.csv')
         input_file = 'input_file.csv'
@@ -196,4 +223,3 @@ with open (f"{path}/log.txt", "w") as f:
     f.write(f"time: {finished-start}\n")
     f.write(f"before snakemake: {snake-start}\n")
     f.write("PDBminer has finished.\n")
-
