@@ -33,6 +33,7 @@ from io import StringIO
 from biopandas.pdb import PandasPdb
 from Bio.SeqUtils import seq1
 from Bio import PDB
+from requests.exceptions import ConnectionError
 
 #============================================================================#
 # Following the Documentation from PDBminer_run.py
@@ -73,26 +74,20 @@ def get_alphafold_basics(uniprot_id):
 
     """
     
-    result = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
-    result = json.loads(result.text)
+    try: 
+        response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
+    except ConnectionError as e:
+        print("AlphaFold database API controlled and rejected, connection error\n")
+        exit(1)
     
-    if result == {}:
-        return {}
-
-    else:     
-        result=result[0]
+    if response.status_code == 200:
+        result = response.json()[0]
         deposition_date = result['modelCreatedDate'] 
-        url = result['pdbUrl']
-        local_filename = url.split('/')[-1] 
-        Alphafold_ID = local_filename[:-4]
-        
-    experimental_method = "Predicted"
-    resolution = "NA"
-    rank = int(0)
+        Alphafold_ID = result['pdbUrl'].split('/')[-1][:-4]
 
-    return Alphafold_ID, rank, uniprot_id, deposition_date, experimental_method, resolution
+        return Alphafold_ID, uniprot_id, deposition_date, "PREDICTED", "NA", 0
 
-
+    
 def get_pdbs(uniprot_id):
     print("FUNCTION: get_pdbs(uniprot_id)")
     """
@@ -100,22 +95,27 @@ def get_pdbs(uniprot_id):
     Credit: Valentina Sora
     
     """
-    uniprot_url = "https://www.uniprot.org/uniprot/{:s}.txt"
-    response = requests.get(uniprot_url.format(uniprot_id))
-
-    pdbs = []
+    try: 
+        response = requests.get(f"https://www.uniprot.org/uniprot/{uniprot_id}.txt")
+    except ConnectionError as e:
+        print("Uniprot database API controlled and rejected, connection error\n")
+        exit(1) 
     
-    for line in response.text.split("\n"):
-        
-        if line.startswith("DR   PDB;"):
-            
-            db, pdb_id, exp, res, chain_res = \
-                [item.strip(" ") for item \
-                 in line.rstrip(".\n").split(";")]
-            
-            pdbs.append(pdb_id)
+    if response.status_code == 200:
 
-    return pdbs
+        pdbs = []
+        
+        for line in response.text.split("\n"):
+            
+            if line.startswith("DR   PDB;"):
+                
+                db, pdb_id, exp, res, chain_res = \
+                    [item.strip(" ") for item \
+                     in line.rstrip(".\n").split(";")]
+                
+                pdbs.append(pdb_id)
+    
+        return pdbs
 
 def get_structure_metadata(pdb_id):
     print(f"FUNCTION: get_structure_metadata(pdb_id), {pdb_id}")
@@ -135,49 +135,46 @@ def get_structure_metadata(pdb_id):
     A tuple of metadata: deposition_date, experimental_method, resolution
 
     """
+    try: 
+        response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}")
+    except ConnectionError as e:
+        print("PDBe database API controlled and rejected, connection error\n")
+        exit(1) 
     
-    #Introduce the API to PDBe.
-    mapping_url = "https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{:s}"
+    if response.status_code != 200:
+        return
     
-    response = requests.get(mapping_url.format(pdb_id))
     response_text = json.loads(response.text)
+    dictionary = response_text[pdb_id.lower()]
+    dictionary = dictionary[0]
+
+    #Change the date format
+    deposition_date = f"{dictionary['deposition_date'][:4]}-{dictionary['deposition_date'][4:6]}-{dictionary['deposition_date'][6:]}"
+    #Find the experimental method
+    experimental_method = str(dictionary['experimental_method'][0]).upper()
     
-    #exlucsion of PDBs without any metadata
-    if response_text == {}:
-        return {}
+    #Retrieve information regarding resolution
     
-    #inclusion of PDBs with metadata
+    #exlude NMR structures (all NMR types)
+    if "NMR" in experimental_method:
+        
+        resolution = "NA"
+        #Would be nice to have ResProx here, but there is not an API.
+    
+    #include all others
     else:
-        dictionary = response_text[pdb_id.lower()]
-        dictionary = dictionary[0]
+        response_experiment = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}")
+        response_text_exp = json.loads(response_experiment.text)
+        dictionary_exp = response_text_exp[pdb_id.lower()]
+        
+        dictionary_exp = dictionary_exp[0]
+        
+        resolution = dictionary_exp['resolution']
     
-        #Change the date format
-        deposition_date = f"{dictionary['deposition_date'][:4]}-{dictionary['deposition_date'][4:6]}-{dictionary['deposition_date'][6:]}"
-        #Find the experimental method
-        experimental_method = str(dictionary['experimental_method'][0]).upper()
-        
-        #Retrieve information regarding resolution
-        
-        #exlude NMR structures (all NMR types)
-        if "NMR" in experimental_method:
-            
-            resolution = "NA"
-            #Would be nice to have ResProx here, but there is not an API.
-        
-        #include all others
-        else:
-            response_experiment = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}")
-            response_text_exp = json.loads(response_experiment.text)
-            dictionary_exp = response_text_exp[pdb_id.lower()]
-            
-            dictionary_exp = dictionary_exp[0]
-            
-            resolution = dictionary_exp['resolution']
-        
     return deposition_date, experimental_method, resolution
+        
 
 def get_structure_df(uniprot_id): 
-    print("FUNCTION: get_structure_df(uniprot_id)")
     """
     This function takes a single uniprot ID and outputs a 
     dataframe containing a sorted list of PDB ids and their metadata. 
@@ -196,14 +193,14 @@ def get_structure_df(uniprot_id):
     
     print(f"FUNCTION: get_structure_df({uniprot_id})")
     
-    beacons_url = f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe"
+    try: 
+        response = requests.get(f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
+    except ConnectionError as e:
+        print("3D-Beacons database API controlled and rejected, connection error\n")
+        exit(1) 
     
-    response = requests.get(beacons_url)
-    response_text = json.loads(response.text)
-    
-    
-    if response_text == {} or len(response_text['structures']) < 1:
-        print("3D-BEACONS DID NOT RETURN ANY STRUCTURES, CHECKING UNIPROT...")
+    if response.status_code != 200:
+        print("3D-BEACONS DID NOT RETURN ANY PDBe STRUCTURES, CHECKING UNIPROT...")
         pdbs = get_pdbs(uniprot_id)
         
         if len(pdbs) != 0:
@@ -215,76 +212,61 @@ def get_structure_df(uniprot_id):
             resolution = []
             
             for pdb_id in pdbs:
-                deposition, method, res = get_structure_metadata(pdb_id)
+                metadata = get_structure_metadata(pdb_id)
+
+                if metadata is None:
+                    return uniprot_id
             
                 pdb.append(pdb_id)
-                deposition_date.append(deposition)
-                experimental_method.append(method) 
-                resolution.append(res)
+                deposition_date.append(metadata[0])
+                experimental_method.append(metadata[1]) 
+                resolution.append(metadata[2])
             
         else:
+            print("Uniprot returned 0 structures. Checking AlphaFold database ....")
             AF_model = get_alphafold_basics(uniprot_id)
-            
-            #if no PDB structures nor AF models exist,return and end the function.
-            if AF_model == {}:
+            if AF_model is None:
+                #if no PDB structures nor AF models exist,return and end the function.
                 return uniprot_id
             
-            #if an alphafold model exist, use that as input for structure_df
-            else:
-                structure_df = pd.DataFrame({'uniprot_id': [AF_model[2]], 
-                                             'deposition_date': [AF_model[3]], 
-                                             'experimental_method': [AF_model[4]], 
-                                             'resolution': [AF_model[5]]})
-                structure_df.index = [AF_model[0]]           
-                
-                return structure_df
+            structure_df = pd.DataFrame({'uniprot_id': [AF_model[1]], 
+                                         'deposition_date': [AF_model[2]], 
+                                         'experimental_method': [AF_model[3]], 
+                                         'resolution': [AF_model[4]]})
+            structure_df.index = [AF_model[0]]           
+            
+            return structure_df
     
-    else:
+    else: 
+        response_text = json.loads(response.text)
         structures = response_text['structures']
            
         pdb = []
         deposition_date = []
         experimental_method = [] 
         resolution = []
-        
+    
         for structure in structures:
             pdb.append(structure['summary']['model_identifier'].upper())
             deposition_date.append(structure['summary']['created'])
             experimental_method.append(structure['summary']['experimental_method'])
             resolution.append(structure['summary']['resolution'])
-    
+
     structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
-    structure_df = structure_df.set_index('pdb')
     
-    #Split based on experimental method
-    method_dfs = [x for _, x in structure_df.groupby(structure_df['experimental_method'])]
+    rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
     
-    for method_df in method_dfs:
-        method_df.sort_values(["resolution", "deposition_date"], ascending=[True, False], inplace=True)
-        
-        rank_offset = {
-            'X-RAY DIFFRACTION': 1000,
-            'ELECTRON MICROSCOPY': 2000,
-            'ELECTRON CRYSTALLOGRAPHY': 3000,
-            'SOLUTION NMR': 4000,
-            'SOLID-STATE NMR': 5000}.get(method_df.experimental_method.iloc[0], 6000)
-        
-        ranks = range(rank_offset, rank_offset + len(method_df))
-        method_df.insert(0, "Rank", sorted(ranks), True)
-    
-    #concatenate all the dataframes
-    structure_df = pd.concat(method_dfs)
+    structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
     
     AF_model = get_alphafold_basics(uniprot_id)
     
-    if AF_model != {}: 
+    if AF_model is not None:
         AF_model = list(AF_model)
-        AF_model[1] = int(AF_model[1])
-        structure_df.loc[AF_model[0]] = AF_model[1:]
+        structure_df.loc[len(structure_df)] = AF_model
     
-    structure_df = structure_df.sort_values(by="Rank")
-    #Sort based on rank & remove rank when sorted
-    structure_df = structure_df.drop(['Rank'], axis=1)
+    structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+    structure_df = structure_df.drop(['method_priority'], axis=1)
+    structure_df = structure_df.set_index('pdb')
                                                         
     return structure_df     
 
@@ -1148,7 +1130,7 @@ def collect_complex_info(structural_df):
 
     for pdb in set(structural_df['structure_id']):
         
-        if pdb.startswith("AF"):
+        if pdb.startswith("AF-"):
             list_of_values = [pdb,'NA',
                               'NA',['A'],
                               'NA','NA',

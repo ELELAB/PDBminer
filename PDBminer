@@ -72,33 +72,6 @@ parser.add_argument("-f", "--snakefile",
 args = parser.parse_args()
 path = os.getcwd()
 
-def check_APIs():
-    
-    checked_api = []
-    #check uniprot fasta, use p53 as test case
-      
-    uniprot_url = "https://www.uniprot.org/uniprot/P04637.txt"
-    try: 
-        response = requests.get(uniprot_url)  
-    except ConnectionError as e:
-        checked_api.append("UNIPROT API controlled and rejected, connection error\n")
-    
-    #check PDBe, use 2XWR as test case
-    
-    mapping_url = "https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/2XWR"
-    try: 
-        response = requests.get(mapping_url)
-    except ConnectionError as e:
-        checked_api.append("PDBe API controlled and rejected, connection error\n")
-        
-    beacons_url = "https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/P04637.json?provider=pdbe"
-    try: 
-        response = requests.get(mapping_url)
-    except ConnectionError as e:
-        checked_api.append("3D beacons API controlled and rejected, connection error\n")
-
-    return checked_api
-
 def check_input_file(df):
 
     df = df.fillna("N/A")
@@ -184,14 +157,6 @@ with open (f"{path}/log.txt", "w") as f:
         f.write("ERROR: input file or input hugo name and uniprot id is missing. Exiting...\n")
         exit(1)
         
-    f.write("APIs are checked\n")
-    api = check_APIs()
-    if api == []:
-        f.write("   APIs controlled and accepted\n")
-    else:
-        f.write(f"   ERROR: {api}")
-        exit(1)
-
     f.write("Pipeline is starting\n")
     snake = datetime.now()
     os.system(f"snakemake --cores {args.cores} --snakefile {args.snakefile} --config input_file={input_file} path={path}")
