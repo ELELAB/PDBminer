@@ -90,6 +90,12 @@ def check_APIs():
         response = requests.get(mapping_url)
     except ConnectionError as e:
         checked_api.append("PDBe API controlled and rejected, connection error\n")
+        
+    beacons_url = "https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/P04637.json?provider=pdbe"
+    try: 
+        response = requests.get(mapping_url)
+    except ConnectionError as e:
+        checked_api.append("3D beacons API controlled and rejected, connection error\n")
 
     return checked_api
 
@@ -196,4 +202,3 @@ with open (f"{path}/log.txt", "w") as f:
     f.write(f"time: {finished-start}\n")
     f.write(f"before snakemake: {snake-start}\n")
     f.write("PDBminer has finished.\n")
-

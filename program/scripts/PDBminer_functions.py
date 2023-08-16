@@ -93,6 +93,89 @@ def get_alphafold_basics(uniprot_id):
     return Alphafold_ID, rank, uniprot_id, deposition_date, experimental_method, resolution
 
 
+def get_pdbs(uniprot_id):
+    print("FUNCTION: get_pdbs(uniprot_id)")
+    """
+    Function is taken from SLiMfast, documentation and comments there.
+    Credit: Valentina Sora
+    
+    """
+    uniprot_url = "https://www.uniprot.org/uniprot/{:s}.txt"
+    response = requests.get(uniprot_url.format(uniprot_id))
+
+    pdbs = []
+    
+    for line in response.text.split("\n"):
+        
+        if line.startswith("DR   PDB;"):
+            
+            db, pdb_id, exp, res, chain_res = \
+                [item.strip(" ") for item \
+                 in line.rstrip(".\n").split(";")]
+            
+            pdbs.append(pdb_id)
+
+    return pdbs
+
+def get_structure_metadata(pdb_id):
+    print(f"FUNCTION: get_structure_metadata(pdb_id), {pdb_id}")
+    
+    """
+    Function that takes each pdb_id and retrive metadata from the PDBe.
+    The metadata consist of desposition date to the PDB, the experimental
+    metod used to solve the structure and the resolution if reported. 
+
+    Parameters
+    ----------
+    pdb_id : four letter code defining a structure reported in the protein 
+             data bank.
+
+    Returns
+    -------
+    A tuple of metadata: deposition_date, experimental_method, resolution
+
+    """
+    
+    #Introduce the API to PDBe.
+    mapping_url = "https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{:s}"
+    
+    response = requests.get(mapping_url.format(pdb_id))
+    response_text = json.loads(response.text)
+    
+    #exlucsion of PDBs without any metadata
+    if response_text == {}:
+        return {}
+    
+    #inclusion of PDBs with metadata
+    else:
+        dictionary = response_text[pdb_id.lower()]
+        dictionary = dictionary[0]
+    
+        #Change the date format
+        deposition_date = f"{dictionary['deposition_date'][:4]}-{dictionary['deposition_date'][4:6]}-{dictionary['deposition_date'][6:]}"
+        #Find the experimental method
+        experimental_method = str(dictionary['experimental_method'][0]).upper()
+        
+        #Retrieve information regarding resolution
+        
+        #exlude NMR structures (all NMR types)
+        if "NMR" in experimental_method:
+            
+            resolution = "NA"
+            #Would be nice to have ResProx here, but there is not an API.
+        
+        #include all others
+        else:
+            response_experiment = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}")
+            response_text_exp = json.loads(response_experiment.text)
+            dictionary_exp = response_text_exp[pdb_id.lower()]
+            
+            dictionary_exp = dictionary_exp[0]
+            
+            resolution = dictionary_exp['resolution']
+        
+    return deposition_date, experimental_method, resolution
+
 def get_structure_df(uniprot_id): 
     print("FUNCTION: get_structure_df(uniprot_id)")
     """
@@ -111,33 +194,54 @@ def get_structure_df(uniprot_id):
 
     """
     
+    print(f"FUNCTION: get_structure_df({uniprot_id})")
+    
     beacons_url = f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe"
+    
     response = requests.get(beacons_url)
     response_text = json.loads(response.text)
     
+    
     if response_text == {} or len(response_text['structures']) < 1:
+        print("3D-BEACONS DID NOT RETURN ANY STRUCTURES, CHECKING UNIPROT...")
+        pdbs = get_pdbs(uniprot_id)
         
-        AF_model = get_alphafold_basics(uniprot_id)
-        
-        #if no PDB structures nor AF models exist,return and end the function.
-        if AF_model == {}:
-            return uniprot_id
-        
-        #if an alphafold model exist, use that as input for structure_df
-        else:
-            structure_df = pd.DataFrame({'uniprot_id': [AF_model[2]], 
-                                         'deposition_date': [AF_model[3]], 
-                                         'experimental_method': [AF_model[4]], 
-                                         'resolution': [AF_model[5]]})
-            structure_df.index = [AF_model[0]]           
+        if len(pdbs) != 0:
+            print(f"Uniprot returned {len(pdbs)} structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list.")
             
-            return structure_df
+            pdb = []
+            deposition_date = []
+            experimental_method = [] 
+            resolution = []
+            
+            for pdb_id in pdbs:
+                deposition, method, res = get_structure_metadata(pdb_id)
+            
+                pdb.append(pdb_id)
+                deposition_date.append(deposition)
+                experimental_method.append(method) 
+                resolution.append(res)
+            
+        else:
+            AF_model = get_alphafold_basics(uniprot_id)
+            
+            #if no PDB structures nor AF models exist,return and end the function.
+            if AF_model == {}:
+                return uniprot_id
+            
+            #if an alphafold model exist, use that as input for structure_df
+            else:
+                structure_df = pd.DataFrame({'uniprot_id': [AF_model[2]], 
+                                             'deposition_date': [AF_model[3]], 
+                                             'experimental_method': [AF_model[4]], 
+                                             'resolution': [AF_model[5]]})
+                structure_df.index = [AF_model[0]]           
+                
+                return structure_df
     
     else:
         structures = response_text['structures']
-        
-        structure_df = pd.DataFrame()
-        
+           
         pdb = []
         deposition_date = []
         experimental_method = [] 
@@ -148,35 +252,25 @@ def get_structure_df(uniprot_id):
             deposition_date.append(structure['summary']['created'])
             experimental_method.append(structure['summary']['experimental_method'])
             resolution.append(structure['summary']['resolution'])
-            
-    #structure_df.index = pdb
-    structure_df.insert(0, "pdb", pdb, True)
-    structure_df.insert(1, "uniprot_id", [uniprot_id]*len(structure_df), True)
-    structure_df.insert(2, "deposition_date", deposition_date, True)
-    structure_df.insert(3, "experimental_method", experimental_method, True)
-    structure_df.insert(4, "resolution", resolution, True)
     
+    structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
     structure_df = structure_df.set_index('pdb')
     
     #Split based on experimental method
     method_dfs = [x for _, x in structure_df.groupby(structure_df['experimental_method'])]
     
-    #Sort within the method
-    for method in range(len(method_dfs)):
-        method_dfs[method] = method_dfs[method].sort_values(["resolution", "deposition_date"], ascending = [True, False])
+    for method_df in method_dfs:
+        method_df.sort_values(["resolution", "deposition_date"], ascending=[True, False], inplace=True)
         
-        #add numerical values in each of the dataframes to ensure that the sorting is kept in place 
-        if method_dfs[method].experimental_method[0] == 'X-RAY DIFFRACTION':
-            method_dfs[method].insert(0, "Rank", sorted(range(1000,1000+len(method_dfs[method]))), True)
-            
-        elif "ELECTRON" in method_dfs[method].experimental_method[0]:
-            method_dfs[method].insert(0, "Rank", sorted(range(2000,2000+len(method_dfs[method]))), True)
-            
-        elif "NMR" in method_dfs[method].experimental_method[0]:
-            method_dfs[method].insert(0, "Rank", sorted(range(3000,3000+len(method_dfs[method]))), True)
+        rank_offset = {
+            'X-RAY DIFFRACTION': 1000,
+            'ELECTRON MICROSCOPY': 2000,
+            'ELECTRON CRYSTALLOGRAPHY': 3000,
+            'SOLUTION NMR': 4000,
+            'SOLID-STATE NMR': 5000}.get(method_df.experimental_method.iloc[0], 6000)
         
-        else:
-            method_dfs[method].insert(0, "Rank", sorted(range(4000,4000+len(method_dfs[method]))), True)
+        ranks = range(rank_offset, rank_offset + len(method_df))
+        method_df.insert(0, "Rank", sorted(ranks), True)
     
     #concatenate all the dataframes
     structure_df = pd.concat(method_dfs)
@@ -1197,4 +1291,3 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
-
