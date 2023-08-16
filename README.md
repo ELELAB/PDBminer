@@ -71,7 +71,7 @@ by running one or more of these. Notice that the -f flag is used in the do.sh fi
 
 ### Using an input file
 
-The input file should be in a comma-separated values file format, with one mandatory columns; "uniprot" 
+The input file should be in a comma-separated values file format, with one mandatory column; "uniprot" 
 containing the accession number of the uniprot entry of interest.
 Additionally the optional columns are "hugo_name", "uniprot_isoform", "mutations" and "cluster_id". 
 
