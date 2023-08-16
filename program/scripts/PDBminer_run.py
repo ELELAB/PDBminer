@@ -96,6 +96,7 @@ def run_list(full_path):
                 all_df = all_df.drop(columns=('cluster_id'))
             
             all_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_all.csv")
+            all_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_all.json", orient="index")
             
             #prep and export the filered file
             if input_dataframe['mutations'].isnull().values.any() == False:
@@ -107,10 +108,12 @@ def run_list(full_path):
                         if set(input_dataframe.cluster_id) == {999}:
                             filtered_df[0] = filtered_df[0].drop(columns=('cluster_id'))
                         filtered_df[0].to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.csv")
+                        filtered_df[0].to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.json", orient="index")
                 else:
                     for cluster_df in filtered_df:
                         if len(cluster_df) > 0:
                             cluster_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv")
+                            cluster_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv", orient="index")
                 
             #remove the alphafold model
             os.chdir(f"{path}/results/{uniprot_id}")
