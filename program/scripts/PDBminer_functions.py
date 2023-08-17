@@ -77,7 +77,8 @@ def get_alphafold_basics(uniprot_id):
     try: 
         response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
     except ConnectionError as e:
-        print("AlphaFold database API controlled and rejected, connection error\n")
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: AlphaFold database API controlled and rejected for {uniprot_id, connection error. \n")
         exit(1)
     
     if response.status_code == 200:
@@ -98,7 +99,8 @@ def get_pdbs(uniprot_id):
     try: 
         response = requests.get(f"https://www.uniprot.org/uniprot/{uniprot_id}.txt")
     except ConnectionError as e:
-        print("Uniprot database API controlled and rejected, connection error\n")
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: Uniprot database API controlled and rejected for {uniprot_id}, connection error. \n")
         exit(1) 
     
     if response.status_code == 200:
@@ -1298,3 +1300,4 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
+
