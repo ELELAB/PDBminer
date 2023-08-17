@@ -120,9 +120,6 @@ def run_list(full_path):
                 shutil.rmtree("structure")
             if os.path.exists("obsolete"):
                 shutil.rmtree("obsolete")
-                
-            if os.path.getsize("missing_ID.txt") == 0:
-                os.remove("missing_ID.txt")            
     
     with open(f"{uniprot_id}_done.txt", "w") as textfile: 
         textfile.write(f"Analysis complete for {uniprot_id}")
