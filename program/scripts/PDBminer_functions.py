@@ -78,7 +78,7 @@ def get_alphafold_basics(uniprot_id):
         response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
     except ConnectionError as e:
         with open("log.txt", "a") as textfile:
-            textfile.write(f"EXITING: AlphaFold database API controlled and rejected for {uniprot_id, connection error. \n")
+            textfile.write(f"EXITING: AlphaFold database API controlled and rejected for {uniprot_id}, connection error.\n")
         exit(1)
     
     if response.status_code == 200:
@@ -87,6 +87,11 @@ def get_alphafold_basics(uniprot_id):
         Alphafold_ID = result['pdbUrl'].split('/')[-1][:-4]
 
         return Alphafold_ID, uniprot_id, deposition_date, "PREDICTED", "NA", 0
+    
+    else:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"WARNING: The Alphafold Database returned an error for the request of {uniprot_id}.\n")
+        return
 
     
 def get_pdbs(uniprot_id):
@@ -120,7 +125,8 @@ def get_pdbs(uniprot_id):
         return pdbs
     
     else:
-        print(f"The Uniprot Database returned an error for the request of {uniprot_id}. Please check that the accession number is correct.")
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"WARNING: The Uniprot Database returned an error for the request of {uniprot_id}.\n")
 
 def get_structure_metadata(pdb_id):
     print(f"FUNCTION: get_structure_metadata(pdb_id), {pdb_id}")
@@ -1011,10 +1017,8 @@ def get_complex_information(pdb_id, uniprot):
             textfile.write(f"EXITING: PDBe database API controlled and rejected for {pdb_id}, connection error. \n")
         exit(1) 
     
-    response_text = json.loads(response.text)
-    
-    if response_text != {}:
-    
+    if response.status_code == 200:
+        response_text = json.loads(response.text)
         protein_segment_dictionary = response_text[pdb_id.lower()]
         
         self_chain = []
