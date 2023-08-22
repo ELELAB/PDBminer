@@ -33,6 +33,7 @@ from io import StringIO
 from biopandas.pdb import PandasPdb
 from Bio.SeqUtils import seq1
 from Bio import PDB
+from requests.exceptions import ConnectionError
 
 #============================================================================#
 # Following the Documentation from PDBminer_run.py
@@ -55,6 +56,44 @@ from Bio import PDB
 #   a dataframe "found_structure_list" with all avialable PDB & newest AF 
 #   structure including their metadata for further analysis. 
 
+def get_alphafold_basics(uniprot_id):
+    print("FUNCTION: get_alphafold_basics(uniprot_id)")
+    """
+    Function that takes a uniprot id and retrieve data from the alphafold
+    database, and prepare the basic information of that model in alignment 
+    with the PDB data.
+
+    Parameters
+    ----------
+    uniprot_id : A sting, e.g. 'P04637'
+
+    Returns
+    -------
+    A tuple of information fitting as a line in the structure_df captured 
+    in get_structure_df. 
+
+    """
+    
+    try: 
+        response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: AlphaFold database API controlled and rejected for {uniprot_id}, connection error.\n")
+        exit(1)
+    
+    if response.status_code == 200:
+        result = response.json()[0]
+        deposition_date = result['modelCreatedDate'] 
+        Alphafold_ID = result['pdbUrl'].split('/')[-1][:-4]
+
+        return Alphafold_ID, uniprot_id, deposition_date, "PREDICTED", "NA", 0
+    
+    else:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"WARNING: The Alphafold Database returned an error for the request of {uniprot_id}.\n")
+        return
+
+    
 def get_pdbs(uniprot_id):
     print("FUNCTION: get_pdbs(uniprot_id)")
     """
@@ -62,22 +101,32 @@ def get_pdbs(uniprot_id):
     Credit: Valentina Sora
     
     """
-    uniprot_url = "https://www.uniprot.org/uniprot/{:s}.txt"
-    response = requests.get(uniprot_url.format(uniprot_id))
-
-    pdbs = []
+    try: 
+        response = requests.get(f"https://www.uniprot.org/uniprot/{uniprot_id}.txt")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: Uniprot database API controlled and rejected for {uniprot_id}, connection error. \n")
+        exit(1) 
     
-    for line in response.text.split("\n"):
-        
-        if line.startswith("DR   PDB;"):
-            
-            db, pdb_id, exp, res, chain_res = \
-                [item.strip(" ") for item \
-                 in line.rstrip(".\n").split(";")]
-            
-            pdbs.append(pdb_id)
+    if response.status_code == 200:
 
-    return pdbs
+        pdbs = []
+        
+        for line in response.text.split("\n"):
+            
+            if line.startswith("DR   PDB;"):
+                
+                db, pdb_id, exp, res, chain_res = \
+                    [item.strip(" ") for item \
+                     in line.rstrip(".\n").split(";")]
+                
+                pdbs.append(pdb_id)
+    
+        return pdbs
+    
+    else:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"WARNING: The Uniprot Database returned an error for the request of {uniprot_id}.\n")
 
 def get_structure_metadata(pdb_id):
     print(f"FUNCTION: get_structure_metadata(pdb_id), {pdb_id}")
@@ -98,86 +147,54 @@ def get_structure_metadata(pdb_id):
 
     """
     
-    #Introduce the API to PDBe.
-    mapping_url = "https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{:s}"
+    try: 
+        response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: PDBe database API controlled and rejected for {pdb_id}, connection error. \n")
+        exit(1) 
     
-    response = requests.get(mapping_url.format(pdb_id))
+    if response.status_code != 200:
+        return
+    
     response_text = json.loads(response.text)
+    dictionary = response_text[pdb_id.lower()]
+    dictionary = dictionary[0]
+
+    #Change the date format
+    deposition_date = f"{dictionary['deposition_date'][:4]}-{dictionary['deposition_date'][4:6]}-{dictionary['deposition_date'][6:]}"
+    #Find the experimental method
+    experimental_method = str(dictionary['experimental_method'][0]).upper()
     
-    #exlucsion of PDBs without any metadata
-    if response_text == {}:
-        return {}
+    #Retrieve information regarding resolution
     
-    #inclusion of PDBs with metadata
+    #exlude NMR structures (all NMR types)
+    if "NMR" in experimental_method:
+        
+        resolution = "NA"
+        #Would be nice to have ResProx here, but there is not an API.
+    
+    #include all others
     else:
-        dictionary = response_text[pdb_id.lower()]
-        dictionary = dictionary[0]
-    
-        #Change the date format
-        deposition_date = f"{dictionary['deposition_date'][:4]}-{dictionary['deposition_date'][4:6]}-{dictionary['deposition_date'][6:]}"
-        #Find the experimental method
-        experimental_method = str(dictionary['experimental_method'][0]).upper()
-        
-        #Retrieve information regarding resolution
-        
-        #exlude NMR structures (all NMR types)
-        if "NMR" in experimental_method:
-            
-            resolution = "NA"
-            #Would be nice to have ResProx here, but there is not an API.
-        
-        #include all others
-        else:
+        try: 
             response_experiment = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}")
-            response_text_exp = json.loads(response_experiment.text)
-            dictionary_exp = response_text_exp[pdb_id.lower()]
-            
-            dictionary_exp = dictionary_exp[0]
-            
-            resolution = dictionary_exp['resolution']
+        except ConnectionError as e:
+            with open("log.txt", "a") as textfile:
+                textfile.write(f"EXITING: PDB database API (experiments) controlled and rejected for {pdb_id}, connection error. \n")
+            exit(1) 
         
+        if response_experiment.status_code != 200:
+            return
+
+        response_text_exp = json.loads(response_experiment.text)
+        dictionary_exp = response_text_exp[pdb_id.lower()]
+        dictionary_exp = dictionary_exp[0]
+        resolution = dictionary_exp['resolution']
+    
     return deposition_date, experimental_method, resolution
-
-def get_alphafold_basics(uniprot_id):
-    print("FUNCTION: get_alphafold_basics(uniprot_id)")
-    """
-    Function that takes a uniprot id and retrieve data from the alphafold
-    database, and prepare the basic information of that model in alignment 
-    with the PDB data.
-
-    Parameters
-    ----------
-    uniprot_id : A sting, e.g. 'P04637'
-
-    Returns
-    -------
-    A tuple of information fitting as a line in the structure_df captured 
-    in get_structure_df. 
-
-    """
-    
-    result = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
-    result = json.loads(result.text)
-    
-    if result == {}:
-        return {}
-
-    else:     
-        result=result[0]
-        deposition_date = result['modelCreatedDate'] 
-        url = result['pdbUrl']
-        local_filename = url.split('/')[-1] 
-        Alphafold_ID = local_filename[:-4]
         
-    experimental_method = "Predicted"
-    resolution = "NA"
-    rank = int(0)
-
-    return Alphafold_ID, rank, uniprot_id, deposition_date, experimental_method, resolution
-
 
 def get_structure_df(uniprot_id): 
-    print("FUNCTION: get_structure_df(uniprot_id)")
     """
     This function takes a single uniprot ID and outputs a 
     dataframe containing a sorted list of PDB ids and their metadata. 
@@ -193,92 +210,91 @@ def get_structure_df(uniprot_id):
                     uniprot id in terms of pdb files.  
 
     """
-    #find all pdbs for a uniprot id
-    pdb_list = get_pdbs(uniprot_id)
     
-    #if there are no PDBs check for alphafold models
-    if len(pdb_list) == 0:
+    print(f"FUNCTION: get_structure_df({uniprot_id})")
+    
+    try: 
+        response = requests.get(f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write("EXITING: 3D-Beacons database API controlled and rejected, connection error.\n")
+        #print("3D-Beacons database API controlled and rejected, connection error\n")
+        exit(1) 
+    
+    if response.status_code != 200:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"WARNING: 3D-Beacons did not return any PDBe structures for {uniprot_id}.\n")
+        pdbs = get_pdbs(uniprot_id)
         
-        AF_model = get_alphafold_basics(uniprot_id)
-        
-        #if no PDB structures nor AF models exist,return and end the function.
-        if AF_model == {}:
-            return uniprot_id
-        
-        #if an alphagold model exist, use that as input for structure_df
+        if len(pdbs) != 0:
+            with open("log.txt", "a") as textfile:
+                textfile.write(f"WARNING: Uniprot returned {len(pdbs)} structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list.\n")
+            
+            pdb = []
+            deposition_date = []
+            experimental_method = [] 
+            resolution = []
+            
+            for pdb_id in pdbs:
+                metadata = get_structure_metadata(pdb_id)
+
+                if metadata is None:
+                    textfile.write(f"WARNING: PDBe database API retured an error for {pdb_id}.\n")
+                    return uniprot_id
+            
+                pdb.append(pdb_id)
+                deposition_date.append(metadata[0])
+                experimental_method.append(metadata[1]) 
+                resolution.append(metadata[2])
+            
         else:
-            structure_df = pd.DataFrame({'uniprot_id': [AF_model[2]], 
-                                         'deposition_date': [AF_model[3]], 
-                                         'experimental_method': [AF_model[4]], 
-                                         'resolution': [AF_model[5]]})
+            with open("log.txt", "a") as textfile:
+                textfile.write(f"WARNING: Uniprot did not return any structures for {uniprot_id}.\n")
+            AF_model = get_alphafold_basics(uniprot_id)
+            if AF_model is None:
+                textfile.write(f"WARNING: AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.\n")
+                return uniprot_id
+            
+            structure_df = pd.DataFrame({'uniprot_id': [AF_model[1]], 
+                                         'deposition_date': [AF_model[2]], 
+                                         'experimental_method': [AF_model[3]], 
+                                         'resolution': [AF_model[4]]})
             structure_df.index = [AF_model[0]]           
-            
-            return structure_df
-    
-    #if there are PDBs these should be captured. 
+        
+        return structure_df
+
     else: 
-        #empty list for collection of PDBs 
-        currated_pdb_list = []
-        #create an empty df
-        structure_df = pd.DataFrame()
+        response_text = json.loads(response.text)
+        structures = response_text['structures']
+           
+        pdb = []
+        deposition_date = []
+        experimental_method = [] 
+        resolution = []
     
-        #make a for loop to populate the empty df with metadata for each pdb
-        for pdb in pdb_list:
-            #retrive all metadata        
-            structure_metadata = get_structure_metadata(pdb)
-            if type(structure_metadata) == tuple:
-                
-                data = [(structure_metadata[0]), (structure_metadata[1]), (structure_metadata[2])]
-            
-                structure_metadata_df = pd.DataFrame([data], columns = ['deposition_date', 
-                                                                      'experimental_method', 
-                                                                      'resolution'])
-                
-                structure_df = pd.concat([structure_df, structure_metadata_df])               
-                currated_pdb_list.append(pdb)
-        
-            else: 
-                continue
-                
-        #Add pdb ID & uniprot ID as columns
-        structure_df.index = currated_pdb_list
-        structure_df.insert(0, "uniprot_id", [uniprot_id]*len(structure_df), True)
-        
-        #Split based on experimental method
-        method_dfs = [x for _, x in structure_df.groupby(structure_df['experimental_method'])]
-        
-        #Sort within the method
-        for method in range(len(method_dfs)):
-            method_dfs[method] = method_dfs[method].sort_values(["resolution", "deposition_date"], ascending = [True, False])
-            
-            #add numerical values in each of the dataframes to ensure that the sorting is kept in place 
-            if method_dfs[method].experimental_method[0] == 'X-RAY DIFFRACTION':
-                method_dfs[method].insert(0, "Rank", sorted(range(1000,1000+len(method_dfs[method]))), True)
-                
-            elif "ELECTRON" in method_dfs[method].experimental_method[0]:
-                method_dfs[method].insert(0, "Rank", sorted(range(2000,2000+len(method_dfs[method]))), True)
-                
-            elif "NMR" in method_dfs[method].experimental_method[0]:
-                method_dfs[method].insert(0, "Rank", sorted(range(3000,3000+len(method_dfs[method]))), True)
-            
-            else:
-                method_dfs[method].insert(0, "Rank", sorted(range(4000,4000+len(method_dfs[method]))), True)
+        for structure in structures:
+            pdb.append(structure['summary']['model_identifier'].upper())
+            deposition_date.append(structure['summary']['created'])
+            experimental_method.append(structure['summary']['experimental_method'])
+            resolution.append(structure['summary']['resolution'])
 
-        #concatenate all the dataframes
-        structure_df = pd.concat(method_dfs)
-        
-        AF_model = get_alphafold_basics(uniprot_id)
-        
-        if AF_model != {}: 
-            AF_model = list(AF_model)
-            AF_model[1] = int(AF_model[1])
-            structure_df.loc[AF_model[0]] = AF_model[1:]
-
-        structure_df = structure_df.sort_values(by="Rank")
-        #Sort based on rank & remove rank when sorted
-        structure_df = structure_df.drop(['Rank'], axis=1)
-                                                            
-        return structure_df 
+    structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
+    
+    rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+    
+    structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+    
+    AF_model = get_alphafold_basics(uniprot_id)
+    
+    if AF_model is not None:
+        AF_model = list(AF_model)
+        structure_df.loc[len(structure_df)] = AF_model
+    
+    structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+    structure_df = structure_df.drop(['method_priority'], axis=1)
+    structure_df = structure_df.set_index('pdb')
+                                                        
+    return structure_df     
 
 def find_structure_list(input_dataframe):  
     print("FUNCTION: find_structure_list(input_dataframe)")
@@ -305,20 +321,19 @@ def find_structure_list(input_dataframe):
     #take all uniprot id's from the input file
     all_uniprot_ids = list(input_dataframe.uniprot)
     all_uniprot_ids = sorted(set(all_uniprot_ids), key=all_uniprot_ids.index)
+           
+    for row in range(len(all_uniprot_ids)):
+        
+        print(all_uniprot_ids[row])
+        
+        structure_info = get_structure_df(all_uniprot_ids[row]) 
     
-    with open("missing_ID.txt", "w") as textfile:
+        if type(structure_info) != str: 
+            df_collector.append(structure_info)
         
-        for row in range(len(all_uniprot_ids)):
-            
-            print(all_uniprot_ids[row])
-            
-            structure_info = get_structure_df(all_uniprot_ids[row]) 
-        
-            if type(structure_info) != str: 
-                df_collector.append(structure_info)
-            
-            else:
-                textfile.write(structure_info + "\n")
+        else:
+            with open("log.txt", "w") as textfile:
+                textfile.write(f"No structures found in any resource for {structure_info}. \n")
             
     if len(df_collector) > 0:
         found_structure_list = pd.concat(df_collector) 
@@ -363,26 +378,25 @@ def combine_structure_dfs(found_structures, input_dataframe):
     df_collector = []
 
     for i in range(len(input_dataframe)):
-        
-        df = pd.DataFrame([])
-        
         sub_df = found_structures[found_structures.uniprot_id == input_dataframe.uniprot[i]]
-        df.insert(0, "hugo_name", [input_dataframe.hugo_name[i]]*len(sub_df), True)
-        df.insert(1, "uniprot_id", [input_dataframe.uniprot[i]]*len(sub_df), True)
-        df.insert(2, "uniprot_isoform", [input_dataframe['uniprot_isoform'][i]]*len(sub_df), True)
-        df.insert(3, "mutations", [input_dataframe.mutations[i]]*len(sub_df), True)
-        df.insert(4, "cluster_id", [input_dataframe.cluster_id[i]]*len(sub_df), True)
-        df.insert(5, "structure_id", list(sub_df.index), True)
-        df.insert(6, "deposition_date", list(sub_df.deposition_date), True)
-        df.insert(7, "experimental_method", list(sub_df.experimental_method), True)
-        df.insert(8, "resolution", list(sub_df.resolution), True)
+        num_sub_df = len(sub_df)
         
-        df_collector.append(df)
+        data = {
+            "hugo_name": [input_dataframe.hugo_name[i]] * num_sub_df,
+            "uniprot_id": [input_dataframe.uniprot[i]] * num_sub_df,
+            "uniprot_isoform": [input_dataframe['uniprot_isoform'][i]] * num_sub_df,
+            "mutations": [input_dataframe.mutations[i]] * num_sub_df,
+            "cluster_id": [input_dataframe.cluster_id[i]] * num_sub_df,
+            "structure_id": list(sub_df.index),
+            "deposition_date": list(sub_df.deposition_date),
+            "experimental_method": list(sub_df.experimental_method),
+            "resolution": list(sub_df.resolution)
+        }
+        
+        df_collector.append(pd.DataFrame(data))
     
-    final_df = pd.concat(df_collector)    
-    
-    final_df = final_df.reset_index(drop=True)
-    
+    final_df = pd.concat(df_collector, ignore_index=True)
+           
     return final_df
 
 #============================================================================#
@@ -995,13 +1009,16 @@ def get_complex_information(pdb_id, uniprot):
     """    
     #finding protein complexes and their related uniprot_ids 
     #this step also serves as a quality control of uniprot id's and chains.
-    mapping_url_proteins = "https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{:s}"
-        
-    response = requests.get(mapping_url_proteins.format(pdb_id))
-    response_text = json.loads(response.text)
-
-    if response_text != {}:
     
+    try: 
+        response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id}")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: PDBe database API controlled and rejected for {pdb_id}, connection error. \n")
+        exit(1) 
+    
+    if response.status_code == 200:
+        response_text = json.loads(response.text)
         protein_segment_dictionary = response_text[pdb_id.lower()]
         
         self_chain = []
@@ -1063,9 +1080,13 @@ def get_complex_information(pdb_id, uniprot):
         protein_info = "NA"
     
     #finding complexes with other ligands by identifying other molecules
-    mapping_url_molecules = "https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{:s}"
-    
-    response = requests.get(mapping_url_molecules.format(pdb_id))
+    try: 
+        response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{pdb_id}")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: PDBe database API for molecules controlled and rejected for {pdb_id}, connection error. \n")
+        exit(1) 
+
     response_text = json.loads(response.text)
     molecule_dictionary = response_text[pdb_id.lower()]
 
@@ -1140,7 +1161,7 @@ def collect_complex_info(structural_df):
 
     for pdb in set(structural_df['structure_id']):
         
-        if pdb.startswith("AF"):
+        if pdb.startswith("AF-"):
             list_of_values = [pdb,'NA',
                               'NA',['A'],
                               'NA','NA',
