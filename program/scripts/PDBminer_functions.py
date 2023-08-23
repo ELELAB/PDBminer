@@ -288,7 +288,9 @@ def get_structure_df(uniprot_id):
             structure_df = pd.DataFrame({'uniprot_id': [AF_model[1]], 
                                          'deposition_date': [AF_model[2]], 
                                          'experimental_method': [AF_model[3]], 
-                                         'resolution': [AF_model[4]]})
+                                         'resolution': [AF_model[4]],
+                                         'PDBREDOdb': "NO", 
+                                         'PDBREDOdb_details': "N/A"})
             structure_df.index = [AF_model[0]]           
         
         return structure_df
