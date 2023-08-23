@@ -78,27 +78,26 @@ def check_input_file(df):
     problems = []
     
     for i in range(len(df)):    
+    
         if type(df.uniprot[i]) != str:
             problems.append(f"there is a problem with the uniprot input on the line of {df.loc[i]['uniprot']}")
-        
+    
         if ('hugo_name' in df.columns) == False:
             uniprot_url = f"https://www.uniprot.org/uniprot/{df.uniprot[i]}.json"
             response = requests.get(uniprot_url)
             uniprot_file_content = json.loads(response.text)
             df.loc[i,"hugo_name"] = uniprot_file_content['genes'][0]['geneName']['value']
-                    
         else:
-            if df.hugo_name[i] == "N/A":
+            if df.hugo_name[i] == "N/A" or df.hugo_name[i] == "NA" or pd.isna(df.hugo_name[i]):
                 uniprot_url = f"https://www.uniprot.org/uniprot/{df.uniprot[i]}.json"
                 response = requests.get(uniprot_url)
                 uniprot_file_content = json.loads(response.text)
                 df.loc[i,"hugo_name"] = uniprot_file_content['genes'][0]['geneName']['value']
-    
             if type(df.hugo_name[i]) != str:
                 problems.append(f"there is a problem with the hugo name input on the line of {df.loc[i]['uniprot']}")
-                    
+    
         if ('uniprot_isoform' in df.columns) == True:
-            if df.uniprot_isoform[i] == "N/A":
+            if df.uniprot_isoform[i] == "N/A" or df.uniprot_isoform[i] == "NA" or pd.isna(df.uniprot_isoform[i]):
                 df.loc[i,"uniprot_isoform"] = 1
             else:
                 try:
@@ -107,24 +106,24 @@ def check_input_file(df):
                     problems.append(f"there is a problem with the isoform input on the line of {df.loc[i]['uniprot']}")
         else:
             df.loc[i,"uniprot_isoform"] = 1
-        
         if ('mutations' in df.columns) == True:
-            if type(df.mutations[i]) != str:
+            if df.mutations[i] == "N/A" or df.mutations[i] == "NA" or pd.isna(df.mutations[i]):
+                df.loc[i,"mutations"] = "NA"
+            elif type(df.mutations[i]) != str:
                 problems.append(f"there is a problem with the mutation input on the line of {df.loc[i]['uniprot']}")
         else:
             df.loc[i,"mutations"] = "N/A"
-            
         if ('cluster_id' in df.columns) == True:
-            if df.cluster_id[i] == "N/A":
-                df.loc[i,"cluster_id"] = 999            
+            if df.cluster_id[i] == "N/A" or df.cluster_id[i] == "NA" or pd.isna(df.cluster_id[i]):
+                df.loc[i,"cluster_id"] = "NA"               
             else:
                 try:
                     int(df.cluster_id[i])
                 except ValueError:
                     problems.append(f"there is a problem with the cluster_id input on the line of {df.loc[i]['uniprot']}") 
         else: 
-            df.loc[i,"cluster_id"] = 999
-            
+            df.loc[i,"cluster_id"] = "NA"
+        
     df = df[['hugo_name', 'uniprot', 'uniprot_isoform', 'mutations', 'cluster_id']]
     
     return df, problems
@@ -169,13 +168,13 @@ with open (f"{path}/log.txt", "w") as f:
         if args.mutations:
             mutations = [args.mutations]
             df['mutations'] = mutations
-        else: df['mutations'] = ["N/A"]
+        else: df['mutations'] = ["NA"]
         
         if args.cluster_id:
             cluster = [args.cluster_id]
             df['cluster_id'] = cluster
         
-        else: df['cluster_id'] = [999]
+        else: df['cluster_id'] = ["NA"]
         df.to_csv(f'{path}/input_file.csv')
         input_file = 'input_file.csv'
         f.write("input file created based on hugo name and uniprot id, file name: input_file.csv\n")
