@@ -57,7 +57,7 @@ from requests.exceptions import ConnectionError
 #   structure including their metadata for further analysis. 
 
 def get_alphafold_basics(uniprot_id):
-    print("FUNCTION: get_alphafold_basics(uniprot_id)")
+    print(f"FUNCTION: get_alphafold_basics({uniprot_id})")
     """
     Function that takes a uniprot id and retrieve data from the alphafold
     database, and prepare the basic information of that model in alignment 
@@ -95,7 +95,7 @@ def get_alphafold_basics(uniprot_id):
 
     
 def get_pdbs(uniprot_id):
-    print("FUNCTION: get_pdbs(uniprot_id)")
+    print(f"FUNCTION: get_pdbs({uniprot_id})")
     """
     Function is taken from SLiMfast, documentation and comments there.
     Credit: Valentina Sora
@@ -129,7 +129,7 @@ def get_pdbs(uniprot_id):
             textfile.write(f"WARNING: The Uniprot Database returned an error for the request of {uniprot_id}.\n")
 
 def get_structure_metadata(pdb_id):
-    print(f"FUNCTION: get_structure_metadata(pdb_id), {pdb_id}")
+    print(f"FUNCTION: get_structure_metadata({pdb_id})")
     
     """
     Function that takes each pdb_id and retrive metadata from the PDBe.
@@ -192,7 +192,37 @@ def get_structure_metadata(pdb_id):
         resolution = dictionary_exp['resolution']
     
     return deposition_date, experimental_method, resolution
+
+def get_PDBredo(pdb, method):
+    print(f"FUNCTION: get_PDBredo({pdb}, {method})")
+    """
+
+    Parameters
+    ----------
+    pdb : four letter PDB code.
+    method: the experimental method used to obtain PDB.
+
+    Returns
+    -------
+    str: YES/NO for availability in PDB-REDO database.
+    rfree_improve: a string detailing the orignal and PDBredo r-free values, "N/A" if non applicable
+    """
+    
+    if method in ['X-RAY DIFFRACTION','ELECTRON MICROSCOPY','ELECTRON CRYSTALLOGRAPHY']:
+        url = f"https://pdb-redo.eu/db/{pdb}/data.json"
+        response = requests.get(url)
         
+        if response.status_code == 200:
+            response_data = response.json()
+            r_free_pdb = response_data['properties']['RFREE']
+            r_free_pdbredo = response_data['properties']['RFFIN']
+            rfree_improve = f"{r_free_pdb};{r_free_pdbredo}"
+            return "YES", rfree_improve
+        else:
+            return "NO", "N/A"
+        
+    else:     
+        return "NO", "N/A"        
 
 def get_structure_df(uniprot_id): 
     """
@@ -292,6 +322,10 @@ def get_structure_df(uniprot_id):
     
     structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
     structure_df = structure_df.drop(['method_priority'], axis=1)
+    
+    structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['experimental_method']), axis=1)
+    structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+    
     structure_df = structure_df.set_index('pdb')
                                                         
     return structure_df     
@@ -364,7 +398,7 @@ def combine_structure_dfs(found_structures, input_dataframe):
 
     Parameters
     ----------
-    found_structures : A pandas dataframe created in step 2. 
+    found_structures : A pandas dataframe created. 
     input_dataframe :  The original input dataframe with mutational information.
 
     Returns
@@ -390,7 +424,9 @@ def combine_structure_dfs(found_structures, input_dataframe):
             "structure_id": list(sub_df.index),
             "deposition_date": list(sub_df.deposition_date),
             "experimental_method": list(sub_df.experimental_method),
-            "resolution": list(sub_df.resolution)
+            "resolution": list(sub_df.resolution),
+            "PDBREDOdb":list(sub_df.PDBREDOdb),
+            "PDBREDOdb_rfree": list(sub_df.PDBREDOdb_details)
         }
         
         df_collector.append(pd.DataFrame(data))
@@ -1304,4 +1340,3 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
-
