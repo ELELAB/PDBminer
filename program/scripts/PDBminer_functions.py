@@ -193,14 +193,13 @@ def get_structure_metadata(pdb_id):
     
     return deposition_date, experimental_method, resolution
 
-def get_PDBredo(pdb, method):
-    print(f"FUNCTION: get_PDBredo({pdb}, {method})")
+def get_PDBredo(pdb):
+    print(f"FUNCTION: get_PDBredo({pdb})")
     """
 
     Parameters
     ----------
     pdb : four letter PDB code.
-    method: the experimental method used to obtain PDB.
 
     Returns
     -------
@@ -208,21 +207,20 @@ def get_PDBredo(pdb, method):
     rfree_improve: a string detailing the orignal and PDBredo r-free values, "N/A" if non applicable
     """
     
-    if method in ['X-RAY DIFFRACTION','ELECTRON MICROSCOPY','ELECTRON CRYSTALLOGRAPHY']:
-        url = f"https://pdb-redo.eu/db/{pdb}/data.json"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            response_data = response.json()
-            r_free_pdb = response_data['properties']['RFREE']
-            r_free_pdbredo = response_data['properties']['RFFIN']
-            rfree_improve = f"{r_free_pdb};{r_free_pdbredo}"
-            return "YES", rfree_improve
-        else:
-            return "NO", "N/A"
-        
-    else:     
-        return "NO", "N/A"        
+    try: 
+        response = requests.get(f"https://pdb-redo.eu/db/{pdb}/data.json")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: PDB-REDO database API controlled and rejected for {pdb_id}, connection error. \n")
+        exit(1) 
+    
+    if response.status_code == 200: 
+        response_data = response.json()
+        r_free_pdbredo = response_data['properties']['RFFIN']
+        return "YES", r_free_pdbredo
+    else:
+        return "NO", "N/A"
+    
 
 def get_structure_df(uniprot_id): 
     """
@@ -277,6 +275,30 @@ def get_structure_df(uniprot_id):
                 experimental_method.append(metadata[1]) 
                 resolution.append(metadata[2])
             
+            structure_df = pd.DataFrame({"pdb": pdb, 
+                                         "uniprot_id": [uniprot_id]*len(pdb), 
+                                         "deposition_date": deposition_date, 
+                                         "experimental_method": experimental_method, 
+                                         "resolution": resolution}) 
+            
+            rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+            
+            structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+            
+            AF_model = get_alphafold_basics(uniprot_id)
+            
+            if AF_model is not None:
+                AF_model = list(AF_model)
+                structure_df.loc[len(structure_df)] = AF_model
+            
+            structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+            structure_df = structure_df.drop(['method_priority'], axis=1)
+            
+            structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb']), axis=1)
+            structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+            
+            structure_df = structure_df.set_index('pdb')
+            
         else:
             with open("log.txt", "a") as textfile:
                 textfile.write(f"WARNING: Uniprot did not return any structures for {uniprot_id}.\n")
@@ -310,27 +332,27 @@ def get_structure_df(uniprot_id):
             experimental_method.append(structure['summary']['experimental_method'])
             resolution.append(structure['summary']['resolution'])
 
-    structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
+        structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
     
-    rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
-    
-    structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
-    
-    AF_model = get_alphafold_basics(uniprot_id)
-    
-    if AF_model is not None:
-        AF_model = list(AF_model)
-        structure_df.loc[len(structure_df)] = AF_model
-    
-    structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
-    structure_df = structure_df.drop(['method_priority'], axis=1)
-    
-    structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['experimental_method']), axis=1)
-    structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
-    
-    structure_df = structure_df.set_index('pdb')
+        rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+        
+        structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+        
+        AF_model = get_alphafold_basics(uniprot_id)
+        
+        if AF_model is not None:
+            AF_model = list(AF_model)
+            structure_df.loc[len(structure_df)] = AF_model
+        
+        structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+        structure_df = structure_df.drop(['method_priority'], axis=1)
+        
+        structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb']), axis=1)
+        structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+        
+        structure_df = structure_df.set_index('pdb')
                                                         
-    return structure_df     
+    return structure_df    
 
 def find_structure_list(input_dataframe):  
     print("FUNCTION: find_structure_list(input_dataframe)")
@@ -1342,3 +1364,4 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
+

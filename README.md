@@ -133,10 +133,8 @@ After a successful run, this directory can contain the following:
 only output. If there are any errors or warnings while running a particular protein, these are also listed in the log.txt file. This can be used
 for error handling.
 
-However, after the advent of alphafold, this is not a very likely the sole output. It is more likely to have 
-a file called {uniprot_id}_all.csv and {uniprot_id}_all.json. Notice that you may validate the json file towards the schema.json.
-
 * {unipot_id}_all.csv and .json, An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
+Notice that you may validate the json file towards the schema.json.
 
 If mutations are included in the input, a filtered version of all will also be available if the mutations
 are covered by any structure.
@@ -161,8 +159,9 @@ See examples of the in- and  output of the example directories.
 * deposition_date: Timing of file placement in PDB or model generation in the Alphafold Database.
 * experimental_method: By which the PDB was generated. For AlphaFold model "predicted" is used. 
 * resolution: Estimation of PDB quality (for X-ray structures).
+* r-free: the r-free value for the structure.
 * PDBREDOdb: A YES/NO column if the structure is available in the PDB-REDO database.
-* PDBREDOdb_rfree: Two floats seperated by ";" e.g., 0.185;0.164 indicating the original r-free and the r-free of the PDB-REDO refined structure.
+* PDBREDOdb_rfree: The r-free of the PDB-REDO refined structure.
 * complex_protein: A column defining if a complex or fusion is present in the PDB file.
 * complex_protein_details: Details regarding the protein complex indicating the Uniprot ID of the other protein and the chains.
 * complex_nucleotide: Binary, indicates if the protein is bound to a nucleotide string such as DNA.
