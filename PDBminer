@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2021-2023, Kristine Degn
+# Copyright (C) 2023, Kristine Degn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -122,7 +122,7 @@ def retrieve_hugo_name(uniprot_accession_number):
         response = requests.get(f"https://www.uniprot.org/uniprot/{uniprot_accession_number}.json")
     except ConnectionError as e:
         with open("log.txt", "a") as textfile:
-            textfile.write(f"EXITING: Uniprot database API controlled and rejected for {uniprot_accession_number} when finding the Hugo Name, connection error.\n")
+            textfile.write(f"EXITING: Coould not connect to Uniprot database via API for {uniprot_accession_number} when finding the Hugo Name.\n")
         exit(1)
     
     # If the response is successfull, hugo name is collected.
@@ -144,53 +144,53 @@ def check_input_file(df):
     problems = []
     
     # The rest of the columns are optional and may be populated in this function.
-    for i in range(len(df)):        
+    
+    if not 'hugo_name' in df.columns: 
+        new_column_label = 'hugo_name'
+        df[new_column_label] = 'NA'
+    
+    if not 'uniprot_isoform' in df.columns:
+        new_column_label = 'uniprot_isoform'
+        df[new_column_label] = 1
         
-        #HUGO NAME
-        if not 'hugo_name' in df.columns:
-            hugo_name_specific = retrieve_hugo_name(df.uniprot[i])
-            df.loc[i,"hugo_name"] = hugo_name_specific
-                        
-        else:
-            if df.hugo_name[i] in ["N/A", "NA"] or pd.isna(df.hugo_name[i]):
-                hugo_name_specific = retrieve_hugo_name(df.uniprot[i])
-                df.loc[i,"hugo_name"] = hugo_name_specific
-                
-            if not isinstance(df.hugo_name[i], str):
-                problems.append(f"there is a problem with the hugo name input on the line of {df.loc[i]['uniprot']}")
-                
-        #ISOFORM    
-        if 'uniprot_isoform' in df.columns:
-            if df.uniprot_isoform[i] == "N/A" or df.uniprot_isoform[i] == "NA" or pd.isna(df.uniprot_isoform[i]):
-                df.loc[i,"uniprot_isoform"] = 1
-            else:
-                try:
-                    int(df.uniprot_isoform[i])
-                except ValueError:
-                    problems.append(f"there is a problem with the isoform input on the line of {df.loc[i]['uniprot']}")
-        else:
-            df.loc[i,"uniprot_isoform"] = 1
+    if not 'mutations' in df.columns:
+        new_column_label = 'mutations'
+        df[new_column_label] = 'NA'
+        
+    if not 'cluster_id' in df.columns:
+        new_column_label = 'cluster_id'
+        df[new_column_label] = 'NA'
+        
+    for i, r in df.iterrows():
+
+        # HUGO NAME
+        if r['hugo_name'] in ["N/A", "NA"] or pd.isna(r['hugo_name']):
+            hugo_name_specific = retrieve_hugo_name(r['uniprot'])
+            df.at[i, "hugo_name"] = hugo_name_specific
+
+        if not isinstance(r['hugo_name'], str):
+            problems.append(f"there is a problem with the hugo name input on the line of {r['uniprot']}")
+
+        # ISOFORM
+        try:
+            df.at[i, "uniprot_isoform"] = int(r['uniprot_isoform'])
+        except ValueError:
+            problems.append(f"there is a problem with the isoform input on the line of {r['uniprot']}")
         
         #MUTATIONS
-        if 'mutations' in df.columns:
-            if df.mutations[i] in ["N/A", "NA"] or pd.isna(df.mutations[i]):
-                df.loc[i,"mutations"] = "NA"
-            elif not isinstance(df.mutations[i], str):
-                problems.append(f"there is a problem with the mutation input on the line of {df.loc[i]['uniprot']}")
-        else:
-            df.loc[i,"mutations"] = "N/A"
+        if r['mutations'] in ["N/A", "NA"] or pd.isna(r['mutations']):
+            df.at[i, "uniprot_isoform"] = "NA"
+        elif not isinstance(r['mutations'], str):
+            problems.append(f"there is a problem with the mutation input on the line of {r['uniprot']}")
         
         #CLUSTER ID
-        if 'cluster_id' in df.columns:
-            if df.cluster_id[i] == "N/A" or df.cluster_id[i] == "NA" or pd.isna(df.cluster_id[i]):
-                df.loc[i,"cluster_id"] = "NA"
-            else:
-                try:
-                    int(df.cluster_id[i])
-                except ValueError:
-                    problems.append(f"there is a problem with the cluster_id input on the line of {df.loc[i]['uniprot']}") 
-        else: 
-            df.loc[i,"cluster_id"] = "NA"
+        if r['cluster_id'] == "N/A" or pd.isna(r['cluster_id']):
+            df.at[i, "cluster_id"] = "NA"
+        else:
+            try:
+                int(r['cluster_id'])
+            except ValueError:
+                problems.append(f"there is a problem with the cluster_id input on the line of {r['uniprot']}")
         
     df = df[['hugo_name', 'uniprot', 'uniprot_isoform', 'mutations', 'cluster_id']]
     
@@ -262,3 +262,4 @@ with open (f"{path}/log.txt", "w") as f:
     f.write(f"time: {finished-start}\n")
     f.write(f"before snakemake: {snake-start}\n")
     f.write("PDBminer has finished.\n")
+
