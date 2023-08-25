@@ -422,7 +422,7 @@ def combine_structure_dfs(found_structures, input_dataframe):
 
     Parameters
     ----------
-    found_structures : A pandas dataframe created. 
+    found_structures : A pandas dataframe. 
     input_dataframe :  The original input dataframe with mutational information.
 
     Returns
@@ -1364,4 +1364,3 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
-
