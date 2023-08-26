@@ -204,7 +204,7 @@ def get_PDBredo(pdb):
     Returns
     -------
     str: YES/NO for availability in PDB-REDO database.
-    rfree_improve: a string detailing the orignal and PDBredo r-free values, "N/A" if non applicable
+    rfree_improve: a string detailing the orignal and PDBredo r-free values, "NA" if non applicable
     """
     
     try: 
@@ -219,7 +219,7 @@ def get_PDBredo(pdb):
         r_free_pdbredo = response_data['properties']['RFFIN']
         return "YES", r_free_pdbredo
     else:
-        return "NO", "N/A"
+        return "NO", "NA"
     
 
 def get_structure_df(uniprot_id): 
@@ -288,8 +288,8 @@ def get_structure_df(uniprot_id):
             AF_model = get_alphafold_basics(uniprot_id)
             
             if AF_model is not None:
-                AF_model = list(AF_model)
-                structure_df.loc[len(structure_df)] = AF_model
+                structure_df.loc[len(structure_df)] = tuple(AF_model)
+                
             
             structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
             structure_df = structure_df.drop(['method_priority'], axis=1)
@@ -312,7 +312,7 @@ def get_structure_df(uniprot_id):
                                          'experimental_method': [AF_model[3]], 
                                          'resolution': [AF_model[4]],
                                          'PDBREDOdb': "NO", 
-                                         'PDBREDOdb_details': "N/A"})
+                                         'PDBREDOdb_details': "NA"})
             structure_df.index = [AF_model[0]]           
         
         return structure_df
@@ -341,8 +341,7 @@ def get_structure_df(uniprot_id):
         AF_model = get_alphafold_basics(uniprot_id)
         
         if AF_model is not None:
-            AF_model = list(AF_model)
-            structure_df.loc[len(structure_df)] = AF_model
+            structure_df.loc[len(structure_df)] = tuple(AF_model)
         
         structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
         structure_df = structure_df.drop(['method_priority'], axis=1)
@@ -941,8 +940,8 @@ def align_alphafold(alphafold_id, mutation_positions):
         AA_in_PDB = []
     
         for i in range(len(mutation_positions)):
-            if mutation_positions[i] == "N/A":
-                mutation = "N/A"
+            if mutation_positions[i] == "NA":
+                mutation = "NA"
             else:
                 if df.category[df.position == mutation_positions[i]].values == "high":
                     mutation = f"{df.sequence[df.position == mutation_positions[i]].values[0]}{mutation_positions[i]}{df.sequence[df.position == mutation_positions[i]].values[0]}"
@@ -954,8 +953,8 @@ def align_alphafold(alphafold_id, mutation_positions):
         AA_in_PDB = ",".join(AA_in_PDB)
 
     else: 
-        coverage = "N/A"
-        AA_in_PDB = "N/A"
+        coverage = "NA"
+        AA_in_PDB = "NA"
     #output coverage string
     return coverage, AA_in_PDB
 
@@ -989,7 +988,7 @@ def align(combined_structure, path):
     for i in range(len(combined_structure)):
         
         if type(combined_structure['mutations'][i]) != str:
-            combined_structure['mutation_positions'] = "N/A"
+            combined_structure['mutation_positions'] = "NA"
         else:
             combined_structure['mutation_positions'] = combined_structure['mutations'].str.split(';').apply(lambda x: [int(y[1:-1]) for y in x])
         
