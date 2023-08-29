@@ -57,7 +57,7 @@ from requests.exceptions import ConnectionError
 #   structure including their metadata for further analysis. 
 
 def get_alphafold_basics(uniprot_id):
-    print("FUNCTION: get_alphafold_basics(uniprot_id)")
+    print(f"FUNCTION: get_alphafold_basics({uniprot_id})")
     """
     Function that takes a uniprot id and retrieve data from the alphafold
     database, and prepare the basic information of that model in alignment 
@@ -95,7 +95,7 @@ def get_alphafold_basics(uniprot_id):
 
     
 def get_pdbs(uniprot_id):
-    print("FUNCTION: get_pdbs(uniprot_id)")
+    print(f"FUNCTION: get_pdbs({uniprot_id})")
     """
     Function is taken from SLiMfast, documentation and comments there.
     Credit: Valentina Sora
@@ -129,7 +129,7 @@ def get_pdbs(uniprot_id):
             textfile.write(f"WARNING: The Uniprot Database returned an error for the request of {uniprot_id}.\n")
 
 def get_structure_metadata(pdb_id):
-    print(f"FUNCTION: get_structure_metadata(pdb_id), {pdb_id}")
+    print(f"FUNCTION: get_structure_metadata({pdb_id})")
     
     """
     Function that takes each pdb_id and retrive metadata from the PDBe.
@@ -192,7 +192,35 @@ def get_structure_metadata(pdb_id):
         resolution = dictionary_exp['resolution']
     
     return deposition_date, experimental_method, resolution
-        
+
+def get_PDBredo(pdb):
+    print(f"FUNCTION: get_PDBredo({pdb})")
+    """
+
+    Parameters
+    ----------
+    pdb : four letter PDB code.
+
+    Returns
+    -------
+    str: YES/NO for availability in PDB-REDO database.
+    rfree_improve: a string detailing the orignal and PDBredo r-free values, "NA" if non applicable
+    """
+    
+    try: 
+        response = requests.get(f"https://pdb-redo.eu/db/{pdb}/data.json")
+    except ConnectionError as e:
+        with open("log.txt", "a") as textfile:
+            textfile.write(f"EXITING: PDB-REDO database API controlled and rejected for {pdb_id}, connection error. \n")
+        exit(1) 
+    
+    if response.status_code == 200: 
+        response_data = response.json()
+        r_free_pdbredo = response_data['properties']['RFFIN']
+        return "YES", r_free_pdbredo
+    else:
+        return "NO", "NA"
+    
 
 def get_structure_df(uniprot_id): 
     """
@@ -247,6 +275,30 @@ def get_structure_df(uniprot_id):
                 experimental_method.append(metadata[1]) 
                 resolution.append(metadata[2])
             
+            structure_df = pd.DataFrame({"pdb": pdb, 
+                                         "uniprot_id": [uniprot_id]*len(pdb), 
+                                         "deposition_date": deposition_date, 
+                                         "experimental_method": experimental_method, 
+                                         "resolution": resolution}) 
+            
+            rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+            
+            structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+            
+            AF_model = get_alphafold_basics(uniprot_id)
+            
+            if AF_model is not None:
+                structure_df.loc[len(structure_df)] = tuple(AF_model)
+                
+            
+            structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+            structure_df = structure_df.drop(['method_priority'], axis=1)
+            
+            structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb']), axis=1)
+            structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+            
+            structure_df = structure_df.set_index('pdb')
+            
         else:
             with open("log.txt", "a") as textfile:
                 textfile.write(f"WARNING: Uniprot did not return any structures for {uniprot_id}.\n")
@@ -258,7 +310,9 @@ def get_structure_df(uniprot_id):
             structure_df = pd.DataFrame({'uniprot_id': [AF_model[1]], 
                                          'deposition_date': [AF_model[2]], 
                                          'experimental_method': [AF_model[3]], 
-                                         'resolution': [AF_model[4]]})
+                                         'resolution': [AF_model[4]],
+                                         'PDBREDOdb': "NO", 
+                                         'PDBREDOdb_details': "NA"})
             structure_df.index = [AF_model[0]]           
         
         return structure_df
@@ -278,23 +332,26 @@ def get_structure_df(uniprot_id):
             experimental_method.append(structure['summary']['experimental_method'])
             resolution.append(structure['summary']['resolution'])
 
-    structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
+        structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
     
-    rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
-    
-    structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
-    
-    AF_model = get_alphafold_basics(uniprot_id)
-    
-    if AF_model is not None:
-        AF_model = list(AF_model)
-        structure_df.loc[len(structure_df)] = AF_model
-    
-    structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
-    structure_df = structure_df.drop(['method_priority'], axis=1)
-    structure_df = structure_df.set_index('pdb')
+        rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+        
+        structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+        
+        AF_model = get_alphafold_basics(uniprot_id)
+        
+        if AF_model is not None:
+            structure_df.loc[len(structure_df)] = tuple(AF_model)
+        
+        structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+        structure_df = structure_df.drop(['method_priority'], axis=1)
+        
+        structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb']), axis=1)
+        structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+        
+        structure_df = structure_df.set_index('pdb')
                                                         
-    return structure_df     
+    return structure_df    
 
 def find_structure_list(input_dataframe):  
     print("FUNCTION: find_structure_list(input_dataframe)")
@@ -364,7 +421,7 @@ def combine_structure_dfs(found_structures, input_dataframe):
 
     Parameters
     ----------
-    found_structures : A pandas dataframe created in step 2. 
+    found_structures : A pandas dataframe. 
     input_dataframe :  The original input dataframe with mutational information.
 
     Returns
@@ -390,7 +447,9 @@ def combine_structure_dfs(found_structures, input_dataframe):
             "structure_id": list(sub_df.index),
             "deposition_date": list(sub_df.deposition_date),
             "experimental_method": list(sub_df.experimental_method),
-            "resolution": list(sub_df.resolution)
+            "resolution": list(sub_df.resolution),
+            "PDBREDOdb":list(sub_df.PDBREDOdb),
+            "PDBREDOdb_rfree": list(sub_df.PDBREDOdb_details)
         }
         
         df_collector.append(pd.DataFrame(data))
@@ -881,8 +940,8 @@ def align_alphafold(alphafold_id, mutation_positions):
         AA_in_PDB = []
     
         for i in range(len(mutation_positions)):
-            if mutation_positions[i] == "N/A":
-                mutation = "N/A"
+            if mutation_positions[i] == "NA":
+                mutation = "NA"
             else:
                 if df.category[df.position == mutation_positions[i]].values == "high":
                     mutation = f"{df.sequence[df.position == mutation_positions[i]].values[0]}{mutation_positions[i]}{df.sequence[df.position == mutation_positions[i]].values[0]}"
@@ -894,8 +953,8 @@ def align_alphafold(alphafold_id, mutation_positions):
         AA_in_PDB = ",".join(AA_in_PDB)
 
     else: 
-        coverage = "N/A"
-        AA_in_PDB = "N/A"
+        coverage = "NA"
+        AA_in_PDB = "NA"
     #output coverage string
     return coverage, AA_in_PDB
 
@@ -929,7 +988,7 @@ def align(combined_structure, path):
     for i in range(len(combined_structure)):
         
         if type(combined_structure['mutations'][i]) != str:
-            combined_structure['mutation_positions'] = "N/A"
+            combined_structure['mutation_positions'] = "NA"
         else:
             combined_structure['mutation_positions'] = combined_structure['mutations'].str.split(';').apply(lambda x: [int(y[1:-1]) for y in x])
         
@@ -1304,4 +1363,3 @@ def filter_all(structural_df, input_dataframe):
         final_dfs.append(structural_df)
 
     return final_dfs
-
