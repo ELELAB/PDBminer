@@ -144,23 +144,14 @@ def check_input_file(df):
     problems = []
     
     # The rest of the columns are optional and may be populated in this function.
-    
-    if not 'hugo_name' in df.columns: 
-        new_column_label = 'hugo_name'
-        df[new_column_label] = 'NA'
+
+    for new_column_label in ["hugo_name", "mutations", "cluster_id"]:
+        if not new_column_label in df.columns:
+            df[new_column_label] = 'NA'
     
     if not 'uniprot_isoform' in df.columns:
-        new_column_label = 'uniprot_isoform'
-        df[new_column_label] = 1
-        
-    if not 'mutations' in df.columns:
-        new_column_label = 'mutations'
-        df[new_column_label] = 'NA'
-        
-    if not 'cluster_id' in df.columns:
-        new_column_label = 'cluster_id'
-        df[new_column_label] = 'NA'
-        
+        df['uniprot_isoform'] = 1
+
     for i, r in df.iterrows():
 
         # HUGO NAME
@@ -179,12 +170,12 @@ def check_input_file(df):
         
         #MUTATIONS
         if r['mutations'] in ["N/A", "NA"] or pd.isna(r['mutations']):
-            df.at[i, "uniprot_isoform"] = "NA"
+            df.at[i, "mutations"] = "NA"
         elif not isinstance(r['mutations'], str):
             problems.append(f"there is a problem with the mutation input on the line of {r['uniprot']}")
         
         #CLUSTER ID
-        if r['cluster_id'] == "N/A" or pd.isna(r['cluster_id']):
+        if r['cluster_id'] in ["N/A", "NA"] or pd.isna(r['cluster_id']):
             df.at[i, "cluster_id"] = "NA"
         else:
             try:
