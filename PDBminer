@@ -153,7 +153,6 @@ def check_input_file(df):
         df['uniprot_isoform'] = 1
 
     for i, r in df.iterrows():
-
         # HUGO NAME
         if r['hugo_name'] in ["N/A", "NA"] or pd.isna(r['hugo_name']):
             hugo_name_specific = retrieve_hugo_name(r['uniprot'])
@@ -196,6 +195,7 @@ with open (f"{path}/log.txt", "w") as f:
         f.write("input file mode is choosen and input file has been identified.\n")
 
         df = pd.read_csv(input_file)
+        df = pd.read_csv(input_file, na_values=[], keep_default_na=False)
         
         uniprot_problems = uniprot_accession_number_type(df)
         if uniprot_problems is not None:
@@ -253,4 +253,3 @@ with open (f"{path}/log.txt", "w") as f:
     f.write(f"time: {finished-start}\n")
     f.write(f"before snakemake: {snake-start}\n")
     f.write("PDBminer has finished.\n")
-

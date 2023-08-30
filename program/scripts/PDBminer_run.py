@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # PDBminer_run: classes and functions for the snakefile.
-# Copyright (C) 2022, Kristine Degn
+# Copyright (C) 2023, Kristine Degn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -87,48 +87,14 @@ def run_list(full_path):
         
         if len(structural_df) != 0:
             #prep and export all file
-            all_df = cleanup_all(structural_df)
-            print("filed cleaned")
+            cleanup_all(structural_df, input_dataframe, path)
             
-            if type(input_dataframe.mutations[0]) != str: 
-                all_df = all_df.drop(columns=('mutations'))
-            if set(input_dataframe.cluster_id) == {999}:
-                all_df = all_df.drop(columns=('cluster_id'))
-            
-            all_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_all.csv")
-            all_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_all.json", orient="index")
-            
-            #prep and export the filered file
-            if input_dataframe['mutations'].isnull().values.any() == False:
-                if input_dataframe['mutations'][0] not in ["N/A", "NA"]:
-                    filtered_df = filter_all(structural_df, input_dataframe)   
-            
-                if len(filtered_df) == 1:            
-                    if len(filtered_df[0]) > 0:
-                        if set(input_dataframe.cluster_id) == {999}:
-                            filtered_df[0] = filtered_df[0].drop(columns=('cluster_id'))
-                        filtered_df[0].to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.csv")
-                        filtered_df[0].to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.json", orient="index")
-                else:
-                    for cluster_df in filtered_df:
-                        if len(cluster_df) > 0:
-                            cluster_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv")
-                            cluster_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster{cluster_df.cluster_id[0]}_filtered.csv", orient="index")
-                
-            #remove the alphafold model
-            os.chdir(f"{path}/results/{uniprot_id}")
-            os.system("find . -maxdepth 1 -name '*.pdb*' -type f -delete")
-            
-            if os.path.exists("structure"):
-                shutil.rmtree("structure")
-            if os.path.exists("obsolete"):
-                shutil.rmtree("obsolete")
+    if os.path.exists("{path}/results/{uniprot_id}/structures"):
+        shutil.rmtree("{path}/results/{uniprot_id}/structures")
     
-    with open(f"{uniprot_id}_done.txt", "w") as textfile: 
+    with open(f"{path}/results/{uniprot_id}/{uniprot_id}_done.txt", "w") as textfile: 
         textfile.write(f"Analysis complete for {uniprot_id}")
           
-    os.chdir(f"{path}/results/")
-  
     return
 
 run_list(snakemake.input)
