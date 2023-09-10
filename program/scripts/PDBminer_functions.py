@@ -1508,53 +1508,65 @@ def filter_all(structural_df, input_dataframe):
 def cleanup_all(structural_df,input_dataframe, path):
     print("FUNCTION: cleanup_all(structural_df,input_dataframe, path)")
     
-    final_dfs = filter_all(structural_df, input_dataframe)
-    for df in final_dfs:
-        uniprot_id = df.iloc[0]['uniprot_id']
-        #rearrange columns
-        df = df[['hugo_name', 'uniprot_id', 'uniprot_isoform', 
-                                       'mutations', 'cluster_id', 'structure_id', 
-                                       'deposition_date', 'experimental_method', 
-                                       'resolution', 'r_free','PDBREDOdb', 
-                                       'PDBREDOdb_rfree', 'complex_protein',
-                                       'complex_protein_details', 'complex_nucleotide',
-                                       'complex_nucleotide_details', 'complex_ligand',
-                                       'complex_ligand_details', 'chains', 'coverage', 
-                                       'mutations_in_pdb','AA_in_PDB','b_factor', 'warnings']]
-        
-        df = df.reset_index(drop=True)
-        # Iterate through mutations_in_pdb
-        for i,v in enumerate(df.mutations_in_pdb):
-            if isinstance(v, dict):
-                if all(value == 'NA' for value in v.values()):
-                    df.loc[i,'mutations_in_pdb'] = "NA"
-        
-        # Iterate through warnings
-        for i in range(len(df.warnings)):
-            if isinstance(df.warnings[i], dict):
-                for key, value in df.warnings[i].items():
-                    if all(c in ['', ' ', ';'] for c in value):
-                        df.warnings[i][key] = 'NA'
-                if all(value == 'NA' for value in df.warnings[i].values()):
-                    df.loc[i,'warnings'] = "NA"
-        
-        df.index.name = 'structure_rank'
-        df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_all.json", orient="index")
-        
-        if type(df.mutations[0]) == float or type(df.mutations[0]) == np.float64:
-            df.drop('mutations', inplace=True, axis=1)
-            df.drop('AA_in_PDB', inplace=True, axis=1)
+    #final_dfs = filter_all(structural_df, input_dataframe)
+    #for df in final_dfs:
+    uniprot_id = structural_df.iloc[0]['uniprot_id']
+    #rearrange columns
+    structural_df = structural_df[['hugo_name', 'uniprot_id', 'uniprot_isoform', 
+                                   'mutations', 'cluster_id', 'structure_id', 
+                                   'deposition_date', 'experimental_method', 
+                                   'resolution', 'r_free','PDBREDOdb', 
+                                   'PDBREDOdb_rfree', 'complex_protein',
+                                   'complex_protein_details', 'complex_nucleotide',
+                                   'complex_nucleotide_details', 'complex_ligand',
+                                   'complex_ligand_details', 'chains', 'coverage', 
+                                   'mutations_in_pdb','AA_in_PDB','b_factor', 'warnings']]
+    
+    df = structural_df.reset_index(drop=True)
+    # Iterate through mutations_in_pdb
+    for i,v in enumerate(df.mutations_in_pdb):
+        if isinstance(v, dict):
+            if all(value == 'NA' for value in v.values()):
+                df.loc[i,'mutations_in_pdb'] = "NA"
+    
+    # Iterate through warnings
+    for i in range(len(df.warnings)):
+        if isinstance(df.warnings[i], dict):
+            for key, value in df.warnings[i].items():
+                if all(c in ['', ' ', ';'] for c in value):
+                    df.warnings[i][key] = 'NA'
+            if all(value == 'NA' for value in df.warnings[i].values()):
+                df.loc[i,'warnings'] = "NA"
+    
+    df.index.name = 'structure_rank'
+    
+    #### find if there are mutations in the file containing non numbers.
+    if type(df.mutations[0]) != float or type(df.mutations[0]) != np.float64:
+        filtered_df = df.copy()
+        filtered_df = filtered_df[filtered_df['AA_in_PDB'].apply(lambda d: any(d.values()))]
         
         if type(df.cluster_id[0]) == float or type(df.cluster_id[0]) == np.float64:
-            df.drop('cluster_id', inplace=True, axis=1)    
+            df.drop('cluster_id', inplace=True, axis=1)  
         
-        if 'mutations' in df.columns: #no cluster, but with mutations
-            df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.json", orient="index")
-            
-        if 'cluster_id' in df.columns:
-            grouped = df.groupby(['cluster_id'])
-            for cluster_id, cluster_data in grouped:
-                cluster_data.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.json", orient="index")
-                
-    return 
+        if len(filtered_df) > 0:        
+            filtered_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.json", orient="columns")
+        
+    if 'cluster_id' in df.columns:
+        grouped = df.groupby(['cluster_id'])
+        for cluster_id, cluster_data in grouped:
+            cluster_data = cluster_data[cluster_data['AA_in_PDB'].apply(lambda d: any(d.values()))]
+            if len(cluster_data) > 0:
+                cluster_data.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.json", orient="columns")
+    
+    df = df[~df.index.duplicated(keep='first')]
+    
+    if 'mutations' in df.columns:
+        df.drop('mutations', inplace=True, axis=1)
+        df.drop('AA_in_PDB', inplace=True, axis=1)
+    
+    if 'cluster_id' in df.columns:
+        df.drop('cluster_id', inplace=True, axis=1)
+        
+    df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_all.json", orient="columns")
 
+    return 

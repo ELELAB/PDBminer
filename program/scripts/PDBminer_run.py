@@ -89,8 +89,8 @@ def run_list(full_path):
             #prep and export all file
             cleanup_all(structural_df, input_dataframe, path)
             
-    if os.path.exists("{path}/results/{uniprot_id}/structures"):
-        shutil.rmtree("{path}/results/{uniprot_id}/structures")
+    if os.path.exists(f"{path}/results/{uniprot_id}/structures"):
+        shutil.rmtree(f"{path}/results/{uniprot_id}/structures")
     
     with open(f"{path}/results/{uniprot_id}/{uniprot_id}_done.txt", "w") as textfile: 
         textfile.write(f"Analysis complete for {uniprot_id}")
