@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2022, Kristine Degn
+# Copyright (C) 2023, Kristine Degn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,8 +30,9 @@ from matplotlib.colors import ListedColormap
 import argparse
 import re
 
+
 parser = argparse.ArgumentParser(prog = "PDBminer2coverage",
-                                 usage = "PDBminer2coverage [-h] help, all flags are optional: [-r] results path, [-i] input file, [-u] uniprot id, can be added if the user wish to visualize only one coverage, [-s] sequence, dash and comma separated values such as 1-10 or 1-20,30-40 for the sequence of the protein to plot, [-t] threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad, [-c] color coverage, the plot is white and the coverage of each structure is colored in. Default is grey, but any color can be used, e.g '#64b2b5'. [-m] mutation color, is the overlay color on the sites of mutation. It is blue per default but any color can be used, e.g '#183233'")
+                                 usage = "PDBminer2coverage [-h] help, all flags are optional: [-r] results path, [-i] input file, [-u] uniprot id, can be added if the user wish to visualize only one coverage, [-s] sequence, dash and comma separated values such as 1-10 or 1-20,30-40 for the sequence of the protein to plot, [-t] threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad, then you can specify the coloring based on b_factors: [-bb] a threshold value for the best b-factors, < 15 per default, [-bg] a threshold value for good b-factors, < 25 per default, [-bp] a threshold value for poor b-factors, > 40 per default")
 
 parser.add_argument("-r", '--result',
                     metavar = 'result path',
@@ -62,23 +63,23 @@ parser.add_argument("-t", "--threshold",
                     type=int,
                     help="Max number of residues plotted on the y-axis.")
 
-parser.add_argument("-c", "--color_coverage",
-                    metavar = "color for coverage",
-                    default = "grey",
-                    type=str,
-                    help="plot color for coverage")
+parser.add_argument("-bb", "--b_factor_best",
+                    metavar = "b_factor_best",
+                    default = 15,
+                    type=int,
+                    help="Threshold for the best b-factors")
 
-parser.add_argument("-m", "--color_mutations",
-                    metavar = "color for mutations",
-                    default = "blue",
-                    type=str,
-                    help="plot color for coverage")
+parser.add_argument("-bg", "--b_factor_good",
+                    metavar = "b_factor_good",
+                    default = 25,
+                    type=int,
+                    help="Threshold for good b-factors")
 
-parser.add_argument("-d", "--color_inherent_mutations",
-                    metavar = "color for mutations in the PDBfile",
-                    default = "lightgrey",
-                    type=str,
-                    help="plot color for mutations in the PDB")
+parser.add_argument("-bp", "--b_factor_poor",
+                    metavar = "b_factor_poor",
+                    default = 40,
+                    type=int,
+                    help="Threshold for poor b-factors")
 
 args = parser.parse_args()
 
@@ -92,9 +93,9 @@ if uniprot_id != "none":
 
 threshold = args.threshold
 
-cover_color = args.color_coverage
-mutation_color = args.color_mutations
-mutation_pdb = args.color_inherent_mutations
+bfactortheshold_best = args.b_factor_best
+bfactortheshold_good = args.b_factor_good
+bfactortheshold_poor = args.b_factor_poor
 
 if args.sequence: 
     sequence = [int(s) for s in re.findall(r'\b\d+\b', args.sequence)]
@@ -105,6 +106,7 @@ else:
     sequence = 0
 
 print(args)
+
 
 def get_uniprot_seq(isoform, uniprot_id):
     """
@@ -153,124 +155,124 @@ def get_uniprot_seq(isoform, uniprot_id):
     
     return uniprot_numbering, columns
 
-def get_ranges(coverage, uniprot_numbering): 
+def get_a_range(a, chain, uniprot_numbering):
     """
-    A function convating the reported coberage ranges of PDBminer
-    to an array of 0 and 1s based on the entire uniprot sequence.
-    Applicable for PDB structures.
+    A function that generates an array the length of the protein
+    with the b-factor values as entries where there are coverage.
 
     Parameters
     ----------
-    coverage : From he PDBminer output file, all or filtered. 
-    uniprot_numbering : The full numbering of the protein.
+    a : One row from the result file from PDBminer
+    chain : The relevant Chain for the coverage
+    uniprot_numbering : The canonical numbering of the uniprot sequence.
 
     Returns
     -------
-    a : An array where the covered position is annotated 1 and the 
-    not covered positions are annotated 0.
+    output : An array with 0 if no structure coverage and the b-factor if
+    applicable.
 
     """
-    UN = np.array(uniprot_numbering)
-    a = np.zeros(UN.shape)    
-    for r in (("[", ""), ("]", ""), ("'", ""), ("(", ""), (")", "")): 
-        coverage = coverage.replace(*r)
-    if ";" in coverage:
-        coverage = coverage.split(";")
     
-        for segment in coverage: 
-            if segment == "NA":
-                continue
-            else:
-                segment = segment.split(", ")
-                start = int(segment[0])
-                stop = int(segment[1])
-                segment_range = np.array(range(start,stop+1))            
-                for j in range(len(segment_range)):
-                    a[segment_range[j]-1] = 1
-    else:
-        if coverage == "NA":
-            a = []
-        else:
-            coverage = coverage.split(", ")
-            start = int(coverage[0])
-            stop = int(coverage[1])
-            coverage_range = np.array(range(start,stop+1))
-            for j in range(len(coverage_range)):
-                a[coverage_range[j]-1] = 1
-    return a
-
-def get_ranges_AF(coverage, uniprot_numbering):
-    """
-    A function convating the reported coberage ranges of PDBminer
-    to an array of 0 and 1s based on the entire uniprot sequence.
-    Applicable for Alphafold structures.
-
-    Parameters
-    ----------
-    coverage : From he PDBminer output file, all or filtered. 
-    uniprot_numbering : The full numbering of the protein.
-
-    Returns
-    -------
-    a : An array where the covered position is annotated 1 and the 
-    not covered positions are annotated 0.
-
-    """
     UN = np.array(uniprot_numbering)
-    a = np.zeros(UN.shape)
+    output = np.zeros(UN.shape)  
+    
+    coverage = a.coverage[chain]
+    if coverage == "NA":
+        return output
+    bfactor = a.b_factor[chain]
+    
     for r in (("[", ""), ("]", ""), ("'", ""), ("(", ""), (")", "")): 
         coverage = coverage.replace(*r)
     coverage = coverage.split(";")
+        
     for segment in coverage:
-        if segment == "NA":
-            continue
-        else:
-            c = segment.split(", ")
-            start = int(c[0])
-            stop = int(c[1])
-            coverage_range = np.array(range(start,stop+1))
-            for j in range(len(coverage_range)):
-                a[coverage_range[j]-1] = 1 
-    return a
+        start, end = map(int, segment.split(', '))  # Parse the coverage range
+        output[start - 1:end] = bfactor[0:end - start + 1]
 
-def get_mutations(mutations_in_pdb, a_range): 
+    return output
+
+def convert_bfactor(a_range, bfactortheshold_best, bfactortheshold_good, 
+                    bfactortheshold_poor):
     """
-    A function convating the reported coberage ranges of PDBminer
-    to an array of 0 and 1s based on the entire uniprot sequence.
-    Applicable for PDB structures.
+    A function that converts the b-fcator values to category values.
+    The categroies are determined based on the variables. 
 
     Parameters
     ----------
-    coverage : From he PDBminer output file, all or filtered. 
-    uniprot_numbering : The full numbering of the protein.
+    a_range : The full length array of the protein and b-factor values where 
+    the structure coveres the protein.
+    bfactortheshold_best : A integer defining a value where lower b-factors are 
+    considered the best quality.
+    bfactortheshold_good : A integer defining a value where lower b-factors are 
+    considered good quality.
+    bfactortheshold_poor : A integer defining a value where higher b-factors are 
+    considered poor quality.
 
     Returns
     -------
-    a : An array where the covered position is annotated 1 and the 
-    not covered positions are annotated 0.
+    scored_values : An array shaped like a_range with the categorized b-factors.
 
     """
-    if type(mutations_in_pdb) == float:
-        return a_range
-    elif type(mutations_in_pdb) == np.float64:
-        return a_range
     
-    else:
-        replacements = [("[", ""), ("]", ""), ("'", "")]
-        mutations_in_pdb = [mutations_in_pdb := mutations_in_pdb.replace(a, b) for a, b in replacements]
-        mutations_in_pdb = mutations_in_pdb[-1]
-        mutations_in_pdb = mutations_in_pdb.split(", ")
-        for i in range(len(mutations_in_pdb)):
-            mutations_in_pdb[i] = int(mutations_in_pdb[i][1:-1])
-        mutations_in_pdb = list(set(mutations_in_pdb))
-    
-        for j in range(len(mutations_in_pdb)):
-            if a_range[mutations_in_pdb[j]-1] == 1:
-                a_range[mutations_in_pdb[j]-1] = 2
+    scored_values = []
+    for score in a_range:
+        if score == 0.0:
+            scored_values.append(0)
+        elif score <= bfactortheshold_best:
+            scored_values.append(4)
+        elif score <= bfactortheshold_good:
+            scored_values.append(3)
+        elif score <= bfactortheshold_poor:
+            scored_values.append(2)
+        elif score > bfactortheshold_poor:
+            scored_values.append(1)
             
-        return a_range       
+    scored_values = np.array(scored_values)
 
-def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, sequence, threshold, cover_color, mutation_color, mutation_pdb):
+    return scored_values
+
+def get_pLLDT_score(score):
+    if score > 90:
+        return 4
+    elif score > 70:
+        return 3
+    elif score > 50:
+        return 2
+    else:
+        return 1
+    
+    
+def get_mutations(mutations_in_pdb, a_range, chain): 
+    """
+    A function that annotates the mutations in the pdb file.
+
+    Parameters
+    ----------
+    mutations_in_pdb : A dictionary
+    a_range : The b-factor categorized coverage array
+    chain : Chain in structure.
+
+    Returns
+    -------
+    a_range : A b-factor categorized coverage array where the mutations
+    are marked with a novel category.
+
+    """
+    
+    if mutations_in_pdb == "NA" or mutations_in_pdb[chain] == "NA":
+        return a_range
+    
+    for mutation in mutations_in_pdb[chain]:
+        mut_pos = int(mutation[1:-1])
+        a_range[mut_pos-1] = 5
+        
+    return a_range       
+
+
+
+def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, 
+                  sequence, threshold, bfactortheshold_best, 
+                  bfactortheshold_good, bfactortheshold_poor):
     """
     The plotting function, taking the output files from PDBminer and coverting 
     them into a plot.
@@ -294,60 +296,40 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
 
     """
     uniprot_numbering, columns = get_uniprot_seq(isoform, uniprot_id)
+    
+    vectorized_get_pLLDT_score = np.vectorize(get_pLLDT_score)
 
     print("    columns calculated imported from uniprot sequence")
-    f = file[['structure_id', 'chains', 'coverage', 'mutations_in_pdb']]
-    f = f[f["coverage"].str.contains("Mismatch") == False]
-    f = f.reset_index()
+    f = file[['structure_id', 'chains', 'coverage', 'mutations_in_pdb', 'b_factor']]
     index = []
     ranges = []
-    print("    converting ranges on chains to binary values")
+    print("    converting ranges on chains to b-factor dependent values")
     for i in range(len(f)):
         a = f.iloc[i]
         print(f"        {a.structure_id}")
-        if len(a.chains) == 1:
-            print(f"        1 chain, {a.chains}")
-            if a.structure_id.startswith('AF'):
-                a_range = get_ranges_AF(a.coverage, uniprot_numbering)
-                if type(a.mutations_in_pdb) == np.float64:
-                    a_range = a_range
-                elif type(a.mutations_in_pdb) == float:
-                    a_range = a_range
-                else: 
-                    a_range = get_mutations(a.mutations_in_pdb, a_range)
-                if np.array_equal(a_range, []) == False:
-                    index.append(a.structure_id) 
-                    ranges.append(a_range)
+        chains = a.chains.split(";")
+        for chain in chains:
+            #creating an array the length of the uniprot sequence,
+            #where the pLDDT and B-factors are converted into scores
+            #that will illustrate the coverage in colors.
+            if a.structure_id.startswith('AF-'):
+                a_range = np.array(a.b_factor[chain])
+                a_range = vectorized_get_pLLDT_score(a_range)
             else:
-                a_range = get_ranges(a.coverage, uniprot_numbering)
-                a_range = get_mutations(a.mutations_in_pdb, a_range)
-                if np.array_equal(a_range, []) == False:
-                    index.append(a.structure_id)
-                    ranges.append(a_range)
-        else:
-            print(f"        multi chain, {a.chains}")
-            chains = a.chains.split(";")
-            coverage = a.coverage.split("];[")
-            if type(a.mutations_in_pdb) == float:
-                mutations = "NA"
-            elif type(a.mutations_in_pdb) == np.float64:
-                mutations = "NA"
-            else:           
-                mutations = a.mutations_in_pdb.split(";")
+                a_range = get_a_range(a, chain, uniprot_numbering)
+                a_range = convert_bfactor(a_range, 
+                                              bfactortheshold_best, 
+                                              bfactortheshold_good, 
+                                              bfactortheshold_poor)
             
-            for i in range(len(chains)):
-                a_range = get_ranges(coverage[i], uniprot_numbering)
-                if mutations == "NA":
-                    a_range = a_range
-                elif mutations[i] == "NA":
-                    a_range = a_range
-                elif len(mutations[i]) == 1:                      
-                    a_range = get_mutations(mutations[0], a_range)
-                else:
-                    a_range = get_mutations(mutations[i], a_range)
-                if np.array_equal(a_range, []) == False:
-                    index.append(f"{a.structure_id}_{chains[i]}")                
-                    ranges.append(a_range)
+            # we need to color in mutations
+            # if any a_range is assigned 5.
+            a_range = get_mutations(a.mutations_in_pdb, a_range, chain)
+            
+            if set(a_range) != {0.0}: 
+                index.append(f"{a.structure_id}_{chain}")                
+                ranges.append(a_range)
+        
     print("    combine to dataframe")
     heatmap = np.stack(ranges)
     df = pd.DataFrame(data=heatmap, index=index, columns=columns)
@@ -362,34 +344,6 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
         else: 
             df = df.iloc[: , sequence[0]:sequence[1]]
 
-    if type(mutations) == str and mutations != "NA":
-        print("    finding mutational positions")
-        mutations = mutations.split(";")
-        for i in range(len(mutations)):
-            mutations[i] = int(mutations[i][1:-1])
-        mutational_positions = np.unique(np.array(mutations))
-        print("    assigning new values to mutational positions")
-        UN = np.array(uniprot_numbering)
-        np_mut = np.zeros(UN.shape)
-        if len(mutational_positions) == 1:
-            np_mut[mutational_positions[0]-1] = 1.0
-        else:
-            for j in range(len(mutational_positions)-1):
-                np_mut[mutational_positions[j]-1] = 1.0
-        arrays = [np_mut for _ in range(len(df))]
-        heatmap_mut = np.stack(arrays)
-        df_mut = pd.DataFrame(data=heatmap_mut, index=index, columns=columns)
-        print("    mutations assigned")
-        if np.array_equal(sequence, 0) == False:
-            if len(sequence) > 2:
-                evens = [x for x in range(len(sequence)) if x%2 == 0]
-                df_list = []
-                for i in evens:
-                    df_list.append(df_mut.iloc[: , sequence[i]:sequence[i+1]])
-                df_mut = pd.concat(df_list, axis=1, join="inner")
-            else: 
-                df_mut = df_mut.iloc[: , sequence[0]:sequence[1]]
-
     print("   plotting")
 
     length_threshold = threshold
@@ -402,36 +356,26 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name, seq
             print(f"    plotting chunk {i+1} of {chunks}")
             df_chunk = df.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
             fig, ax = plt.subplots(figsize=((len(df_chunk.columns)/6),(len(df_chunk.index)/4)))
-            ax = sns.heatmap(df_chunk, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), linewidths=1, 
-                        linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
-            try:
-                df_mut_chunk = df_mut.iloc[:,i*length_threshold:(i*length_threshold)+length_threshold]
-                ax = sns.heatmap(df_mut_chunk, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), alpha=0.15, cbar = False)
-            except:
-                df_mut = None
-            
+            ax = sns.heatmap(df_chunk, vmin=0, vmax=5, cmap=ListedColormap(['white', 'orange', 'yellow', 'lightblue', 'darkblue', 'red']), 
+                             linewidths=1, linecolor='black', cbar = False, xticklabels=True, yticklabels=True)            
             ax.xaxis.tick_top()
             plt.xticks(rotation=90)
-            if cluster == 999: 
+            if "cluster_id" not in file.columns: 
                 plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_chunk_{i}.pdf", format="pdf", bbox_inches="tight")
             else:
-                plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster{cluster}_chunk_{i}.pdf", format="pdf", bbox_inches="tight")
+                plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster_{cluster}_chunk_{i}.pdf", format="pdf", bbox_inches="tight")
     else:
         print(f"    sequence < {length_threshold} AA, one plot")
         fig, ax = plt.subplots(figsize=((len(df.columns)/6),(len(df.index)/4)))
-        ax = sns.heatmap(df, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), linewidths=1, 
-                    linecolor='black', cbar = False, xticklabels=True, yticklabels=True)
-        try:
-            ax = sns.heatmap(df_mut, vmin=0, vmax=2, cmap=ListedColormap(['white', cover_color, mutation_pdb]), alpha=0.15, cbar = False)
-        except:
-            df_mut = None
-        
-        ax.xaxis.tick_top() 
+        ax = sns.heatmap(df, vmin=0, vmax=5, cmap=ListedColormap(['white', 'orange', 'yellow', 'lightblue', 'darkblue', 'red']), 
+                         linewidths=1, linecolor='black', cbar = False, xticklabels=True, yticklabels=True)            
+        ax.xaxis.tick_top()
         plt.xticks(rotation=90)
-        if cluster == 999:
+
+        if "cluster_id" not in file.columns: 
             plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot.pdf", format="pdf", bbox_inches="tight")
         else:
-            plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster{cluster}.pdf", format="pdf", bbox_inches="tight")
+            plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster_{cluster}.pdf", format="pdf", bbox_inches="tight")
     return
 
 def run(df):
@@ -449,29 +393,29 @@ def run(df):
     """
     for i in range(len(df)): 
         print(df.iloc[i].uniprot)
-        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json"):
             print("  filtered file identified")
-            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv")
+            filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
-                          "filtered", sequence, threshold,
-                          cover_color, mutation_color, mutation_pdb)
+                          "filtered", sequence, threshold, 
+                          bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
             print("  plot done")
-        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
+        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json"):
             print("  filtered cluster file identified")
-            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv")
+            filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
                           "filtered", sequence, threshold,
-                          cover_color, mutation_color, mutation_pdb)
+                          bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
             print("  plot done")
-        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json"):
             print("  All file identified")
-            full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv")
+            full = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json")
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, full, 
                           "all", sequence, threshold,
-                          cover_color, mutation_color, mutation_pdb)
+                          bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
             print("  plot done")
     return
 

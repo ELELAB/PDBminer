@@ -204,20 +204,20 @@ def run(df):
     
     for i in range(len(df)): 
         print(f"{df.iloc[i].uniprot}")
-        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json"):
             print("  filtered file identified")
-            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv")
+            filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json")
             print("filtered is loaded")
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered")
             print(f"  {o}")
-        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
+        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json"):
             print("  filtered cluster file identified")
-            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv")
+            filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json")
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered")
             print(f"  {o}")
-        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
+        if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json"):
             print("  All file identified")
-            full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv")
+            full = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json")
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all")
             print(f"  {o}")
     return
