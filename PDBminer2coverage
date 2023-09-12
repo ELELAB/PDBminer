@@ -177,7 +177,7 @@ def get_a_range(a, chain, uniprot_numbering):
     output = np.zeros(UN.shape)  
     
     coverage = a.coverage[chain]
-    if coverage == "NA":
+    if coverage == "NA" or coverage == "[]":
         return output
     bfactor = a.b_factor[chain]
     
