@@ -57,18 +57,11 @@ python3 -m pip --default-timeout=1000 install -r requirements.txt
 source PDBminer/bin/activate
 ```
 
-## Setup
-
-When running PDBminer, you must specify the location of the program using the -f flag, however, if you wish to avoid this 
-you can change the default placement in the PDBminer script. 
-The default is default = "/usr/local/envs/PDBminer/PDBminer/program/snakefile" when you clone, which may not 
-fit your setup. If you choose to make this change, disregard -f in the following and the examples. 
-
 ## Running PDBminer the first time
 There are two ways of running PDBminer. Either by using and input file, or by using the command line
 to find the available structures for a single protein. 
 In the directory examples are three examples and their commands in the do.sh file. Consider testing the installation and use
-by running one or more of these. Notice that the -f flag is used in the do.sh files. 
+by running one or more of these. 
 
 ### Using an input file
 
@@ -104,7 +97,7 @@ The name of the input file should be specified in the command line:
 ### Running the Program with an input file
 
 ```
-$ python PDBminer -i [input file name] -n [cores] -f [snakefile]
+$ python PDBminer -i [input file name] -n [cores]
 ```
 ### Using the command line directly
 
@@ -113,11 +106,11 @@ commandline. To do so, a input file does not need to be constructured and the co
 with flags. Again, the uniprot option is mandatory while the rest is optional. 
 
 ```
-$ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores] -f [path to snakefile]
+$ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores]
 
-$ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1 -f program/snakefile
+$ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1
 
-$ python PDBminer -u P05543 -f program/snakefile
+$ python PDBminer -u P05543
 ``` 
 
 NOTICE: when isoform is not specified 1 is assumed.
@@ -133,7 +126,7 @@ After a successful run, this directory can contain the following:
 only output. If there are any errors or warnings while running a particular protein, these are also listed in the log.txt file. This can be used
 for error handling.
 
-* {unipot_id}_all.csv and .json, An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
+* {unipot_id}_all.json, An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
 Notice that you may validate the json file towards the schema.json.
 
 If mutations are included in the input, a filtered version of all will also be available if the mutations
@@ -141,11 +134,11 @@ are covered by any structure.
 * {unipot_id}_filtered.csv and .json, An output file with the PDBs and alphafold structure associated with the uniprot_id that covers at least one mutation.
 
 Notice that multiple filtered files are available when multiple clusters are parsed. 
-* {uniprot_id}_cluster{cluster_id}_filtered.csv and .json
+* {uniprot_id}_cluster{cluster_id}_filtered.json
 
-See examples of the in- and  output of the example directories.
+See examples of the in- and output of the example directories.
 
-#content of {unipot_id}_clean.csv/json and {unipot_id}_all.csv/json:
+#content of {unipot_id}_clean.json and {unipot_id}_all.json:
 
 ## Output Columns and Explanations:
 
@@ -171,6 +164,7 @@ See examples of the in- and  output of the example directories.
 * chains: Letter or letters describing the chains covering the Uniprot ID 
 * coverage: Coverage is a range of numbers indicating the area the model covers the uniprot sequence using the uniprot numbering of the sequence. One chain can have multiple sequences, for PDB structures indicating missing residues and for AlphaFold structures when the pLDDT score is below 70.  
 * mutations_in_pdb: When structures contain amino acid sequence that differ from the sequence specified with the isoform, they are annotated as mutations and can be found here. 
+* b_factor: A dictionary of the b-factor of the chains.
 * warnings: This coloumn contains information regarding dissimilarities or discrepancies that cannot be explained by fusions or other known alterations. This includes expression tags and amino acids added to terminals for structure solving purposes.
 
 For all columns ";" seperate data on the annotated chains and "NA" indicates that no relevant data is present.
@@ -186,7 +180,7 @@ the current working directory/results. Hence, the PDBminer2coverage module can b
 The output is one or more plots. If there are both a filtered- and an all-output file, both will be plotted. 
 If there are multiple clusters, these will be plotted separately. In cases where the protein sequence is longer than 500 amino acids, 
 the plot will be split into multiple output files, termed "chunks". Additionally, it is possible to narrow down the 
-plotting area with the flag -s --sequence. 
+plotting area with the flag -s --sequence. Mutations in the PDB files are colored red.
 
 ```
 $ PDBminer2coverage -s 1-20,50-95 
@@ -208,14 +202,14 @@ Flags:
 -u: uniprot id can be added if only one of the proteins in a multi protein run should be visualized.
 -s: sequence, dash and comma separated values such as 1-10 or 1-20,30-40 for the sequence of the protein to plot. 
 -t: threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad. 
--c: color coverage, the plot is white and the coverage of each structure is colored in. Default is grey, but any color can be used, e.g '#64b2b5'. 
--m: mutation color, is the overlay color on the sites of mutation. It is blue per default but any color can be used, e.g '#183233'
--d: color for mutations in the PDBfile, meaning the inherent mutations within the file. These can be colored different from the WT amino acids. fault is light grey.
+-bb: The value the best b-factors are below, integer. 
+-bg: The value good b-factors are below, integer. 
+-bp: The value poor b-factors are above, integer. 
 ```
 All options, example:
 
 ```
-$ PDBminer2coverage -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -s 30-120 -t 100 -c '#64b2b5' -m '#183233' -d '#a3cacc'
+$ PDBminer2coverage -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -s 30-120 -t 100 -bb 10 -bg 20 -bp 30
 ```
 
 ## PDBminer2network

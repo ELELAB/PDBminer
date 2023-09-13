@@ -24,10 +24,7 @@ from requests.exceptions import ConnectionError
 from datetime import datetime
 import json
 import shutil
-from multiprocessing import Pool, Lock
-import glob
-import pathlib  
-import multiprocessing
+from multiprocessing import Pool
 import itertools
 import numpy as np
 from Bio.PDB import *
@@ -35,6 +32,7 @@ from Bio import pairwise2
 from Bio import SeqIO
 from io import StringIO
 from Bio.SeqUtils import seq1
+import glob
 
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-u] uniprot id')
@@ -77,6 +75,12 @@ parser.add_argument("-n", "--cores",
 
 args = parser.parse_args()
 path = os.getcwd()
+
+#####################
+
+# INPUT HANDLING 
+
+#####################
 
 def uniprot_accession_number_type(df):
     """
@@ -149,7 +153,6 @@ def check_input_file(df):
     problems = []
     
     # The rest of the columns are optional and may be populated in this function.
-
     for new_column_label in ["hugo_name", "mutations", "cluster_id"]:
         if not new_column_label in df.columns:
             df[new_column_label] = 'NA'
@@ -190,6 +193,13 @@ def check_input_file(df):
     df = df[['hugo_name', 'uniprot', 'uniprot_isoform', 'mutations', 'cluster_id']]
     
     return df, problems
+
+################################
+
+# LOCATING RELEVANT STRUCTURES 
+
+################################
+
 
 def get_alphafold_basics(uniprot_id):
     print(f"FUNCTION: get_alphafold_basics({uniprot_id})")
@@ -603,6 +613,14 @@ def combine_structure_dfs(found_structures, input_dataframe):
     final_df = pd.concat(df_collector, ignore_index=True)
            
     return final_df
+
+################################
+
+# ALIGNING RELEVANT STRUCTURES 
+# TO THE ISOFORM DETERMINED 
+# FASTA
+
+################################
 
 def to_ranges(iterable):
     print("FUNCTION: to_ranges()")
@@ -1068,10 +1086,10 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     print("FUNCTION: align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, self_chains, uniprot_id, complex_status, complex_details)")
 
     #download the mmcif of the pdb_id
-    download_mmcif(pdb_id)
+    download_mmcif(pdb_id, path)
     
     #import the mmcif into a dataframe per chain.
-    chain_dfs, chain_names, r_free = import_mmcif(pdb_id, self_chains)
+    chain_dfs, chain_names, r_free = import_mmcif(pdb_id, self_chains, path)
     
     #The function returns empty if the struture could not be downloaded. 
     if chain_dfs == "NA":
@@ -1148,8 +1166,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
         #input mutations
         if type(mut_pos) == float or type(mut_pos) == np.float64:
             mut_pos = "NA"
-        #if np.isnan(mut_pos):
-        #    mut_pos="NA"
             
         if mut_pos not in ["NA", "N/A"]:
             
@@ -1186,7 +1202,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     os.chdir(path)
     return output_array
 
-def download_mmcif(structure_identifier):
+def download_mmcif(structure_identifier, path):
     """
     A function that downloads a mmcif file from a known source.
 
@@ -1202,8 +1218,8 @@ def download_mmcif(structure_identifier):
 
     """
     #check if structures directory exist
-    if os.path.isdir("structures") == False:
-        os.mkdir("structures")
+    if os.path.isdir(f"{path}/structures") == False:
+        os.mkdir(f"{path}/structures")
     
     #check if file already exists
     if os.path.isfile(f"structures/{structure_identifier}.cif") == False:
@@ -1211,16 +1227,16 @@ def download_mmcif(structure_identifier):
         if structure_identifier.startswith("AF-"):
             #download the alphafold file - we know the structure exist. If ther is a download issue, 
             #this is handled in the calling function. 
-            os.system(f"wget https://alphafold.ebi.ac.uk/files/{structure_identifier}.cif -P structures")
+            os.system(f"wget https://alphafold.ebi.ac.uk/files/{structure_identifier}.cif -P {path}/structures")
             
         else:
             #download the pdb file - we know the structure exist. If ther is a download issue, 
             #this is handled in the calling function. 
-            os.system(f"wget https://files.rcsb.org/download/{structure_identifier}.cif -P structures")
+            os.system(f"wget https://files.rcsb.org/download/{structure_identifier}.cif -P {path}/structures")
     
     return
 
-def import_mmcif(structure_identifier, self_chains):
+def import_mmcif(structure_identifier, self_chains, path):
     """
     A function that imports the downloaded mmcif file and handles the 
     lack of a file.
@@ -1241,10 +1257,10 @@ def import_mmcif(structure_identifier, self_chains):
     """
     #import the mmcif dictionary
     
-    if os.path.isfile(f"structures/{structure_identifier}.cif") == False:
+    if os.path.isfile(f"{path}/structures/{structure_identifier}.cif") == False:
         return "NA","NA","NA"
         
-    mmcif_dict = MMCIF2Dict.MMCIF2Dict(f"structures/{structure_identifier}.cif")
+    mmcif_dict = MMCIF2Dict.MMCIF2Dict(f"{path}/structures/{structure_identifier}.cif")
     
     #create a dataframe 
     df = pd.DataFrame({"ATOM": mmcif_dict['_atom_site.label_atom_id'], "seq_num": mmcif_dict['_atom_site.auth_seq_id'],
@@ -1286,7 +1302,7 @@ def import_mmcif(structure_identifier, self_chains):
 
     return chain_dfs, chain_names, r_free
 
-def align_alphafold(alphafold_id, mutations):
+def align_alphafold(alphafold_id, mutations, path):
     print("FUNCTION: align_alphafold(alphafold_id, mutations)")
     """
     This function takes an alphafold ID and the mutational positions. 
@@ -1305,9 +1321,9 @@ def align_alphafold(alphafold_id, mutations):
     mutations. 
 
     """
-    download_mmcif(alphafold_id)
+    download_mmcif(alphafold_id, path)
     
-    chain_dfs, chain_names, r_free = import_mmcif(alphafold_id, ["A"])
+    chain_dfs, chain_names, r_free = import_mmcif(alphafold_id, ["A"], path)
     
     #since there only is one chain
     AF_df = chain_dfs[0]
@@ -1388,7 +1404,7 @@ def align(combined_structure, path):
     for i in range(len(combined_structure)):
                            
         if combined_structure['structure_id'][i].startswith("AF-"):
-            alignment_info = align_alphafold(combined_structure['structure_id'][i], combined_structure['mutations'][i])
+            alignment_info = align_alphafold(combined_structure['structure_id'][i], combined_structure['mutations'][i], path)
             
             combined_structure.at[i, 'chains'] = "A"  
             combined_structure.at[i, 'coverage'] = alignment_info[0] 
@@ -1426,6 +1442,13 @@ def align(combined_structure, path):
     combined_structure = combined_structure.reset_index(drop=True)  
                         
     return combined_structure
+
+################################
+
+# FINDING INFORMATION ON NON-
+# SELF ENTRIES IN THE PDB FILE.
+
+################################
 
 def get_complex_information(pdb_id, uniprot):
     print(f"FUNCTION: get_complex_information(pdb_id, uniprot), {pdb_id}, {uniprot}")
@@ -1626,6 +1649,13 @@ def collect_complex_info(structural_df):
     
     return df_combined
 
+################################
+
+# FILTER AND EXPORT BASED ON 
+# INPUT
+
+################################
+
 def filter_all(structural_df, input_dataframe):
     print("FUNCTION: filter_all(structural_df, input_dataframe)")
     """
@@ -1739,16 +1769,14 @@ def cleanup_all(structural_df,input_dataframe, path):
 
     return 
 
+################################
+
+# RUNNING THE TOOL
+
+################################
 
 def process_uniprot(uniprot_id, df, path):
-    pid = multiprocessing.current_process().pid  # Get the PID of the current process
-    LOCK_FILE = f"lockfile_{pid}.txt"
-
     uniprot_dir = f"{path}/results/{uniprot_id}"
-
-    # Acquire the lock
-    with open(LOCK_FILE, "w") as lockfile:
-        lockfile.write("Locked")
 
     os.makedirs(uniprot_dir, exist_ok=True)
 
@@ -1760,74 +1788,12 @@ def process_uniprot(uniprot_id, df, path):
     if len(found_structures) != 0:
         combined_structure = combine_structure_dfs(found_structures, uniprot_dataframe)
         combined_structure = collect_complex_info(combined_structure)
-
-        structural_df = align(combined_structure, os.getcwd())
+        
+        structural_df = align(combined_structure, uniprot_dir)
 
         if len(structural_df) != 0:
             cleanup_all(structural_df, uniprot_dataframe, path)
 
-    # Release the lock and remove the lock file
-#    try:
-#        os.remove(LOCK_FILE)
-#    except:
-        
-    
-            
-#LOCK_FILE = "lockfile.txt"
-#LOCK_FILE = f"lockfile_{multiprocessing.current_process().pid}.txt"
-
-#def process_uniprot(uniprot_id, df, path):
-#    uniprot_dir = f"{path}/results/{uniprot_id}"
-
-    # Check for the lock file before proceeding
-#    if not os.path.exists(LOCK_FILE):
-#        with open(LOCK_FILE, "w") as lockfile:
-#            lockfile.write("Locked")  # Create the lock file
-
-#        try:
-#            os.makedirs(uniprot_dir, exist_ok=True)
-#    
-#            uniprot_dataframe = df[df['uniprot'] == uniprot_id].reset_index(drop=True)
-    
-#            found_structures = find_structure_list(uniprot_dataframe)
-    
-#            if len(found_structures) != 0:
-#                combined_structure = combine_structure_dfs(found_structures, uniprot_dataframe)
-#                combined_structure = collect_complex_info(combined_structure)
-    
-#                structural_df = align(combined_structure, os.getcwd())
-    
-#                if len(structural_df) != 0:
-#                    cleanup_all(structural_df, uniprot_dataframe, path)
-                
-#        finally:
-#            os.remove(LOCK_FILE)
-            
-#def process_uniprot(uniprot_id, df, path, lock):
-#    uniprot_dir = f"{path}/results/{uniprot_id}"
-    
-#    with lock:
-#        os.makedirs(uniprot_dir, exist_ok=True)
-    #os.makedirs(uniprot_dir, exist_ok=True)
-
-    #input_file_path = f"{uniprot_dir}/{uniprot_id}_input.csv"
-
-    #uniprot_dataframe = df[df['uniprot'] == uniprot_id].reset_index(drop=True)
-    #uniprot_dataframe.to_csv(input_file_path)
-    
-#    with lock:
-#        uniprot_dataframe = df[df['uniprot'] == uniprot_id].reset_index(drop=True)
-
-#    found_structures = find_structure_list(uniprot_dataframe)
-
-#    if len(found_structures) != 0:
-#        combined_structure = combine_structure_dfs(found_structures, uniprot_dataframe)
-#        combined_structure = collect_complex_info(combined_structure)
-
-#        structural_df = align(combined_structure, os.getcwd())
-
-#        if len(structural_df) != 0:
-#            cleanup_all(structural_df, uniprot_dataframe, path)
 
 def run_list(input_file, path, cores):
     df = pd.read_csv(input_file)
@@ -1836,6 +1802,7 @@ def run_list(input_file, path, cores):
     os.makedirs(f"{path}/results", exist_ok=True)
 
     with Pool(processes=cores) as pool:
+        #use starmap to add multiple arguments.
         pool.starmap(process_uniprot, [(uniprot_id, df, path) for uniprot_id in uniprot_list])
 
 
@@ -1843,12 +1810,11 @@ if __name__ == '__main__':
     with open (f"{path}/log.txt", "w") as f:
         start = datetime.now()
         f.write("PDBminer is starting\n")
-    
+        
         if args.inputfile:
             input_file = args.inputfile
             f.write("input file mode is choosen and input file has been identified.\n")
     
-            df = pd.read_csv(input_file)
             df = pd.read_csv(input_file, na_values=[], keep_default_na=False)
             
             uniprot_problems = uniprot_accession_number_type(df)
@@ -1903,12 +1869,12 @@ if __name__ == '__main__':
         
         finished = datetime.now() 
         
-        if os.path.exists("structures"):
-            shutil.rmtree("structures")
+        #if os.path.exists("structures"):
+        #    shutil.rmtree("structures")
         
-        files = glob.glob("lockfile_*")
-        for file in files:
-            os.remove(file)
+        dirs = glob.glob("results/*/structures")
+        for directory in dirs:
+            shutil.rmtree(directory)
         
         f.write(f"time: {finished-start}\n")
         f.write("PDBminer has finished.\n")
