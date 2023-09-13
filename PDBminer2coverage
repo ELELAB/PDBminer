@@ -29,7 +29,8 @@ import math
 from matplotlib.colors import ListedColormap
 import argparse
 import re
-
+from sys import exit
+from requests.exceptions import ConnectionError
 
 parser = argparse.ArgumentParser(prog = "PDBminer2coverage",
                                  usage = "PDBminer2coverage [-h] help, all flags are optional: [-r] results path, [-i] input file, [-u] uniprot id, can be added if the user wish to visualize only one coverage, [-s] sequence, dash and comma separated values such as 1-10 or 1-20,30-40 for the sequence of the protein to plot, [-t] threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad, then you can specify the coloring based on b_factors: [-bb] a threshold value for the best b-factors, < 15 per default, [-bg] a threshold value for good b-factors, < 25 per default, [-bp] a threshold value for poor b-factors, > 40 per default")
@@ -107,53 +108,72 @@ else:
 
 print(args)
 
-
-def get_uniprot_seq(isoform, uniprot_id):
+def get_uniprot_sequence(uniprot_id, isoform):
     """
-    Function with an API to Uniprot retriving the fasta file,
-    to annotate the sequence.
+    A function that takes the uniprot accession number and the isoform 
+    and retrieves the fasta file with the sequence. 
 
     Parameters
     ----------
-    isoform : The isoform from the PDBminer run.
-    uniprot_id : The Uniprot ID, also taken from the input-file.
+    uniprot_id : Uniprot accession number, String.
+    isoform : Integer of isoform.
 
     Returns
     -------
-    uniprot_numbering : A list of numbers annotating the positions of the protein
-    columns : A list containing the WT amino acid and positions. 
+    uniprot_sequence : A one letter amino acid sequence of the protein. String.
+    uniprot_numbering : A list of numerical values describing the residue position.
 
     """
+    print(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
     
-    uniprot_Url="https://rest.uniprot.org/uniprotkb/"
+    if isoform==1:
+    
+        try: 
+            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
+        except ConnectionError as e:
+            with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+                textfile.write(f"EXITING: Uniprot database API rejected for {uniprot_id}. \n")
+            exit(1) 
         
-    #Alignment to correct isoform:
-    if isoform == 1:
-    
-        fasta_url=uniprot_Url+uniprot_id+".fasta"
-        response = requests.post(fasta_url)
-        sequence_data=''.join(response.text)
-        Seq=StringIO(sequence_data)
-        pSeq=list(SeqIO.parse(Seq,'fasta'))
-        uniprot_sequence = str(pSeq[0].seq)
-        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+        if response.status_code == 200:
+            sequence_data=''.join(response.text)
+            Seq=StringIO(sequence_data)
+            pSeq=list(SeqIO.parse(Seq,'fasta'))
+            uniprot_sequence = str(pSeq[0].seq)
+            uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+
+        else:
+            with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+                textfile.write("EXITING: The canonical sequence could not be retrieved. \n")
+            exit(1) 
     
     else:
-    
-        fasta_url=uniprot_Url+uniprot_id+"-"+str(isoform)+".fasta"
-        response = requests.post(fasta_url)
-        sequence_data=''.join(response.text)
-        Seq=StringIO(sequence_data)
-        pSeq=list(SeqIO.parse(Seq,'fasta'))
-        uniprot_sequence = str(pSeq[0].seq)
-        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+        
+        try: 
+            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
+        except ConnectionError as e:
+            with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+                textfile.write(f"EXITING: Uniprot database API rejected for {uniprot_id}. \n")
+            exit(1) 
+            
+        if response.status_code == 200:
+            sequence_data=''.join(response.text)
+            Seq=StringIO(sequence_data)
+            pSeq=list(SeqIO.parse(Seq,'fasta'))
+            uniprot_sequence = str(pSeq[0].seq)
+            uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+        else:
+            with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+                textfile.write(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist. \n")
+            exit(1) 
     
     uniprot_sequence = list(uniprot_sequence)
     columns = []
     for i in range(len(uniprot_numbering)):
         columns.append(f"{uniprot_sequence[i]}{uniprot_numbering[i]}")
-    
-    return uniprot_numbering, columns
+        
+    return uniprot_sequence, columns
+
 
 def get_a_range(a, chain, uniprot_numbering):
     """
