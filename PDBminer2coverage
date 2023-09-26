@@ -315,7 +315,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
     availablity of a filtered and all file.
 
     """
-    uniprot_numbering, columns = get_uniprot_seq(isoform, uniprot_id)
+    uniprot_numbering, columns = get_uniprot_sequence(uniprot_id, isoform)
     
     vectorized_get_pLLDT_score = np.vectorize(get_pLLDT_score)
 

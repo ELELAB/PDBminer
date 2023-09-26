@@ -1,4 +1,4 @@
-../../PDBminer -i input_file.csv -n 1 -f ../../program/snakefile
+../../PDBminer -i input_file_clusters.csv
 ../../PDBminer2coverage
-../../PDBminer2network
+#../../PDBminer2network
 
