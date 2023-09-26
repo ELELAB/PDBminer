@@ -17,22 +17,25 @@
 
 import os
 import argparse
-import pandas as pd
 from sys import exit
 import requests
 from requests.exceptions import ConnectionError
 from datetime import datetime
+
+import pandas as pd
+import numpy as np
+
 import json
 import shutil
+import glob
 from multiprocessing import Pool
 import itertools
-import numpy as np
+
 from Bio.PDB import *
-from Bio import pairwise2
+from Bio import Align
 from Bio import SeqIO
 from io import StringIO
-from Bio.SeqUtils import seq1
-import glob
+
 
 parser = argparse.ArgumentParser(prog = "PDBminer",
                                  usage = 'PDBminer [-h] help [-n] cores and then either [-i] input file, or [-u] uniprot id')
@@ -639,51 +642,55 @@ def to_ranges(iterable):
         group = list(group)
         yield group[0][1], group[-1][1]
         
+
 def alignment(uniprot_sequence, AA_pdb):
     """
-    A function that takes the canonical sequence from uniprot and align the
-    sequence from the pdb file to it. 
-    
-    1) Local alignment: Aim to find the area of the uniprot
-       sequence the PDB covers.
-    2) Match (identical amino acids) =  1 point
-    3) Non-match (not identical) = -10 points
-    4) Opening a gap: -20 points
-    5) keeping a gap open: -10 
-    
-    reasoning: we may be OK with a mutation, but a missing residue
-    insertion or deleting will be punished much harder.                
-    The options have been chosen to force the best fit locally
-    #and highly discourage gaps, as they do not make sense in 
+    A function that aligns the uniprot and AA sequence from the PDB.
 
     Parameters
     ----------
-    uniprot_sequence : String of single letter amino acids. 
-    AA_pdb : A string of single letter amino acids. 
+    uniprot_sequence : A canonical string of amino acid letters
+    AA_pdb : A list of amino acid one letter codes covered by the PDB 
 
     Returns
     -------
-    uniprot_aligned : The updated string based on alginment. 
-    pdb_aligned : The updated string based on alignment. 
-    
-    In both cases a gap is indicated with "-"
+    uniprot_aligned : A string of letters. 
+    pdb_aligned : A string of letters including "-" for areas not covered by 
+    the pdb.
+
     """
-    
-    print("FUNCTION: alignment(uniprot_sequence, AA_pdb)")
-   
-    #this structral space. 
     pdb_sequence = ''.join(AA_pdb)
-    alignments = pairwise2.align.localms(uniprot_sequence, pdb_sequence, 1, -10, -20, -10)
     
-    if alignments != []: # and alignments[0][2] >= 10:
-        uniprot_aligned = alignments[0][0]
-        pdb_aligned = alignments[0][1]
-        
-    else:
+    aligner = Align.PairwiseAligner()
+    aligner.mode = 'local'
+    aligner.match_score = 1
+    aligner.mismatch_score = -10
+    aligner.open_gap_score = -20
+    aligner.extend_gap_score = -10
+    
+    # X is code for any amino acid and will be used here to indicate a gap, 
+    # which represent the missing residues in the structure, as  
+    # Align.PairwiseAligner() does not take "-" as input. 
+    uniprot_sequence = uniprot_sequence.replace("-", "X" )
+    pdb_sequence = pdb_sequence.replace("-", "X" )
+    
+    alignments = aligner.align(uniprot_sequence, pdb_sequence)
+    #if there are gaps: sequence contains letters not in the alphabet
+    #"-" is not understood. 
+    
+    if alignments.score < 5: 
         uniprot_aligned = []
         pdb_aligned = []
-    
+    else:
+        a = alignments[0].format()
+        a = a.split("\n")    
+        uniprot_aligned = a[0].replace(" ", "-")
+        uniprot_aligned = uniprot_aligned.replace("X", "-")
+        pdb_aligned = a[2].replace(" ", "-")
+        pdb_aligned = pdb_aligned.replace("X", "-")
+        
     return uniprot_aligned, pdb_aligned
+
 
 def build_fusion_df(df, uniprot_id):
     print(f"FUNCTION: build_fusion_df(df, {uniprot_id})")
@@ -712,16 +719,38 @@ def build_fusion_df(df, uniprot_id):
     b_factor = list(df.b_factor)
     
     #ALIGN THE FUSION SEQUENCE TO THE PDB_SEQUENCE. 
-    alignments_fusion = pairwise2.align.localms(uniprot_sequence_fusion, pdb_sequence, 1, -10, -20, -10)
+    aligner = Align.PairwiseAligner()
+    aligner.mode = 'local'
+    aligner.match_score = 1
+    aligner.mismatch_score = -10
+    aligner.open_gap_score = -20
+    aligner.extend_gap_score = -10
+    
+    # X is code for any amino acid and will be used here to indicate a gap, 
+    # which represent the missing residues in the structure, as  
+    # Align.PairwiseAligner() does not take "-" as input. 
+    uniprot_sequence_fusion = uniprot_sequence_fusion.replace("-", "X" )
+    pdb_sequence = pdb_sequence.replace("-", "X" )
+    
+    alignments_fusion = aligner.align(uniprot_sequence_fusion, pdb_sequence)
+    a = alignments_fusion[0].format()
+    a = a.split("\n")    
     # The aligned fusion uniprot
-    uniprot_fusion_aligned = alignments_fusion[0][0]
+    uniprot_fusion_aligned = a[0].replace(" ", "X")
     # The aligned pdb with additional gaps
-    pdb_aligned_fusion = alignments_fusion[0][1]
+    pdb_aligned_fusion = a[2].replace(" ", "X")
+    
     #get the original uniprot to match      
-    pdb_uniprot_align = pairwise2.align.localms(uniprot_aligned, pdb_aligned_fusion, 1, -10, -20, -10)
-    pdb_uniprot_fusion = pdb_uniprot_align[0][0]
-    #pdb_fusion_align = pairwise2.align.localms(uniprot_fusion_aligned, pdb_self_fusion, 1, -10, -20, -10)
-    #pdb_fusion_align = pdb_fusion_align[0][0]
+    pdb_uniprot_align = aligner.align(uniprot_aligned, pdb_aligned_fusion)
+    a = pdb_uniprot_align[0].format()
+    a = a.split("\n")    
+    # The aligned fusion uniprot
+    pdb_uniprot_fusion = a[0].replace(" ", "-")
+    
+    #clean up gaps
+    pdb_uniprot_fusion = pdb_uniprot_fusion.replace("X", "-")
+    pdb_aligned_fusion = pdb_aligned_fusion.replace("X", "-")
+    uniprot_fusion_aligned = uniprot_fusion_aligned.replace("X", "-")
     
     for i, v in enumerate(list(pdb_uniprot_fusion)):
         if i >= len(uniprot_num) or (v == "-" and uniprot_num[i] != "-"):
@@ -780,16 +809,25 @@ def alignment_fusion(uniprot_sequence, AA_pdb, uniprot_ids, uniprot_num, b_facto
     uniprot_num_copy = uniprot_num.copy()  
     
     pdb_sequence = ''.join(AA_pdb)
-    alignments = pairwise2.align.localms(uniprot_sequence, pdb_sequence, 1, -10, -20, -10)
+    pdb_sequence = pdb_sequence.replace("-", "X" )
     
-    if alignments == [] or alignments[0][2] <= 10:
-        uniprot_aligned = []
-        pdb_aligned = []
+    aligner = Align.PairwiseAligner()
+    aligner.mode = 'local'
+    aligner.match_score = 1
+    aligner.mismatch_score = -10
+    aligner.open_gap_score = -20
+    aligner.extend_gap_score = -10
+    
+    alignments = aligner.align(uniprot_sequence, pdb_sequence)
+    if alignments.score < 10: 
         return []
-        
-    uniprot_aligned = alignments[0][0]
-    pdb_aligned = alignments[0][1]
 
+    a = alignments[0].format()
+    a = a.split("\n")    
+    uniprot_aligned = a[0].replace(" ", "-")
+    pdb_aligned = a[2].replace(" ", "-")
+    pdb_aligned = pdb_aligned.replace("X", "-")
+        
     for i, v in enumerate(list(uniprot_aligned)):
         if i >= len(uniprot_num_copy) or (v == "-" and uniprot_num_copy[i] != "-"):
             uniprot_num_copy.insert(i, "-")
@@ -1236,6 +1274,15 @@ def download_mmcif(structure_identifier, path):
     
     return
 
+def three_to_one(amino_acid):
+    amino_acid = amino_acid.upper()
+    amino_acid_mapping = {
+        'ASP': 'D', 'VAL': 'V', 'ALA': 'A', 'MET': 'M', 'ASN': 'N',
+        'PHE': 'F', 'GLY': 'G', 'LEU': 'L', 'ILE': 'I', 'THR': 'T',
+        'PRO': 'P', 'CYS': 'C', 'SER': 'S', 'ARG': 'R', 'TYR': 'Y',
+        'GLN': 'Q', 'LYS': 'K', 'TRP': 'W', 'GLU': 'E', 'HIS': 'H'}
+    return amino_acid_mapping.get(amino_acid, None)
+
 def import_mmcif(structure_identifier, self_chains, path):
     """
     A function that imports the downloaded mmcif file and handles the 
@@ -1285,7 +1332,7 @@ def import_mmcif(structure_identifier, self_chains, path):
     for chain_name, chain_df in chains:
         if chain_name in self_chains:
             chain_names.append(chain_name)
-            chain_df["residue_name"] = [seq1(i) for i in chain_df["residue"]]
+            chain_df['residue_name'] = [three_to_one(aa) for aa in chain_df["residue"]]
             chain_df = chain_df[["residue_name", "seq_num", "b_factor"]]
             df.b_factor = df.b_factor.astype(float)
             chain_df = chain_df[chain_df.residue_name != '']
@@ -1878,4 +1925,4 @@ if __name__ == '__main__':
         
         f.write(f"time: {finished-start}\n")
         f.write("PDBminer has finished.\n")
-        
+
