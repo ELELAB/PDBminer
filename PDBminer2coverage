@@ -31,6 +31,7 @@ import argparse
 import re
 from sys import exit
 from requests.exceptions import ConnectionError
+import ast
 
 parser = argparse.ArgumentParser(prog = "PDBminer2coverage",
                                  usage = "PDBminer2coverage [-h] help, all flags are optional: [-r] results path, [-i] input file, [-u] uniprot id, can be added if the user wish to visualize only one coverage, [-s] sequence, dash and comma separated values such as 1-10 or 1-20,30-40 for the sequence of the protein to plot, [-t] threshold, a integer of the sequence length to be placed in each individual plot, default is 500, why each plot is maximum 500 amino acid broad, then you can specify the coloring based on b_factors: [-bb] a threshold value for the best b-factors, < 15 per default, [-bg] a threshold value for good b-factors, < 25 per default, [-bp] a threshold value for poor b-factors, > 40 per default")
@@ -125,37 +126,30 @@ def get_uniprot_sequence(uniprot_id, isoform):
 
     """
     print(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
-    
     if isoform==1:
-    
         try: 
             response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
         except ConnectionError as e:
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write(f"EXITING: Uniprot database API rejected for {uniprot_id}. \n")
             exit(1) 
-        
         if response.status_code == 200:
             sequence_data=''.join(response.text)
             Seq=StringIO(sequence_data)
             pSeq=list(SeqIO.parse(Seq,'fasta'))
             uniprot_sequence = str(pSeq[0].seq)
             uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-
         else:
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write("EXITING: The canonical sequence could not be retrieved. \n")
             exit(1) 
-    
     else:
-        
         try: 
             response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
         except ConnectionError as e:
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write(f"EXITING: Uniprot database API rejected for {uniprot_id}. \n")
             exit(1) 
-            
         if response.status_code == 200:
             sequence_data=''.join(response.text)
             Seq=StringIO(sequence_data)
@@ -166,12 +160,10 @@ def get_uniprot_sequence(uniprot_id, isoform):
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist. \n")
             exit(1) 
-    
     uniprot_sequence = list(uniprot_sequence)
     columns = []
     for i in range(len(uniprot_numbering)):
         columns.append(f"{uniprot_sequence[i]}{uniprot_numbering[i]}")
-        
     return uniprot_sequence, columns
 
 
@@ -192,23 +184,34 @@ def get_a_range(a, chain, uniprot_numbering):
     applicable.
 
     """
-    
     UN = np.array(uniprot_numbering)
     output = np.zeros(UN.shape)  
     
-    coverage = a.coverage[chain]
+    if type(a.coverage) == str:
+        coverage = ast.literal_eval(a.coverage)
+        coverage = coverage[chain]
+    else:
+        coverage = a.coverage[chain]
     if coverage == "NA" or coverage == "[]":
         return output
-    bfactor = a.b_factor[chain]
-    
+    #problems when working with csv files compared to json files. Everything is
+    #converted to a string.
+    if type(a.b_factor) == str:    
+        if "\n" in a.b_factor:
+            items_to_remove = ["\n", " ", "[", "]"]
+            a.b_factor = ''.join(char for char in a.b_factor if char not in items_to_remove)
+        if 'array' in a.b_factor:
+            a.b_factor = a.b_factor.replace('array', '')
+        bfactor = ast.literal_eval(a.b_factor)
+        bfactor = bfactor[chain]
+    else:
+        bfactor = a.b_factor[chain]    
     for r in (("[", ""), ("]", ""), ("'", ""), ("(", ""), (")", "")): 
         coverage = coverage.replace(*r)
     coverage = coverage.split(";")
-        
     for segment in coverage:
         start, end = map(int, segment.split(', '))  # Parse the coverage range
         output[start - 1:end] = bfactor[0:end - start + 1]
-
     return output
 
 def convert_bfactor(a_range, bfactortheshold_best, bfactortheshold_good, 
@@ -233,7 +236,6 @@ def convert_bfactor(a_range, bfactortheshold_best, bfactortheshold_good,
     scored_values : An array shaped like a_range with the categorized b-factors.
 
     """
-    
     scored_values = []
     for score in a_range:
         if score == 0.0:
@@ -245,10 +247,8 @@ def convert_bfactor(a_range, bfactortheshold_best, bfactortheshold_good,
         elif score <= bfactortheshold_poor:
             scored_values.append(2)
         elif score > bfactortheshold_poor:
-            scored_values.append(1)
-            
+            scored_values.append(1)     
     scored_values = np.array(scored_values)
-
     return scored_values
 
 def get_pLLDT_score(score):
@@ -278,14 +278,15 @@ def get_mutations(mutations_in_pdb, a_range, chain):
     are marked with a novel category.
 
     """
-    
-    if mutations_in_pdb == "NA" or mutations_in_pdb[chain] == "NA":
+    if mutations_in_pdb == "NA":
         return a_range
-    
+    if type(mutations_in_pdb) == str:
+        mutations_in_pdb = ast.literal_eval(mutations_in_pdb)
+        if mutations_in_pdb[chain] == "NA":
+            return a_range        
     for mutation in mutations_in_pdb[chain]:
         mut_pos = int(mutation[1:-1])
         a_range[mut_pos-1] = 5
-        
     return a_range       
 
 
@@ -316,9 +317,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
 
     """
     uniprot_numbering, columns = get_uniprot_sequence(uniprot_id, isoform)
-    
     vectorized_get_pLLDT_score = np.vectorize(get_pLLDT_score)
-
     print("    columns calculated imported from uniprot sequence")
     f = file[['structure_id', 'chains', 'coverage', 'mutations_in_pdb', 'b_factor']]
     index = []
@@ -333,7 +332,11 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
             #where the pLDDT and B-factors are converted into scores
             #that will illustrate the coverage in colors.
             if a.structure_id.startswith('AF-'):
-                a_range = np.array(a.b_factor[chain])
+                if type(a.b_factor) == str:
+                    bfactor = ast.literal_eval(a.b_factor)
+                else:
+                    bfactor = a.b_factor    
+                a_range = np.array(bfactor[chain])
                 a_range = vectorized_get_pLLDT_score(a_range)
             else:
                 a_range = get_a_range(a, chain, uniprot_numbering)
@@ -341,15 +344,12 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
                                               bfactortheshold_best, 
                                               bfactortheshold_good, 
                                               bfactortheshold_poor)
-            
             # we need to color in mutations
             # if any a_range is assigned 5.
             a_range = get_mutations(a.mutations_in_pdb, a_range, chain)
-            
             if set(a_range) != {0.0}: 
                 index.append(f"{a.structure_id}_{chain}")                
                 ranges.append(a_range)
-        
     print("    combine to dataframe")
     heatmap = np.stack(ranges)
     df = pd.DataFrame(data=heatmap, index=index, columns=columns)
@@ -363,11 +363,8 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
             df = pd.concat(df_list, axis=1, join="inner")
         else: 
             df = df.iloc[: , sequence[0]:sequence[1]]
-
     print("   plotting")
-
     length_threshold = threshold
-
     if len(df.columns) > length_threshold:
         print(f"    sequence > {length_threshold} AA, multiple plots")
         chunks = len(uniprot_numbering)/length_threshold
@@ -391,7 +388,6 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
                          linewidths=1, linecolor='black', cbar = False, xticklabels=True, yticklabels=True)            
         ax.xaxis.tick_top()
         plt.xticks(rotation=90)
-
         if "cluster_id" not in file.columns: 
             plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot.pdf", format="pdf", bbox_inches="tight")
         else:
@@ -421,6 +417,14 @@ def run(df):
                           "filtered", sequence, threshold, 
                           bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
             print("  plot done")
+        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
+            print("  filtered file identified")
+            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv", na_values=[], keep_default_na=False)
+            plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
+                          df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
+                          "filtered", sequence, threshold, 
+                          bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
+            print("  plot done")
         elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json"):
             print("  filtered cluster file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json")
@@ -429,9 +433,25 @@ def run(df):
                           "filtered", sequence, threshold,
                           bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
             print("  plot done")
+        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
+            print("  filtered cluster file identified")
+            filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv", na_values=[], keep_default_na=False)
+            plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
+                          df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
+                          "filtered", sequence, threshold,
+                          bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
+            print("  plot done")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json"):
             print("  All file identified")
             full = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json")
+            plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
+                          df.iloc[i].mutations, df.iloc[i].cluster_id, full, 
+                          "all", sequence, threshold,
+                          bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
+            print("  plot done")
+        elif os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
+            print("  All file identified")
+            full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv", na_values=[], keep_default_na=False)
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, full, 
                           "all", sequence, threshold,

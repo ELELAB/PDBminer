@@ -76,6 +76,12 @@ parser.add_argument("-n", "--cores",
                     default = 1,
                     help="the number of cores to allocate the run, if nothing is choosen: 1 core")
 
+parser.add_argument("-f", "--format",
+                    metavar = "output format, json or csv",
+                    type=str,
+                    default = "json",
+                    help="the output format of the run, default json")
+
 args = parser.parse_args()
 path = os.getcwd()
 
@@ -989,7 +995,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
         
         if len(chain_df) < 5:
             #remove very small fragments
-            os.chdir(path)
+            #os.chdir(path)
             output_array = np.array(['', '', '', '', '', ''], dtype=object)
             return output_array
         
@@ -1049,7 +1055,7 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
     chains_string = ';'.join([str(elem) for elem in chain_names])
     output_array = np.array([chains_string, coverage, muts, mutation_list, b_factor_dictionary, warning_column, r_free], dtype=object)
 
-    os.chdir(path)
+    #os.chdir(path)
     return output_array
 
 def download_mmcif(structure_identifier, path):
@@ -1553,8 +1559,8 @@ def filter_all(structural_df, input_dataframe):
 
     return final_dfs
 
-def cleanup_all(structural_df,input_dataframe, path):
-    print("FUNCTION: cleanup_all(structural_df,input_dataframe, path)")
+def cleanup_all(structural_df,input_dataframe, path, output_format):
+    print("FUNCTION: cleanup_all(structural_df,input_dataframe, path, output_format)")
     
     #final_dfs = filter_all(structural_df, input_dataframe)
     #for df in final_dfs:
@@ -1605,15 +1611,21 @@ def cleanup_all(structural_df,input_dataframe, path):
         if type(df.cluster_id[0]) == float or type(df.cluster_id[0]) == np.float64:
             df.drop('cluster_id', inplace=True, axis=1)  
         
-        if len(filtered_df) > 0:        
-            filtered_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.json", orient="columns")
+        if len(filtered_df) > 0:
+            if output_format == "json":
+                filtered_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.json", orient="columns")
+            else:
+                filtered_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.csv")
         
     if 'cluster_id' in df.columns:
         grouped = df.groupby(['cluster_id'])
         for cluster_id, cluster_data in grouped:
             cluster_data = cluster_data[cluster_data['AA_in_PDB'].apply(lambda d: any(d.values()))]
             if len(cluster_data) > 0:
-                cluster_data.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.json", orient="columns")
+                if output_format == "json":
+                    cluster_data.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.json", orient="columns")
+                else: 
+                    cluster_data.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.csv")
     
     df = df[~df.index.duplicated(keep='first')]
     
@@ -1623,8 +1635,11 @@ def cleanup_all(structural_df,input_dataframe, path):
     
     if 'cluster_id' in df.columns:
         df.drop('cluster_id', inplace=True, axis=1)
-        
-    df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_all.json", orient="columns")
+    
+    if output_format == "json":
+        df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_all.json", orient="columns")
+    else:
+        df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_all.csv")
 
     return 
 
@@ -1634,10 +1649,11 @@ def cleanup_all(structural_df,input_dataframe, path):
 
 ################################
 
-def process_uniprot(uniprot_id, df, path):
+def process_uniprot(uniprot_id, df, path, output_format):
     uniprot_dir = f"{path}/results/{uniprot_id}"
-
     os.makedirs(uniprot_dir, exist_ok=True)
+    with open (f"{uniprot_dir}/log.txt", "w") as f:
+        f.write(f"{uniprot_id}\n")    
 
     # Create a copy of the DataFrame for this process
     uniprot_dataframe = df[df['uniprot'] == uniprot_id].reset_index(drop=True)
@@ -1651,10 +1667,10 @@ def process_uniprot(uniprot_id, df, path):
         structural_df = align(combined_structure, uniprot_dir)
 
         if len(structural_df) != 0:
-            cleanup_all(structural_df, uniprot_dataframe, path)
+            cleanup_all(structural_df, uniprot_dataframe, path, output_format)
 
 
-def run_list(input_file, path, cores):
+def run_list(input_file, path, cores, output_format):
     df = pd.read_csv(input_file)
     uniprot_list = df['uniprot'].unique()
 
@@ -1662,7 +1678,7 @@ def run_list(input_file, path, cores):
 
     with Pool(processes=cores) as pool:
         #use starmap to add multiple arguments.
-        pool.starmap(process_uniprot, [(uniprot_id, df, path) for uniprot_id in uniprot_list])
+        pool.starmap(process_uniprot, [(uniprot_id, df, path, output_format) for uniprot_id in uniprot_list])
 
 
 if __name__ == '__main__':
@@ -1724,7 +1740,7 @@ if __name__ == '__main__':
             
         f.write("Pipeline is starting\n")
         
-        run_list(input_file, path, args.cores)
+        run_list(input_file, path, args.cores, args.format)
         
         finished = datetime.now() 
         
