@@ -1,9 +1,9 @@
-Cancer Systems Biology, Technical University of Denmark, 2800, Lyngby, Denmark
-Cancer Structural Biology, Danish Cancer Society Research Center, 2100, Copenhagen, Denmark
+Cancer Systems Biology, Technical University of Denmark, 2800, Lyngby, Denmark &
+Cancer Structural Biology, Danish Cancer Institute, 2100, Copenhagen, Denmark
 
 # PDBminer
 
-Repository associated to the Preprint:
+Repository associated with the Preprint:
 ```
 PDBminer to Find and Annotate Protein Structures for Computational Analysis
 Kristine Degn, Ludovica Beltrame, Matteo Tiberti, Elena Papaleo
@@ -11,7 +11,7 @@ bioRxiv 2023.05.06.539447; doi: https://doi.org/10.1101/2023.05.06.539447
 ```
 
 ## Introduction to the Program 
-PDBminer is a snakemake pipeline that generates a ranked overview of the available structural models in the 
+PDBminer is a pipeline generating a ranked overview of the available structural models in the 
 Protein Data Bank and the most current version of the AlphaFold2 model, if any.
 
 * Installation
@@ -58,7 +58,7 @@ source PDBminer/bin/activate
 ```
 
 ## Running PDBminer the first time
-There are two ways of running PDBminer. Either by using and input file, or by using the command line
+There are two ways of running PDBminer. Either by using an input file, or by using the command line
 to find the available structures for a single protein. 
 In the directory examples are three examples and their commands in the do.sh file. Consider testing the installation and use
 by running one or more of these. 
@@ -92,12 +92,12 @@ P04637
 ```
 
 
-The name of the input file should be specified in the command line: 
+The name of the input file should be specified in the command line. 
 
 ### Running the Program with an input file
 
 ```
-$ python PDBminer -i [input file name] -n [cores]
+$ python PDBminer -i [input file name] -n [cores] -f [output_format]
 ```
 ### Using the command line directly
 
@@ -106,39 +106,40 @@ commandline. To do so, a input file does not need to be constructured and the co
 with flags. Again, the uniprot option is mandatory while the rest is optional. 
 
 ```
-$ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores]
+$ python PDBminer -g [hugo_name] -u [uniprot_id] -s [uniprot_isoform] -m [mutations] -c [cluster_id] -n [cores] -f [output_format]
 
-$ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1
+$ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1 -f json
 
 $ python PDBminer -u P05543
 ``` 
 
 NOTICE: when isoform is not specified 1 is assumed.
+NOTICE: json is the default output format, csv can be chosen (but is discouraged). 
 
 ## The Output
-A log.txt file is created for each run. 
+The output is a log.txt file, a input_file.csv and a directly "results".
+A log.txt file is created for each run and contains information regarding the run, e.g. if the input is false or there are any connectivity issues. 
 
-The output is found in the directory "results".
-For each uniprot id in the input file, a directory is created. 
-After a successful run, this directory can contain the following: 
+In the directory "results", a subdirectory for each uniprot accession number is created.
+After a successful run, the uniprot accession number directory can contain the following: 
 
 * log.txt, If there are no structures from the protein data bank or alphafold structures available for the uniprot_id the log.txt file is the 
 only output. If there are any errors or warnings while running a particular protein, these are also listed in the log.txt file. This can be used
 for error handling.
 
-* {unipot_id}_all.json, An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
+* {unipot_id}_all.json (or .csv if the option is chosen). An output file with all PDBs and AlphaFold structure associated with the uniprot_id regardless of mutational coverage.
 Notice that you may validate the json file towards the schema.json.
 
 If mutations are included in the input, a filtered version of all will also be available if the mutations
 are covered by any structure.
-* {unipot_id}_filtered.csv and .json, An output file with the PDBs and alphafold structure associated with the uniprot_id that covers at least one mutation.
+* {unipot_id}_filtered.csv or .json, An output file with the PDBs and alphafold structure associated with the uniprot_id that covers at least one mutation.
 
 Notice that multiple filtered files are available when multiple clusters are parsed. 
-* {uniprot_id}_cluster{cluster_id}_filtered.json
+* {uniprot_id}_cluster{cluster_id}_filtered.json/csv.
 
 See examples of the in- and output of the example directories.
 
-#content of {unipot_id}_clean.json and {unipot_id}_all.json:
+#content of {unipot_id}_filtered.json/csv and {unipot_id}_all.json/csv:
 
 ## Output Columns and Explanations:
 
