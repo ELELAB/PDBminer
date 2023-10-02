@@ -1,71 +1,64 @@
 import pandas as pd
 import numpy as np
 import datetime
+import glob
 
-n_dir = {"ULK1": 7, "KRAS": 238, "BCL2": 29, "MHL1": 8, 
-         "PPIA": 152, "BCL2L1": 97, "TRAP1": 20, "ARID3A": 3, 
-         "MAP2LC3B": 25, "FAK1": 35, "FKBP1A": 59, "MZF1": 2}
 
-n_structure = sum(n_dir.values())
+def read_commandline(logs, uni_dict):
+    df = pd.DataFrame(columns=['cores','protein', 'total', "per_pdb", "n_structures"])
+    for log in logs:
+        gene = log.split("/")[-1].split("_")[0]
+        uniprot = uni_dict[gene]    
+        df_pdbminer = pd.read_json(f"commandline/results/{uniprot}/{uniprot}_all.json")
+        n = len(df_pdbminer)
+        with open(log, "r") as f: 
+            lines = f.readlines()
+            t = lines[3][:-1].split("time: ")[1]
+            (h, m, s) = t.split(':')
+            st = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
+            per_structure = st/n
+            list_of_values = ["commandline", gene, st, per_structure, n]
+            df.loc[gene] = np.array(list_of_values, dtype="object")
+    df.to_csv("commandline_per_structure.csv")
+    return df
 
-df = pd.DataFrame(columns=['cores','protein',
-                       'start', 'total', "per_pdb"])
+logs = glob.glob("commandline/*.txt")
+uni_dict = {"FAK1": "Q05397", "FKBP1A": "P62942", "MZF1": "P28698", 
+            "ULK1": "O75385", "MHL1": "P40692", "MAP2LC3B": "Q9GZQ8", 
+            "ARID3A": "Q99856", "BCL2": "P10415", "PPIA": "P62937", 
+            "BCL2L1": "Q07817", "KRAS": "P01116", "TRAP1": "Q12931"}
 
-files = ["ARID3A_log.txt", "BCL2L1_log.txt", "BCL2_log.txt", "FAK1_log.txt",
-         "FKBP1A_log.txt", "KRAS_log.txt", "MAP2LC3B_log.txt", "MHL1_log.txt",
-         "MZF1_log.txt","PPIA_log.txt", "TRAP1_log.txt", "ULK1_log.txt"]
+command_df = read_commandline(logs, uni_dict)
+total_n = sum(command_df.n_structures)
 
-for i in range(1,5):
-    with open(f'{i}core/log.txt') as f:
-        lines = f.readlines()
-    
-    starttime = lines[6].split(": ")[1].split("\n")[0] 
-    (h, m, s) = starttime.split(':')
-    st = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
+df1 = pd.DataFrame(columns=['cores', 'total', "per_pdb"])
 
-    totaltime = lines[5].split(": ")[1].split("\n")[0]
-    (h, m, s) = totaltime.split(':')
-    t = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
-    
-    per_structure = (t - st)/n_structure
-    
-    list_of_values = [i, "all", starttime, totaltime, per_structure]
-    
-    df.loc[i] = np.array(list_of_values, dtype="object")
-    
-for i in files:
-    j = i.split("_")[0]
-    with open(f"commandline/{i}") as f:
-        lines = f.readlines()
-    
-    starttime = lines[6].split(": ")[1].split("\n")[0] 
-    (h, m, s) = starttime.split(':')
-    st = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
+command_df['total']=pd.to_timedelta(command_df['total'])
+total_command = command_df['total'].sum()
+command_df['per_pdb']=pd.to_timedelta(command_df['per_pdb'])
+average_per_pdb = command_df['per_pdb'].mean()
 
-    totaltime = lines[5].split(": ")[1].split("\n")[0]
-    (h, m, s) = totaltime.split(':')
-    t = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
-    
-    per_structure = (t - st)/n_dir[j]
+list_of_values = ["commandline", total_command, average_per_pdb]
 
-    list_of_values = [1, j, starttime, totaltime, per_structure]
-    
-    df.loc[i] = np.array(list_of_values, dtype="object")
+df1.loc["commandline"] = np.array(list_of_values, dtype="object")
 
-df1 = df[5:]
-timeList = list(df1.total)
-mysum = datetime.timedelta()
-for i in timeList:
-    (h, m, s) = i.split(':')
-    d = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
-    mysum = mysum + d
+directory_list = ["1core", "2core", "3core", "4core"]
 
-total_time = mysum/60
+def read_core_runs(df1, directory_list, n):
+    for directory in directory_list:
+        with open(f"{directory}/log.txt", "r") as f: 
+            lines = f.readlines()
+            t = lines[3][:-1].split("time: ")[1]
+            (h, m, s) = t.split(':')
+            st = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
+            per_structure = st/n
+            list_of_values = [directory, st, per_structure]
+            df1.loc[directory] = np.array(list_of_values, dtype="object")
+    return df1
 
-per_structure = mysum/n_structure
+df2 = read_core_runs(df1, directory_list, total_n)
 
-list_of_values = [1, "all", "NA", total_time, per_structure]
+df2.to_csv("time.csv")
 
-df.loc["total"] = np.array(list_of_values, dtype="object")
+        
 
-df.to_csv("time.csv")

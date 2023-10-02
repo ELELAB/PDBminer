@@ -1,0 +1,3 @@
+P0A7Y7
+WARNING: 3D-Beacons did not return any PDBe structures for P0A7Y7.
+WARNING: Uniprot did not return any structures for P0A7Y7.

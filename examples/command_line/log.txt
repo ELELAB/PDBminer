@@ -1,0 +1,5 @@
+PDBminer is starting
+input file created based on hugo name and uniprot id, file name: input_file.csv
+Pipeline is starting
+time: 0:00:07.919987
+PDBminer has finished.

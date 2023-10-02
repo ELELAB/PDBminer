@@ -1,8 +1,5 @@
 PDBminer is starting
 input file created based on hugo name and uniprot id, file name: input_file.csv
-APIs are checked
-   APIs controlled and accepted
 Pipeline is starting
-time: 0:00:57.860816
-before snakemake: 0:00:00.741709
+time: 0:01:07.708289
 PDBminer has finished.

@@ -1,3 +1,0 @@
-structure_rank,hugo_name,uniprot_id,uniprot_isoform,structure_id,deposition_date,experimental_method,resolution,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details,chains,coverage,mutations_in_pdb,warnings
-0,MZF1,P28698,1,AF-P28698-F1-model_v4,2022-06-01,Predicted,NA,NA,NA,NA,NA,NA,NA,A,"[(40, 122);(356, 460);(484, 508);(512, 732)]",NA,NA
-1,MZF1,P28698,1,2FI2,2005-12-27,SOLUTION NMR,NA,NA,NA,NA,NA,NA,NA,B;A,"[(35, 128)];[(35, 128)]","['L35G', 'W36S', 'R51H'];['L35G', 'W36S', 'R51H']",;

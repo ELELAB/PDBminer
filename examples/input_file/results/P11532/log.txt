@@ -1,0 +1,2 @@
+P11532
+WARNING: The Alphafold Database returned an error for the request of P11532.
