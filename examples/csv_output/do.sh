@@ -1,3 +1,3 @@
-../../PDBminer -g KRAS -u P01116 -f csv
-../../PDBminer -u O15520 -f csv
+../../PDBminer -i input_file.csv -f csv
 ../../PDBminer2coverage
+../../PDBminer2network

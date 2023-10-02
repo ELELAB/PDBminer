@@ -1,5 +1,5 @@
 PDBminer is starting
 input file mode is choosen and input file has been identified.
 Pipeline is starting
-time: 0:00:09.680012
+time: 0:00:43.740030
 PDBminer has finished.

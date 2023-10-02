@@ -1747,7 +1747,11 @@ if __name__ == '__main__':
         dirs = glob.glob("results/*/structures")
         for directory in dirs:
             shutil.rmtree(directory)
-        
+        logs = glob.glob("results/*/log.txt")
+        for log in logs:
+            if os.path.isfile(log) and os.path.getsize(log) < 10:
+                os.remove(log)
+
         f.write(f"time: {finished-start}\n")
         f.write("PDBminer has finished.\n")
         
