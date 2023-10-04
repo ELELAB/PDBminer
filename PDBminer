@@ -82,6 +82,12 @@ parser.add_argument("-f", "--format",
                     default = "json",
                     help="the output format of the run, default json")
 
+parser.add_argument("-p", '--peptide_length',
+                    metavar = 'peptide_length',
+                    type=int,
+                    default = 5,
+                    help='The minimum length of a peptide to be aligned. It is recomended not to go below 5 due to the risk of false alignment of a very small peptide')
+
 args = parser.parse_args()
 path = os.getcwd()
 
@@ -325,13 +331,13 @@ def get_structure_metadata(pdb_id, uniprot):
     
     # If the response is successfull, data on the metadata on the models are collected.
     response_text = json.loads(response.text)
-    dictionary = response_text[pdb_id.lower()]
-    dictionary = dictionary[0]
+    metadata_dictionary = response_text[pdb_id.lower()]
+    metadata_dictionary = metadata_dictionary[0]
 
     #Change the date format
-    deposition_date = f"{dictionary['deposition_date'][:4]}-{dictionary['deposition_date'][4:6]}-{dictionary['deposition_date'][6:]}"
+    deposition_date = f"{metadata_dictionary['deposition_date'][:4]}-{metadata_dictionary['deposition_date'][4:6]}-{metadata_dictionary['deposition_date'][6:]}"
     #Find the experimental method
-    experimental_method = str(dictionary['experimental_method'][0]).upper()
+    experimental_method = str(metadata_dictionary['experimental_method'][0]).upper()
     
     #Retrieve information regarding resolution
     
@@ -395,8 +401,8 @@ def get_PDBredo(pdb, uniprot_id):
         r_free_pdbredo = response_data['properties']['RFFIN']
         return "YES", r_free_pdbredo
     else:
-        return "NO", "NA"        
-
+        return "NO", "NA"     
+    
 def get_structure_df(uniprot_id): 
     """
     This function takes a single uniprot ID and outputs a 
@@ -416,119 +422,217 @@ def get_structure_df(uniprot_id):
     
     print(f"FUNCTION: get_structure_df({uniprot_id})")
     
+    pdb = []
+    deposition_date = []
+    experimental_method = [] 
+    resolution = []
+    
+    # Attempt to get data from 3D-Beacons
+    # As of October 2023 the 3D becons API does not always return a code 200
+    # even for entries on the website. So far this has been the case for 
+    # a set amount of the test structures. It is seemingly not at random. 
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
     except ConnectionError as e:
         with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
             textfile.write(f"EXITING: Could not connect to 3D-Beacons database via API for {uniprot_id}.\n")
-
         exit(1) 
-    
-    # As of August 2023 the 3D becons API is unstable, and routinely return an empty json file. 
-    # to overcome this limitation, a warning is issues and the uniprot API is accessed.
-    if response.status_code != 200:
-        with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
-            textfile.write(f"WARNING: 3D-Beacons did not return any PDBe structures for {uniprot_id}.\n")
+
+    if response.status_code == 200:
+        # Process data from 3D-Beacons
+        response_text = json.loads(response.text)
+        structures = response_text['structures']
+           
+        for structure in structures:
+            pdb.append(structure['summary']['model_identifier'].upper())
+            deposition_date.append(structure['summary']['created'])
+            experimental_method.append(structure['summary']['experimental_method'])
+            resolution.append(structure['summary']['resolution'])
+                
+    else:
+        # Try to get data from Uniprot
         pdbs = get_pdbs(uniprot_id)
         
         if len(pdbs) != 0:
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write(f"WARNING: Uniprot returned {len(pdbs)} structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list.\n")
             
-            pdb = []
-            deposition_date = []
-            experimental_method = [] 
-            resolution = []
-            
             for pdb_id in pdbs:
                 metadata = get_structure_metadata(pdb_id, uniprot_id)
 
                 if metadata is None:
-                    textfile.write(f"WARNING: PDBe database API retured an error for {pdb_id}.\n")
+                    with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+                        textfile.write(f"WARNING: PDBe database API retured an error for {pdb_id}.\n")
                     return uniprot_id
             
                 pdb.append(pdb_id)
                 deposition_date.append(metadata[0])
                 experimental_method.append(metadata[1]) 
                 resolution.append(metadata[2])
-            
-            structure_df = pd.DataFrame({"pdb": pdb, 
-                                         "uniprot_id": [uniprot_id]*len(pdb), 
-                                         "deposition_date": deposition_date, 
-                                         "experimental_method": experimental_method, 
-                                         "resolution": resolution}) 
-            
-            rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
-            
-            structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
-            
-            AF_model = get_alphafold_basics(uniprot_id)
-            
-            if AF_model is not None:
-                structure_df.loc[len(structure_df)] = tuple(AF_model)
-                        
-            structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
-            structure_df = structure_df.drop(['method_priority'], axis=1)
-            
-            structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['uniprot_id']), axis=1)
-            structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
-            
-            structure_df = structure_df.set_index('pdb')
-            
         else:
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write(f"WARNING: Uniprot did not return any structures for {uniprot_id}.\n")
-            AF_model = get_alphafold_basics(uniprot_id)
-            if AF_model is None:
-                textfile.write(f"WARNING: AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.\n")
-                return uniprot_id
             
-            structure_df = pd.DataFrame({'uniprot_id': [AF_model[1]], 
-                                         'deposition_date': [AF_model[2]], 
-                                         'experimental_method': [AF_model[3]], 
-                                         'resolution': [AF_model[4]],
-                                         'PDBREDOdb': "NO", 
-                                         'PDBREDOdb_details': "NA"})
-
-            structure_df.index = [AF_model[0]]           
+    structure_df = pd.DataFrame({"pdb": pdb, 
+                                 "uniprot_id": [uniprot_id]*len(pdb), 
+                                 "deposition_date": deposition_date, 
+                                 "experimental_method": experimental_method, 
+                                 "resolution": resolution}) 
         
-        return structure_df
+    rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+    
+    structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+    
+    AF_model = get_alphafold_basics(uniprot_id)
+            
+    if AF_model is not None:
+        structure_df.loc[len(structure_df)] = tuple(AF_model)
+    elif AF_model is None:
+        with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+            textfile.write(f"WARNING: AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.\n")
+                
+    structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+    structure_df = structure_df.drop(['method_priority'], axis=1)
+    
+    structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['uniprot_id']), axis=1)
+    structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+                                                            
+    return structure_df 
 
-    else: 
-        response_text = json.loads(response.text)
-        structures = response_text['structures']
+# def get_structure_df(uniprot_id): 
+#     """
+#     This function takes a single uniprot ID and outputs a 
+#     dataframe containing a sorted list of PDB ids and their metadata. 
+
+#     Parameters
+#     ----------
+#     uniprot_id : The uniprot accession number. 
+
+#     Returns
+#     -------
+#     structure_df :  A pandas dataframe containing all the names and details
+#                     regarding the solved structures related to the 
+#                     uniprot id in terms of pdb files.  
+
+#     """
+    
+#     print(f"FUNCTION: get_structure_df({uniprot_id})")
+    
+#     try: 
+#         response = requests.get(f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
+#     except ConnectionError as e:
+#         with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+#             textfile.write(f"EXITING: Could not connect to 3D-Beacons database via API for {uniprot_id}.\n")
+
+#         exit(1) 
+    
+#     # As of October 2023 the 3D becons API does not always return a code 200
+#     # even for entries on the website. So far this has been the case for 
+#     # a set amount of the test structures. It is seemingly not at random. 
+#     if response.status_code != 200:
+#         with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+#             textfile.write(f"WARNING: 3D-Beacons did not return any PDBe structures for {uniprot_id}.\n")
+#         pdbs = get_pdbs(uniprot_id)
+        
+#         if len(pdbs) != 0:
+#             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+#                 textfile.write(f"WARNING: Uniprot returned {len(pdbs)} structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list.\n")
+            
+#             pdb = []
+#             deposition_date = []
+#             experimental_method = [] 
+#             resolution = []
+            
+#             for pdb_id in pdbs:
+#                 metadata = get_structure_metadata(pdb_id, uniprot_id)
+
+#                 if metadata is None:
+#                     with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+#                         textfile.write(f"WARNING: PDBe database API retured an error for {pdb_id}.\n")
+#                     return uniprot_id
+            
+#                 pdb.append(pdb_id)
+#                 deposition_date.append(metadata[0])
+#                 experimental_method.append(metadata[1]) 
+#                 resolution.append(metadata[2])
+            
+#             structure_df = pd.DataFrame({"pdb": pdb, 
+#                                          "uniprot_id": [uniprot_id]*len(pdb), 
+#                                          "deposition_date": deposition_date, 
+#                                          "experimental_method": experimental_method, 
+#                                          "resolution": resolution}) 
+            
+#             rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+            
+#             structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+            
+#             AF_model = get_alphafold_basics(uniprot_id)
+            
+#             if AF_model is not None:
+#                 structure_df.loc[len(structure_df)] = tuple(AF_model)
+                        
+#             structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+#             structure_df = structure_df.drop(['method_priority'], axis=1)
+            
+#             structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['uniprot_id']), axis=1)
+#             structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+            
+#             structure_df = structure_df.set_index('pdb')
+            
+#         else:
+#             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+#                 textfile.write(f"WARNING: Uniprot did not return any structures for {uniprot_id}.\n")
+#             AF_model = get_alphafold_basics(uniprot_id)
+#             if AF_model is None:
+#                 textfile.write(f"WARNING: AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.\n")
+#                 return uniprot_id
+            
+#             structure_df = pd.DataFrame({'uniprot_id': [AF_model[1]], 
+#                                          'deposition_date': [AF_model[2]], 
+#                                          'experimental_method': [AF_model[3]], 
+#                                          'resolution': [AF_model[4]],
+#                                          'PDBREDOdb': "NO", 
+#                                          'PDBREDOdb_details': "NA"})
+
+#             structure_df.index = [AF_model[0]]           
+        
+#         return structure_df
+
+#     else: 
+#         response_text = json.loads(response.text)
+#         structures = response_text['structures']
            
-        pdb = []
-        deposition_date = []
-        experimental_method = [] 
-        resolution = []
+#         pdb = []
+#         deposition_date = []
+#         experimental_method = [] 
+#         resolution = []
     
-        for structure in structures:
-            pdb.append(structure['summary']['model_identifier'].upper())
-            deposition_date.append(structure['summary']['created'])
-            experimental_method.append(structure['summary']['experimental_method'])
-            resolution.append(structure['summary']['resolution'])
+#         for structure in structures:
+#             pdb.append(structure['summary']['model_identifier'].upper())
+#             deposition_date.append(structure['summary']['created'])
+#             experimental_method.append(structure['summary']['experimental_method'])
+#             resolution.append(structure['summary']['resolution'])
 
-        structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
+#         structure_df = pd.DataFrame({"pdb": pdb, "uniprot_id": [uniprot_id]*len(pdb), "deposition_date": deposition_date, "experimental_method": experimental_method, "resolution": resolution})    
     
-        rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
+#         rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
         
-        structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
+#         structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
         
-        AF_model = get_alphafold_basics(uniprot_id)
+#         AF_model = get_alphafold_basics(uniprot_id)
         
-        if AF_model is not None:
-            structure_df.loc[len(structure_df)] = tuple(AF_model)
+#         if AF_model is not None:
+#             structure_df.loc[len(structure_df)] = tuple(AF_model)
         
-        structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
-        structure_df = structure_df.drop(['method_priority'], axis=1)
+#         structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
+#         structure_df = structure_df.drop(['method_priority'], axis=1)
         
-        structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['uniprot_id']), axis=1)
-        structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+#         structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['uniprot_id']), axis=1)
+#         structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
         
-        structure_df = structure_df.set_index('pdb')
+#         structure_df = structure_df.set_index('pdb')
                                                         
-    return structure_df     
+#     return structure_df     
 
 def find_structure_list(input_dataframe):  
     print("FUNCTION: find_structure_list(input_dataframe)")
@@ -578,7 +682,7 @@ def find_structure_list(input_dataframe):
     return found_structure_list
 
 
-def combine_structure_dfs(found_structures, input_dataframe):
+def combine_structure_dfs(input_dataframe, found_structures):
     print("FUNCTION: combine_structure_dfs(found_structures, input_dataframe)")
     """
     This function takes the found structures and the input dataframe
@@ -597,31 +701,73 @@ def combine_structure_dfs(found_structures, input_dataframe):
 
     """
     
-    df_collector = []
+    input_dataframe = input_dataframe.rename(columns={"uniprot": "uniprot_id"}) 
+#    print(found_structures.iloc[0])
+#    found_structures['structure_id'] = found_structures.index
+    # Merge the input_dataframe with found_structures based on uniprot_id
+    merged_df = input_dataframe.merge(found_structures, on=['uniprot_id'])
 
-    for i in range(len(input_dataframe)):
-        sub_df = found_structures[found_structures.uniprot_id == input_dataframe.uniprot[i]]
-        num_sub_df = len(sub_df)
-        
-        data = {
-            "hugo_name": [input_dataframe.hugo_name[i]] * num_sub_df,
-            "uniprot_id": [input_dataframe.uniprot[i]] * num_sub_df,
-            "uniprot_isoform": [input_dataframe['uniprot_isoform'][i]] * num_sub_df,
-            "mutations": [input_dataframe.mutations[i]] * num_sub_df,
-            "cluster_id": [input_dataframe.cluster_id[i]] * num_sub_df,
-            "structure_id": list(sub_df.index),
-            "deposition_date": list(sub_df.deposition_date),
-            "experimental_method": list(sub_df.experimental_method),
-            "resolution": list(sub_df.resolution),
-            "PDBREDOdb":list(sub_df.PDBREDOdb),
-            "PDBREDOdb_rfree": list(sub_df.PDBREDOdb_details)
-        }
-        
-        df_collector.append(pd.DataFrame(data))
-    
-    final_df = pd.concat(df_collector, ignore_index=True)
-           
+    # Create the final DataFrame with the required columns
+    final_df = pd.DataFrame({
+        "hugo_name": merged_df['hugo_name'],
+        "uniprot_id": merged_df['uniprot_id'],
+        "uniprot_isoform": merged_df['uniprot_isoform'],
+        "mutations": merged_df['mutations'],
+        "cluster_id": merged_df['cluster_id'],
+        "structure_id": merged_df['pdb'],
+        "deposition_date": merged_df['deposition_date'],
+        "experimental_method": merged_df['experimental_method'],
+        "resolution": merged_df['resolution'],
+        "PDBREDOdb": merged_df['PDBREDOdb'],
+        "PDBREDOdb_rfree": merged_df['PDBREDOdb_details']
+    })
+
     return final_df
+
+# def combine_structure_dfs(found_structures, input_dataframe):
+#     print("FUNCTION: combine_structure_dfs(found_structures, input_dataframe)")
+#     """
+#     This function takes the found structures and the input dataframe
+#     and combine these for continues computation. 
+
+#     Parameters
+#     ----------
+#     found_structures : A pandas dataframe created in step 2. 
+#     input_dataframe :  The original input dataframe with mutational information.
+
+#     Returns
+#     -------
+#     final_df :  A dataframe with nine columns including hugo_name, uniprot_id,
+#                 uniprot_isoform, mutations, cluster_id, structure_id, deposition_date
+#                 experimental_method, resolution
+
+#     """
+    
+#     df_collector = []
+
+#     for i in range(len(input_dataframe)):
+#         sub_df = found_structures[found_structures.uniprot_id == input_dataframe.uniprot[i]]
+#         num_sub_df = len(sub_df)
+        
+#         data = {
+#             "hugo_name": [input_dataframe.hugo_name[i]] * num_sub_df,
+#             "uniprot_id": [input_dataframe.uniprot[i]] * num_sub_df,
+#             "uniprot_isoform": [input_dataframe['uniprot_isoform'][i]] * num_sub_df,
+#             "mutations": [input_dataframe.mutations[i]] * num_sub_df,
+#             "cluster_id": [input_dataframe.cluster_id[i]] * num_sub_df,
+#             "structure_id": list(sub_df.index),
+#             "deposition_date": list(sub_df.deposition_date),
+#             "experimental_method": list(sub_df.experimental_method),
+#             "resolution": list(sub_df.resolution),
+#             "PDBREDOdb":list(sub_df.PDBREDOdb),
+#             "PDBREDOdb_rfree": list(sub_df.PDBREDOdb_details)
+#         }
+        
+#         df_collector.append(pd.DataFrame(data))
+    
+#     final_df = pd.concat(df_collector, ignore_index=True)
+           
+#     return final_df
 
 ################################
 
@@ -634,13 +780,25 @@ def combine_structure_dfs(found_structures, input_dataframe):
 def to_ranges(iterable):
     print("FUNCTION: to_ranges()")
     """
-    Function to make each mutational group iterable, called to make a range
-    interable.
+    This function converts a list of integers into a list of ranges.
+
+    This function groups consecutive integers into ranges.
+    For example, [1,2,3,4,5,7,8,9,13,14,15] becomes [(1, 5), (7, 9), (13, 15)].
 
     Parameters
     ----------
-    iterable : a range of numbers e.g. (1, 10)
+    iterable : list of integers
+        Input list of integers to be converted into ranges.
 
+    Returns
+    -------
+    ranges : list of tuples
+        List of tuples representing ranges.
+
+    Example
+    -------
+    >>> to_ranges([1, 2, 3, 4, 5, 7, 8, 9, 13, 14, 15])
+    [(1, 5), (7, 9), (13, 15)]
     """
     iterable = sorted(set(iterable))
     for key, group in itertools.groupby(enumerate(iterable),
@@ -736,18 +894,6 @@ def get_uniprot_sequence(uniprot_id, isoform):
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write(f"EXITING: Uniprot database API rejected for {uniprot_id}. \n")
             exit(1) 
-        
-        if response.status_code == 200:
-            sequence_data=''.join(response.text)
-            Seq=StringIO(sequence_data)
-            pSeq=list(SeqIO.parse(Seq,'fasta'))
-            uniprot_sequence = str(pSeq[0].seq)
-            uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-
-        else:
-            with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
-                textfile.write(f"EXITING: The canonical sequence could not be retrieved. \n")
-            exit(1) 
     
     else:
         
@@ -757,17 +903,18 @@ def get_uniprot_sequence(uniprot_id, isoform):
             with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
                 textfile.write(f"EXITING: Uniprot database API rejected for {uniprot_id}. \n")
             exit(1) 
-            
-        if response.status_code == 200:
-            sequence_data=''.join(response.text)
-            Seq=StringIO(sequence_data)
-            pSeq=list(SeqIO.parse(Seq,'fasta'))
-            uniprot_sequence = str(pSeq[0].seq)
-            uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-        else:
-            with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
-                textfile.write(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist. \n")
-            exit(1) 
+    
+    if response.status_code == 200:
+        sequence_data=''.join(response.text)
+        Seq=StringIO(sequence_data)
+        pSeq=list(SeqIO.parse(Seq,'fasta'))
+        uniprot_sequence = str(pSeq[0].seq)
+        uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
+
+    else:
+        with open(f"results/{uniprot_id}/log.txt", "a") as textfile:
+            textfile.write(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist. \n")
+        exit(1) 
     
     return uniprot_sequence, uniprot_numbering
     
@@ -822,7 +969,10 @@ def get_all_discrepancies(df):
     df = df[df.pdb_seq != "-"]        
 
     if len(df[df["uniprot_seq"] != df["pdb_seq"]]) != 0:
-        all_mutations = df[df["uniprot_seq"] != df["pdb_seq"]].apply(lambda row: f"{row['uniprot_seq']}{row['uniprot_pos']}{row['pdb_seq']}", axis=1).tolist()
+        #all_mutations = df[df["uniprot_seq"] != df["pdb_seq"]].apply(lambda row: f"{row['uniprot_seq']}{row['uniprot_pos']}{row['pdb_seq']}", axis=1).tolist()
+        all_mutations = df[df["uniprot_seq"] != df["pdb_seq"]]
+        all_mutations['muts'] = all_mutations['uniprot_seq'] + str(all_mutations['uniprot_pos']) + all_mutations['pdb_seq']
+        all_mutations = list(all_mutations['muts'])
     else:
         all_mutations = []
         
@@ -844,7 +994,7 @@ def get_coverage(df):
 
     Parameters
     ----------
-    df :  The aligened uniprot and pdb structure sequence. 
+    df :  The aligned uniprot and pdb structure sequence. 
 
     Returns
     -------
@@ -852,9 +1002,15 @@ def get_coverage(df):
 
     """
     print("FUNCTION: get_coverage(df)")
+    
+    #list(df.uniprot_pos) example: [1, 2, 3, 4, 5, 7, 8, 9, 13, 14, 15]
     ranges_covered = list(to_ranges(list(df.uniprot_pos)))
+    
+    #ranges covered example: [(1, 5), (7, 9), (13, 15)]
     ranges_covered = str(ranges_covered)
+    #example: "[(1, 5), (7, 9), (13, 15)]"
     ranges_covered = ranges_covered.replace("), (", ");(" )
+    #example: "[(1, 5);(7, 9);(13, 15)]"
     return ranges_covered
 
 def get_aligned_df(uniprot_al, modified_al, pdb_al, uniprot_num, b_factor):
@@ -934,7 +1090,9 @@ def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numberi
     return df_align, mutations_in_all, warnings
 
 
-def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, self_chains, uniprot_id, complex_status, complex_details):
+def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, 
+                      path, self_chains, uniprot_id, complex_status, 
+                      complex_details, peptide_min_length):
     """
     This function takes the pdbs and align to the uniprot sequence per chain. 
     Fusion products is handled in a different way than single protein chains. 
@@ -993,7 +1151,8 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path
         chain_df = chain_df[chain_df['residue_name'].isin(allowed_amino_acids)]        
         chain_df = chain_df.replace("X", "-")
         
-        if len(chain_df) < 5:
+        if len(chain_df) < peptide_min_length:
+            #peptide_min_length recommendended to be 5
             #remove very small fragments
             #os.chdir(path)
             output_array = np.array(['', '', '', '', '', ''], dtype=object)
@@ -1083,12 +1242,30 @@ def download_mmcif(structure_identifier, path):
         if structure_identifier.startswith("AF-"):
             #download the alphafold file - we know the structure exist. If ther is a download issue, 
             #this is handled in the calling function. 
-            os.system(f"wget https://alphafold.ebi.ac.uk/files/{structure_identifier}.cif -P {path}/structures")
+            try: 
+                response = requests.get(f"https://alphafold.ebi.ac.uk/files/{structure_identifier}.cif")
+            except ConnectionError as e:
+                with open(f"{path}/log.txt", "a") as textfile:
+                    textfile.write(f"EXITING: Could not connect to AlphaFold database via API for {structure_identifier}. \n")
+                exit(1) 
+            
+            if response.status_code == 200:
+                with open(f'{path}/structures/{structure_identifier}.cif', 'w') as fh:
+                    fh.write(response.text)
             
         else:
             #download the pdb file - we know the structure exist. If ther is a download issue, 
-            #this is handled in the calling function. 
-            os.system(f"wget https://files.rcsb.org/download/{structure_identifier}.cif -P {path}/structures")
+            #this is handled in the calling function.             
+            try: 
+                response = requests.get(f"https://files.rcsb.org/download/{structure_identifier}.cif")
+            except ConnectionError as e:
+                with open(f"{path}/log.txt", "a") as textfile:
+                    textfile.write(f"EXITING: Could not connect to PDB via API for {structure_identifier}. \n")
+                exit(1) 
+            
+            if response.status_code == 200:
+                with open(f'{path}/structures/{structure_identifier}.cif', 'w') as fh:
+                    fh.write(response.text)
     
     return
 
@@ -1157,11 +1334,11 @@ def import_mmcif(structure_identifier, self_chains, path):
             chain_dfs.append(chain_df)
 
     try:
-        r_free = mmcif_dict['_refine.ls_R_factor_R_free']
-        try:
-            r_free = float(r_free[0])
-        except ValueError:
-            r_free = "NA" #In cases where r-free has been entered as: ?/NA/X/Yes/No/none and more.
+        r_free = float(mmcif_dict['_refine.ls_R_factor_R_free'][0])
+        #try:
+        #    r_free = float(r_free[0])
+    except ValueError:
+        r_free = "NA" #In cases where r-free has been entered as: ?/NA/X/Yes/No/none and more.
     except KeyError: # relevant for AlphaFold structures
         r_free = "NA"
 
@@ -1237,8 +1414,8 @@ def align_alphafold(alphafold_id, mutations, path):
     
     return coverage, AA_in_PDB, b_factor_dict, r_free
 
-def align(combined_structure, path):
-    print("FUNCTION: align(combined_structure, path)")
+def align(combined_structure, path, peptide_min_length):
+    print("FUNCTION: align(combined_structure, path, peptide_min_length)")
     """
     This functions takes the pandas dataframe containing all the structures, 
     their metadata and information regarding mutations of interest, import 
@@ -1289,7 +1466,8 @@ def align(combined_structure, path):
                                            combined_structure.self_chains[i],
                                            combined_structure.uniprot_id[i],
                                            combined_structure.complex_protein[i],
-                                           combined_structure.complex_protein_details[i])
+                                           combined_structure.complex_protein_details[i],
+                                           peptide_min_length)
 
             if alignment_info[0] != '':
                 combined_structure.at[i, 'chains'] = alignment_info[0]  
@@ -1649,7 +1827,7 @@ def cleanup_all(structural_df,input_dataframe, path, output_format):
 
 ################################
 
-def process_uniprot(uniprot_id, df, path, output_format):
+def process_uniprot(uniprot_id, df, path, output_format, peptide_min_length):
     uniprot_dir = f"{path}/results/{uniprot_id}"
     os.makedirs(uniprot_dir, exist_ok=True)
     with open (f"{uniprot_dir}/log.txt", "w") as f:
@@ -1661,16 +1839,16 @@ def process_uniprot(uniprot_id, df, path, output_format):
     found_structures = find_structure_list(uniprot_dataframe)
 
     if len(found_structures) != 0:
-        combined_structure = combine_structure_dfs(found_structures, uniprot_dataframe)
+        combined_structure = combine_structure_dfs(uniprot_dataframe, found_structures)
         combined_structure = collect_complex_info(combined_structure)
         
-        structural_df = align(combined_structure, uniprot_dir)
+        structural_df = align(combined_structure, uniprot_dir, peptide_min_length)
 
         if len(structural_df) != 0:
             cleanup_all(structural_df, uniprot_dataframe, path, output_format)
 
 
-def run_list(input_file, path, cores, output_format):
+def run_list(input_file, path, cores, output_format, peptide_min_length):
     df = pd.read_csv(input_file)
     uniprot_list = df['uniprot'].unique()
 
@@ -1678,7 +1856,7 @@ def run_list(input_file, path, cores, output_format):
 
     with Pool(processes=cores) as pool:
         #use starmap to add multiple arguments.
-        pool.starmap(process_uniprot, [(uniprot_id, df, path, output_format) for uniprot_id in uniprot_list])
+        pool.starmap(process_uniprot, [(uniprot_id, df, path, output_format, peptide_min_length) for uniprot_id in uniprot_list])
 
 
 if __name__ == '__main__':
@@ -1740,7 +1918,7 @@ if __name__ == '__main__':
             
         f.write("Pipeline is starting\n")
         
-        run_list(input_file, path, args.cores, args.format)
+        run_list(input_file, path, args.cores, args.format, args.peptide_length)
         
         finished = datetime.now() 
         
