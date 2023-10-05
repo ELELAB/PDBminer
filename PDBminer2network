@@ -70,7 +70,7 @@ parser.add_argument("-t", "--type_color",
                     type=str,
                     help="plot color for structures")
 
-parser.add_argument('-V', '--verbose', 
+parser.add_argument('-v', '--verbose', 
                     action='store_true', 
                     help='Enable verbose output')
 

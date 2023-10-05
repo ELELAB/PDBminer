@@ -1,3 +1,0 @@
-P04637
-WARNING: 3D-Beacons did not return any PDBe structures for P04637.
-WARNING: Uniprot returned 260 structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list.

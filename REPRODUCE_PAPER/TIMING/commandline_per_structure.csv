@@ -1,13 +1,13 @@
 ,cores,protein,total,per_pdb,n_structures
-MHL1,commandline,MHL1,0 days 00:00:22.243917,0 days 00:00:02.780490,8
-BCL2,commandline,BCL2,0 days 00:01:07.708289,0 days 00:00:02.334769,29
-FAK1,commandline,FAK1,0 days 00:00:55.566055,0 days 00:00:01.543502,36
-FKBP1A,commandline,FKBP1A,0 days 00:02:18.611647,0 days 00:00:01.650139,84
-KRAS,commandline,KRAS,0 days 00:11:19.758491,0 days 00:00:02.719034,250
-ULK1,commandline,ULK1,0 days 00:00:21.149881,0 days 00:00:03.021412,7
-BCL2L1,commandline,BCL2L1,0 days 00:03:38.138015,0 days 00:00:02.296190,95
-PPIA,commandline,PPIA,0 days 00:05:12.860569,0 days 00:00:01.955379,160
-TRAP1,commandline,TRAP1,0 days 00:00:58.303671,0 days 00:00:02.332147,25
-MZF1,commandline,MZF1,0 days 00:00:05.994051,0 days 00:00:02.997026,2
-ARID3A,commandline,ARID3A,0 days 00:00:13.926429,0 days 00:00:04.642143,3
-MAP2LC3B,commandline,MAP2LC3B,0 days 00:00:50.699714,0 days 00:00:02.027989,25
+MHL1,commandline,MHL1,0 days 00:00:11.888359,0 days 00:00:01.486045,8
+BCL2,commandline,BCL2,0 days 00:00:18.571612,0 days 00:00:01.428586,13
+FAK1,commandline,FAK1,0 days 00:01:31.080928,0 days 00:00:02.530026,36
+FKBP1A,commandline,FKBP1A,0 days 00:02:33.387152,0 days 00:00:01.826038,84
+KRAS,commandline,KRAS,0 days 00:14:19.757787,0 days 00:00:03.439031,250
+ULK1,commandline,ULK1,0 days 00:00:21.469867,0 days 00:00:01.951806,11
+BCL2L1,commandline,BCL2L1,0 days 00:02:54.743523,0 days 00:00:01.839406,95
+PPIA,commandline,PPIA,0 days 00:04:11.851862,0 days 00:00:01.574074,160
+TRAP1,commandline,TRAP1,0 days 00:00:52.190328,0 days 00:00:02.087613,25
+MZF1,commandline,MZF1,0 days 00:00:05.502275,0 days 00:00:02.751138,2
+ARID3A,commandline,ARID3A,0 days 00:00:06.585924,0 days 00:00:02.195308,3
+MAP2LC3B,commandline,MAP2LC3B,0 days 00:00:38.510310,0 days 00:00:01.540412,25

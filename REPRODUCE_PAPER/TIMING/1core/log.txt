@@ -1,5 +1,6 @@
-PDBminer is starting
-input file mode is choosen and input file has been identified.
-Pipeline is starting
-time: 0:25:56.250869
-PDBminer has finished.
+2023-10-05 13:46:17,533 - INFO - PDBminer is starting
+2023-10-05 13:46:17,533 - INFO - input file mode is choosen and input file has been identified.
+2023-10-05 13:46:17,561 - INFO - Pipeline is starting
+2023-10-05 13:58:20,408 - WARNING - Uniprot returned 252 structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list, P01116.
+2023-10-05 14:13:13,869 - INFO - total runtime: 0:26:56.336767
+2023-10-05 14:13:13,870 - INFO - PDBminer has finished.

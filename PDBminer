@@ -89,18 +89,17 @@ parser.add_argument("-p", '--peptide_length',
                     default = 5,
                     help='The minimum length of a peptide to be aligned. It is recomended not to go below 5 due to the risk of false alignment of a very small peptide')
 
-parser.add_argument('-V', '--verbose', 
+parser.add_argument('-v', '--verbose', 
                     action='store_true', 
                     help='Enable verbose output')
 
 args = parser.parse_args()
-path = os.getcwd()
 
 if args.verbose:
-    logging.basicConfig(filename=f'{path}/log.txt', level=logging.DEBUG,
+    logging.basicConfig(filename='log.txt', level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
 else:
-    logging.basicConfig(filename=f'{path}/log.txt', level=logging.INFO,
+    logging.basicConfig(filename='log.txt', level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
 #####################
@@ -157,7 +156,7 @@ def retrieve_hugo_name(uniprot_accession_number):
     try: 
         response = requests.get(f"https://www.uniprot.org/uniprot/{uniprot_accession_number}.json")
     except ConnectionError as e:
-        logging.error(f"EXITING: Coould not connect to Uniprot database via API for {uniprot_accession_number} when finding the Hugo Name.")
+        logging.error(f"EXITING: Could not connect to Uniprot database via API for {uniprot_accession_number} when finding the Hugo Name.")
         exit(1)
     
     # If the response is successfull, hugo name is collected.
@@ -168,7 +167,7 @@ def retrieve_hugo_name(uniprot_accession_number):
     # Otherwise the field is left empty
     else: 
         hugo_name = "NA"
-        logging.warning(f"WARNING: No Hugo Name could be retrived with UniProt for {uniprot_id}. Gene name assigned NA.")
+        logging.warning(f"No Hugo Name could be retrived with UniProt for {uniprot_id}. Gene name assigned NA.")
         
     return hugo_name
     
@@ -263,7 +262,7 @@ def get_alphafold_basics(uniprot_id):
     # If the response was unsuccessfull, e.g. if there are no alphafold structure 
     # in the AlphaFold database, a warning is written to the log.txt file.
     else:
-        logging.warning(f"WARNING: The Alphafold Database returned an error for the request of {uniprot_id}.")
+        logging.warning(f"The Alphafold Database returned an error for the request of {uniprot_id}.")
         return
 
     
@@ -298,7 +297,7 @@ def get_pdbs(uniprot_id):
     # If the response was unsuccessful, e.g. if there are no pdb structures 
     # associated in UniPort, a warning is written to the log.txt file.
     else:
-        logging.warning(f"WARNING: The Uniprot Database returned an error for the request of {uniprot_id}.")
+        logging.warning(f"The Uniprot Database returned an error for the request of {uniprot_id}.")
 
 def get_structure_metadata(pdb_id, uniprot):
     logging.debug(f"FUNCTION: get_structure_metadata({pdb_id})")
@@ -329,7 +328,7 @@ def get_structure_metadata(pdb_id, uniprot):
     # If the response was unsuccessfull, e.g. if there are no metadata 
     # associated to a structure, a warning is written to the log.txt file.
     if response.status_code != 200:
-        logging.warning(f"WARNING: The PDBe Database returned an error for the request of summary data for {pdb_id}, {uniprot}.")
+        logging.warning(f"The PDBe Database returned an error for the request of summary data for {pdb_id}, {uniprot}.")
         return
     
     # If the response is successfull, data on the metadata on the models are collected.
@@ -363,7 +362,7 @@ def get_structure_metadata(pdb_id, uniprot):
         # If the response was unsuccessfull, e.g. if there are no experimental metadata 
         # associated to a structure, a warning is written to the log.txt file.
         if response_experiment.status_code != 200:
-            logging.warning(f"WARNING: The PDBe Database returned an error for the request of eperimental data of {pdb_id}, {uniprot}.")
+            logging.warning(f"The PDBe Database returned an error for the request of eperimental data of {pdb_id}, {uniprot}.")
             return
 
         response_text_exp = json.loads(response_experiment.text)
@@ -453,13 +452,13 @@ def get_structure_df(uniprot_id):
         pdbs = get_pdbs(uniprot_id)
         
         if len(pdbs) != 0:
-            logging.warning(f"WARNING: Uniprot returned {len(pdbs)} structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list, {uniprot_id}.")
+            logging.warning(f"Uniprot returned {len(pdbs)} structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list, {uniprot_id}.")
             
             for pdb_id in pdbs:
                 metadata = get_structure_metadata(pdb_id, uniprot_id)
 
                 if metadata is None:
-                    logging.warning(f"WARNING: PDBe database API retured an error for {pdb_id}, {uniprot_id}.")
+                    logging.warning(f"PDBe database API retured an error for {pdb_id}, {uniprot_id}.")
                     return uniprot_id
             
                 pdb.append(pdb_id)
@@ -467,7 +466,7 @@ def get_structure_df(uniprot_id):
                 experimental_method.append(metadata[1]) 
                 resolution.append(metadata[2])
         else:
-            logging.warning(f"WARNING: Uniprot did not return any structures for {uniprot_id}")
+            logging.warning(f"Uniprot did not return any structures for {uniprot_id}")
             
     structure_df = pd.DataFrame({"pdb": pdb, 
                                  "uniprot_id": [uniprot_id]*len(pdb), 
@@ -483,8 +482,8 @@ def get_structure_df(uniprot_id):
             
     if AF_model is not None:
         structure_df.loc[len(structure_df)] = tuple(AF_model)
-    elif AF_model is None:
-        logging.warning(f"WARNING: AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.")
+    else:
+        logging.warning(f"AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.")
                 
     structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
     structure_df = structure_df.drop(['method_priority'], axis=1)
@@ -497,7 +496,7 @@ def get_structure_df(uniprot_id):
 def find_structure_list(input_dataframe):  
     logging.debug("FUNCTION: find_structure_list(input_dataframe)")
     """
-    Takes the input file and the path where it is placed and outputs
+    Takes the input file and outputs
     a directory with a csv file for each uniprot id input and a txt file 
     including all the uniprot ids that does not have any solved structures.
     
@@ -660,7 +659,7 @@ def alignment(uniprot_sequence, AA_pdb):
         pdb_aligned = []
         modified_string = []
     else:
-        a = alignments[0].format()
+        a = format(alignments[0])
         a = a.split("\n")    
         
         uniprot_aligned = a[0].replace(" ", "-")
@@ -704,14 +703,14 @@ def get_uniprot_sequence(uniprot_id, isoform):
         try: 
             response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
         except ConnectionError as e:
-            logging.error(f"EXITING: Uniprot database API rejected for {uniprot_id}.")
+            logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform 1.")
             exit(1) 
     
     else:
         try: 
             response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
         except ConnectionError as e:
-            logging.error(f"EXITING: Uniprot database API rejected for {uniprot_id}.")
+            logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
             exit(1) 
     
     if response.status_code == 200:
@@ -778,10 +777,7 @@ def get_all_discrepancies(df):
     df = df[df.pdb_seq != "-"]        
 
     if len(df[df["uniprot_seq"] != df["pdb_seq"]]) != 0:
-        #all_mutations = df[df["uniprot_seq"] != df["pdb_seq"]].apply(lambda row: f"{row['uniprot_seq']}{row['uniprot_pos']}{row['pdb_seq']}", axis=1).tolist()
-        all_mutations = df[df["uniprot_seq"] != df["pdb_seq"]]
-        all_mutations['muts'] = all_mutations['uniprot_seq'] + str(all_mutations['uniprot_pos']) + all_mutations['pdb_seq']
-        all_mutations = list(all_mutations['muts'])
+        all_mutations = df[df["uniprot_seq"] != df["pdb_seq"]].apply(lambda row: f"{row['uniprot_seq']}{row['uniprot_pos']}{row['pdb_seq']}", axis=1).tolist()
     else:
         all_mutations = []
         
@@ -925,12 +921,8 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos,
     output_array: An array of mixed data for each pdb, indluding dictionaries
     for the b-fcator, mutations in the sequence and the r-free value.
 
-    """
-    logging.debug("===========================================")
-    logging.debug(pdb_id)
-    logging.debug("===========================================")
-    
-    logging.debug("FUNCTION: align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos, path, self_chains, uniprot_id, complex_status, complex_details)")
+    """    
+    logging.debug(f"FUNCTION: align_uniprot_pdb({pdb_id}, uniprot_sequence, uniprot_numbering, mut_pos, path, {self_chains}, {uniprot_id}, complex_status, complex_details)")
     
     allowed_amino_acids = ['D','V','A','M','N','F','G','L','I',
                            'T','P','C','S','R','Y','Q','K','W',
@@ -963,7 +955,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos,
         if len(chain_df) < peptide_min_length:
             #peptide_min_length recommendended to be 5
             #remove very small fragments
-            #os.chdir(path)
             output_array = np.array(['', '', '', '', '', ''], dtype=object)
             return output_array
         
@@ -1022,7 +1013,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos,
     chains_string = ';'.join([str(elem) for elem in chain_names])
     output_array = np.array([chains_string, coverage, muts, mutation_list, b_factor_dictionary, warning_column, r_free], dtype=object)
 
-    #os.chdir(path)
     return output_array
 
 def download_mmcif(structure_identifier, path):
@@ -1141,8 +1131,6 @@ def import_mmcif(structure_identifier, self_chains, path):
 
     try:
         r_free = float(mmcif_dict['_refine.ls_R_factor_R_free'][0])
-        #try:
-        #    r_free = float(r_free[0])
     except ValueError:
         r_free = "NA" #In cases where r-free has been entered as: ?/NA/X/Yes/No/none and more.
     except KeyError: # relevant for AlphaFold structures
@@ -1541,8 +1529,8 @@ def filter_all(structural_df, input_dataframe):
 
     return final_dfs
 
-def cleanup_all(structural_df,input_dataframe, path, output_format):
-    logging.debug("FUNCTION: cleanup_all(structural_df,input_dataframe, path, output_format)")
+def cleanup_all(structural_df,input_dataframe, output_format):
+    logging.debug("FUNCTION: cleanup_all(structural_df,input_dataframe, output_format)")
     
     #final_dfs = filter_all(structural_df, input_dataframe)
     #for df in final_dfs:
@@ -1595,9 +1583,9 @@ def cleanup_all(structural_df,input_dataframe, path, output_format):
         
         if len(filtered_df) > 0:
             if output_format == "json":
-                filtered_df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.json", orient="columns")
+                filtered_df.to_json(f"results/{uniprot_id}/{uniprot_id}_filtered.json", orient="columns")
             else:
-                filtered_df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_filtered.csv")
+                filtered_df.to_csv(f"results/{uniprot_id}/{uniprot_id}_filtered.csv")
         
     if 'cluster_id' in df.columns:
         grouped = df.groupby(['cluster_id'])
@@ -1605,9 +1593,9 @@ def cleanup_all(structural_df,input_dataframe, path, output_format):
             cluster_data = cluster_data[cluster_data['AA_in_PDB'].apply(lambda d: any(d.values()))]
             if len(cluster_data) > 0:
                 if output_format == "json":
-                    cluster_data.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.json", orient="columns")
+                    cluster_data.to_json(f"results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.json", orient="columns")
                 else: 
-                    cluster_data.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.csv")
+                    cluster_data.to_csv(f"results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.csv")
     
     df = df[~df.index.duplicated(keep='first')]
     
@@ -1619,9 +1607,9 @@ def cleanup_all(structural_df,input_dataframe, path, output_format):
         df.drop('cluster_id', inplace=True, axis=1)
     
     if output_format == "json":
-        df.to_json(f"{path}/results/{uniprot_id}/{uniprot_id}_all.json", orient="columns")
+        df.to_json(f"results/{uniprot_id}/{uniprot_id}_all.json", orient="columns")
     else:
-        df.to_csv(f"{path}/results/{uniprot_id}/{uniprot_id}_all.csv")
+        df.to_csv(f"results/{uniprot_id}/{uniprot_id}_all.csv")
 
     return 
 
@@ -1631,8 +1619,8 @@ def cleanup_all(structural_df,input_dataframe, path, output_format):
 
 ################################
 
-def process_uniprot(uniprot_id, df, path, output_format, peptide_min_length):
-    uniprot_dir = f"{path}/results/{uniprot_id}"
+def process_uniprot(uniprot_id, df, output_format, peptide_min_length):
+    uniprot_dir = f"results/{uniprot_id}"
     os.makedirs(uniprot_dir, exist_ok=True)
     
     # Create a copy of the DataFrame for this process
@@ -1647,18 +1635,21 @@ def process_uniprot(uniprot_id, df, path, output_format, peptide_min_length):
         structural_df = align(combined_structure, uniprot_dir, peptide_min_length)
 
         if len(structural_df) != 0:
-            cleanup_all(structural_df, uniprot_dataframe, path, output_format)
+            cleanup_all(structural_df, uniprot_dataframe, output_format)
+            
+    if os.path.isdir(f"{uniprot_dir}/structures"): 
+        shutil.rmtree(f"{uniprot_dir}/structures")
 
 
-def run_list(input_file, path, cores, output_format, peptide_min_length):
+def run_list(input_file, cores, output_format, peptide_min_length):
     df = pd.read_csv(input_file)
     uniprot_list = df['uniprot'].unique()
 
-    os.makedirs(f"{path}/results", exist_ok=True)
+    os.makedirs("results", exist_ok=True)
 
     with Pool(processes=cores) as pool:
         #use starmap to add multiple arguments.
-        pool.starmap(process_uniprot, [(uniprot_id, df, path, output_format, peptide_min_length) for uniprot_id in uniprot_list])
+        pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length) for uniprot_id in uniprot_list])
 
 
 if __name__ == '__main__':
@@ -1709,7 +1700,7 @@ if __name__ == '__main__':
             df['cluster_id'] = cluster
         
         else: df['cluster_id'] = ["NA"]
-        df.to_csv(f'{path}/input_file.csv')
+        df.to_csv('input_file.csv')
         input_file = 'input_file.csv'
         logging.info("input file created based on hugo name and uniprot id, file name: input_file.csv")
 
@@ -1719,14 +1710,10 @@ if __name__ == '__main__':
         
     logging.info("Pipeline is starting")
     
-    run_list(input_file, path, args.cores, args.format, args.peptide_length)
+    run_list(input_file, args.cores, args.format, args.peptide_length)
     
     finished = datetime.now() 
     
-    dirs = glob.glob("results/*/structures")
-    for directory in dirs:
-        shutil.rmtree(directory)
-
     logging.info(f"total runtime: {finished-start}")
     logging.info("PDBminer has finished.")
         

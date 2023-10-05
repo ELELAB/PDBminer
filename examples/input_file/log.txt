@@ -1,5 +1,8 @@
-PDBminer is starting
-input file mode is choosen and input file has been identified.
-Pipeline is starting
-time: 0:00:09.680012
-PDBminer has finished.
+2023-10-05 13:28:52,526 - INFO - PDBminer is starting
+2023-10-05 13:28:52,526 - INFO - input file mode is choosen and input file has been identified.
+2023-10-05 13:28:52,535 - INFO - Pipeline is starting
+2023-10-05 13:28:53,327 - WARNING - Uniprot did not return any structures for P0A7Y7
+2023-10-05 13:28:54,507 - WARNING - The Alphafold Database returned an error for the request of P11532.
+2023-10-05 13:28:54,507 - WARNING - AlphaFold database returned an error for P11532. This may indicate that there are no structure for P11532 in the Alphafold Database.
+2023-10-05 13:29:00,338 - INFO - total runtime: 0:00:07.811826
+2023-10-05 13:29:00,338 - INFO - PDBminer has finished.

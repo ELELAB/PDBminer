@@ -1,2 +1,0 @@
-WARNING: 3D-Beacons did not return any PDBe structures for O75385.
-WARNING: Uniprot returned 6 structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list.

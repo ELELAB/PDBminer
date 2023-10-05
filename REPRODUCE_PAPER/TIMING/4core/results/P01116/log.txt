@@ -1,3 +1,0 @@
-P01116
-WARNING: 3D-Beacons did not return any PDBe structures for P01116.
-WARNING: Uniprot returned 252 structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list.

@@ -13,7 +13,7 @@ def read_commandline(logs, uni_dict):
         n = len(df_pdbminer)
         with open(log, "r") as f: 
             lines = f.readlines()
-            t = lines[3][:-1].split("time: ")[1]
+            t = lines[3][:-1].split(": ")[-1]
             (h, m, s) = t.split(':')
             st = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
             per_structure = st/n
@@ -48,7 +48,7 @@ def read_core_runs(df1, directory_list, n):
     for directory in directory_list:
         with open(f"{directory}/log.txt", "r") as f: 
             lines = f.readlines()
-            t = lines[3][:-1].split("time: ")[1]
+            t = lines[-2][:-1].split(": ")[-1]
             (h, m, s) = t.split(':')
             st = datetime.timedelta(hours=int(h), minutes=int(m), seconds=float(s))
             per_structure = st/n
@@ -59,6 +59,3 @@ def read_core_runs(df1, directory_list, n):
 df2 = read_core_runs(df1, directory_list, total_n)
 
 df2.to_csv("time.csv")
-
-        
-
