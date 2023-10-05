@@ -6,4 +6,4 @@ pandas==1.2.4
 requests==2.25.1
 seaborn==0.12.0
 pyyaml
-wget
+

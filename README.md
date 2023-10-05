@@ -11,9 +11,18 @@ bioRxiv 2023.05.06.539447; doi: https://doi.org/10.1101/2023.05.06.539447
 ```
 
 ## Introduction to the Program 
-PDBminer is a pipeline generating a ranked overview of the available structural models in the 
-Protein Data Bank and the most current version of the AlphaFold2 model, if any.
+PDBminer is a program generating a ranked overview of the available structural models in the 
+Protein Data Bank and the most current version of the AlphaFold2 model
+for an input protein using the UniProt accession number.
+PDBminer captures existing structural model details, including chains
+associated with the UniProt accession number, model quality (e.g., resolution and r-free), 
+re-aligned coverage of the model towards the UniProt sequence (of any isoform) excluding 
+missing residues, protein complex or fusion products within the structure file as well as 
+the presence of nucleic acid chains or any ligands, and if a PDB-REDO refined structure exists. 
+Additionally, the pLDDT score or b-factor is reported. Hence, the output table contains a wide 
+range of information suitable for deciding on a structural model for further research. 
 
+## Table of Contents
 * Installation
 * Setup
 * Running PDBminer
@@ -25,6 +34,19 @@ Protein Data Bank and the most current version of the AlphaFold2 model, if any.
 It is recommended to create a virtual environment to run PDBminer. The environment can be installed 
 via conda using the environment.yml or via pip with requirements.txt.
 
+PDBminer requires:
+* python=3.8.8
+* numpy=1.21.2
+* pandas=1.2.4
+* requests=2.25.1
+* biopython=1.78
+* matplotlib=3.2.2
+* networkx=2.8.4
+* seaborn=0.12.0
+* yaml=0.2.5
+
+PDBminer is developed and tested on MacOS and Linux based systems. (Pending Test on Windows). 
+
 ### Conda 
 #### First time:
 
@@ -32,13 +54,13 @@ via conda using the environment.yml or via pip with requirements.txt.
 git clone https://github.com/ELELAB/PDBminer.git
 cd PDBminer
 conda env create -f environment.yml
-conda activate PDBminer
+conda activate PDBminer_env
 ```
 
 #### All subsequent times
 
 ```
-conda activate PDBminer
+conda activate PDBminer_env
 ```
 
 ### Pip
@@ -46,15 +68,15 @@ conda activate PDBminer
 ```
 git clone https://github.com/ELELAB/PDBminer.git
 cd PDBminer
-python3 -m venv PDBminer
-source PDBminer/bin/activate
+python3 -m venv PDBminer_env
+source PDBminer_env/bin/activate
 python3 -m pip --default-timeout=1000 install -r requirements.txt
 ```
 
 #### All subsequent times
 
 ```
-source PDBminer/bin/activate
+source PDBminer_env/bin/activate
 ```
 
 ## Running PDBminer the first time
@@ -91,8 +113,25 @@ P04637
 
 ```
 
-
 The name of the input file should be specified in the command line. 
+
+### What does the additional input do? 
+
+* "hugo_name": The gene name can, in principle, be anything and can also be used to
+  assign a run-specific name relevant to the user.
+* "uniprot_isoform": The isoform reflects the sequence PDBminer aligns the sequence
+  of the structures to and assigned mismatches between the structure sequence and
+  the UniProt sequence.  
+* "mutations": If you input mutations, PDBminer will filter the structures based on
+  the sites of the mutations. That means every structure in the filtered output covers
+  at least one mutational site. It does not mean that the mutation necessarily is present
+  in the structure. Using mutations is a way to limit the search space to areas of interest.
+  If mutations are part of the input, a column in the output will indicate the amino acids in
+  the structure sequence at the mutational site. 
+* "cluster_id": If you have multiple mutations that you already know may be in different
+  domains of the protein, it may be beneficial to use the cluster ID because you parse the
+  filtered file into more sections, covering different domains. 
+
 
 ### Running the Program with an input file
 

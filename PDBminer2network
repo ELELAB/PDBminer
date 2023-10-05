@@ -23,6 +23,7 @@ from pylab import rcParams
 import numpy as np
 import argparse
 import os
+import logging
 
 parser = argparse.ArgumentParser(prog = "PDBminer2network",
                                  usage = "PDBminer2network [-h] help, all flags are optional: [-r] results path, [-i] input file, [-u] uniprot id, can be added if the user wish to visualize only one protein network, [-c] color center, the center of the plot is colored dark blue by default, but any color can be used, e.g '#64b2b5'. [-p] protein color is grey by default but any color can be used, e.g '#183233’. [-s] PDBid color is blue by default but any color can be used, e.g '#1fc6cc'")
@@ -69,9 +70,21 @@ parser.add_argument("-t", "--type_color",
                     type=str,
                     help="plot color for structures")
 
+parser.add_argument('-V', '--verbose', 
+                    action='store_true', 
+                    help='Enable verbose output')
+
 args = parser.parse_args()
 
 path = args.result
+
+if args.verbose:
+    logging.basicConfig(filename=f'{path}/log_network.txt', level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+else:
+    logging.basicConfig(filename=f'{path}/log_network.txt', level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+
 df = pd.read_csv(args.inputfile)
 
 uniprot_id = args.uniprot
@@ -88,12 +101,10 @@ def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
     from_list = []
     to_list = []
     
-#    replacements = [("[", ""), ("]", ""), ("'", ""), ('"', '')]
-    
     p = file_name.dropna(subset=['complex_protein'])
     p = p[p.complex_protein != "NA"]
     if len(p) == 0:
-        return print(f"plot for {uniprot}/{output_name} omitted, no protein complex found")
+        return logging.debug(f"plot for {uniprot}/{output_name} omitted, no protein complex found")
         
     #regular protein complex
     protein_complex=p[p.complex_protein.str.startswith('protein complex')]
@@ -204,37 +215,41 @@ def run(df):
     """
     
     for i in range(len(df)): 
-        print(f"{df.iloc[i].uniprot}")
+        logging.debug(f"{df.iloc[i].uniprot}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json"):
-            print("  filtered file identified")
+            logging.debug("filtered file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json")
-            print("filtered is loaded")
+            logging.debug("filtered is loaded")
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered")
-            print(f"  {o}")
+            logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
-            print("  filtered file identified")
+            logging.debug("filtered file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv", na_values=[], keep_default_na=False)
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json"):
-            print("  filtered cluster file identified")
+            logging.debug("filtered cluster file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json")
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered")
-            print(f"  {o}")
+            logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
-            print("  filtered cluster file identified")
+            logging.debug("filtered cluster file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv", na_values=[], keep_default_na=False)
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered")
-            print(f"  {o}")
+            logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json"):
-            print("  All file identified")
+            logging.debug("All file identified")
             full = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json")
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all")
-            print(f"  {o}")
+            logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
-            print("  All file identified")
+            logging.debug("All file identified")
             full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv", na_values=[], keep_default_na=False)
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all")
-            print(f"  {o}")
+            logging.debug(f"{o}")
+    
+    if os.path.exists(f"{path}/log_network.txt") and os.path.getsize(f"{path}/log_network.txt") == 0:
+        os.remove(f"{path}/log_network.txt")
+        
     return
 
 run(df)
