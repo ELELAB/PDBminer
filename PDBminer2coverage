@@ -91,12 +91,19 @@ parser.add_argument('-v', '--verbose',
 args = parser.parse_args()
 path = args.result
 
+log_file = f'{path}/log_coverage.txt'
 if args.verbose:
-    logging.basicConfig(filename=f'{path}/log_coverage.txt', level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 else:
-    logging.basicConfig(filename=f'{path}/log_coverage.txt', level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+logger = logging.getLogger()
+logger.addHandler(file_handler)
 
 df = pd.read_csv(args.inputfile)
 
@@ -464,11 +471,11 @@ def run(df):
                           "all", sequence, threshold,
                           bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
             logging.debug("plot done")
-    
-    
-    if os.path.exists(f"{path}/log_coverage.txt") and os.path.getsize(f"{path}/log_coverage.txt") == 0:
-        os.remove(f"{path}/log_coverage.txt")
-    
+        
     return
 
 run(df)
+file_handler.close()    
+if os.path.exists(log_file) and os.path.getsize(log_file) == 0:
+    os.remove(log_file)
+

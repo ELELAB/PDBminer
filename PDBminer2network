@@ -19,6 +19,7 @@
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
+plt.switch_backend('pdf')
 from pylab import rcParams
 import numpy as np
 import argparse
@@ -78,12 +79,19 @@ args = parser.parse_args()
 
 path = args.result
 
+log_file = f'{path}/log_network.txt'
 if args.verbose:
-    logging.basicConfig(filename=f'{path}/log_network.txt', level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 else:
-    logging.basicConfig(filename=f'{path}/log_network.txt', level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+file_handler = logging.FileHandler(log_file)
+file_handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+logger = logging.getLogger()
+logger.addHandler(file_handler)
 
 df = pd.read_csv(args.inputfile)
 
@@ -245,11 +253,10 @@ def run(df):
             logging.debug("All file identified")
             full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv", na_values=[], keep_default_na=False)
             o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all")
-            logging.debug(f"{o}")
-    
-    if os.path.exists(f"{path}/log_network.txt") and os.path.getsize(f"{path}/log_network.txt") == 0:
-        os.remove(f"{path}/log_network.txt")
-        
+            logging.debug(f"{o}")        
     return
 
 run(df)
+file_handler.close()    
+if os.path.exists(log_file) and os.path.getsize(log_file) == 0:
+    os.remove(log_file)
