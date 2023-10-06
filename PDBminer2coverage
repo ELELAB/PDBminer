@@ -285,7 +285,6 @@ def get_mutations(mutations_in_pdb, a_range, chain):
     are marked with a novel category.
 
     """
-    print(mutations_in_pdb)
     if mutations_in_pdb == "NA":
         return a_range
     if type(mutations_in_pdb) == str:
@@ -293,7 +292,6 @@ def get_mutations(mutations_in_pdb, a_range, chain):
         if mutations_in_pdb[chain] == "NA":
             return a_range        
     for mutation in mutations_in_pdb[chain]:
-        print(mutation)
         mut_pos = int(mutation[1:-1])
         a_range[mut_pos-1] = 5
     return a_range       

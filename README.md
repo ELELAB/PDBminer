@@ -40,28 +40,12 @@ PDBminer requires:
 * pandas=1.2.4
 * requests=2.25.1
 * biopython=1.78
-* matplotlib=3.2.2
-* networkx=2.8.4
+* matplotlib=3.7.0
+* networkx=3.1
 * seaborn=0.12.0
 * yaml=0.2.5
 
 PDBminer is developed and tested on MacOS and Linux based systems. (Pending Test on Windows). 
-
-### Conda 
-#### First time:
-
-```
-git clone https://github.com/ELELAB/PDBminer.git
-cd PDBminer
-conda env create -f environment.yml
-conda activate PDBminer_env
-```
-
-#### All subsequent times
-
-```
-conda activate PDBminer_env
-```
 
 ### Pip
 #### First time:
@@ -77,6 +61,22 @@ python3 -m pip --default-timeout=1000 install -r requirements.txt
 
 ```
 source PDBminer_env/bin/activate
+```
+
+### Conda 
+#### First time:
+
+```
+git clone https://github.com/ELELAB/PDBminer.git
+cd PDBminer
+conda env create -f environment.yml
+conda activate PDBminer_env
+```
+
+#### All subsequent times
+
+```
+conda activate PDBminer_env
 ```
 
 ## Running PDBminer the first time
