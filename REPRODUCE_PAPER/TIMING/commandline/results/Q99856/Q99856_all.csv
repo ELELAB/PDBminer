@@ -1,4 +1,0 @@
-structure_rank,hugo_name,uniprot_id,uniprot_isoform,structure_id,deposition_date,experimental_method,resolution,complex_protein,complex_protein_details,complex_nucleotide,complex_nucleotide_details,complex_ligand,complex_ligand_details,chains,coverage,mutations_in_pdb,warnings
-0,ARID3A,Q99856,1,AF-Q99856-F1-model_v4,2022-06-01,Predicted,NA,NA,NA,NA,NA,NA,NA,A,"[(2, 24);(49, 66);(223, 347);(468, 483);(518, 537)]",NA,NA
-1,ARID3A,Q99856,1,4LJX,2013-07-05,X-RAY DIFFRACTION,2.21,NA,NA,NA,NA,NA,NA,A;B,"[(223, 251);(253, 264);(266, 273);(275, 318);(320, 344)];[(223, 251);(253, 264);(266, 273);(275, 318);(320, 344)]",['K320E'];['K320E'],NA
-2,ARID3A,Q99856,1,2KK0,2009-06-14,SOLUTION NMR,NA,NA,NA,NA,NA,NA,NA,A,"[(210, 351)]","['V211H', 'A212H', 'P213H', 'Q214H', 'L215S', 'Q216H', 'P217M']",attachment at N-terminal with length 3 have been removed from coverage

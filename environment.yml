@@ -1,19 +1,16 @@
-name: PDBminer
+name: PDBminer_env
 channels:
   - bioconda
   - anaconda
   - conda-forge
   - defaults
 dependencies:
-  - biopandas=0.4.1
   - biopython=1.78
-  - matplotlib=3.2.2
-  - networkx=2.8.4
+  - matplotlib=3.7.0
+  - networkx=3.1
   - numpy=1.21.2
   - pandas=1.2.4
   - python=3.8.8
   - requests=2.25.1
   - seaborn=0.12.0
-  - snakemake=7.7.0
   - yaml=0.2.5
-  - wget

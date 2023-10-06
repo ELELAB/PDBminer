@@ -1,0 +1,5 @@
+2023-10-06 08:59:40,825 - INFO - PDBminer is starting
+2023-10-06 08:59:40,825 - INFO - input file mode is choosen and input file has been identified.
+2023-10-06 08:59:40,833 - INFO - Pipeline is starting
+2023-10-06 09:03:49,054 - INFO - total runtime: 0:04:08.229123
+2023-10-06 09:03:49,054 - INFO - PDBminer has finished.

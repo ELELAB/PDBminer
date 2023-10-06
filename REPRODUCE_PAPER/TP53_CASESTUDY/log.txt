@@ -1,8 +1,6 @@
-PDBminer is starting
-input file created based on hugo name and uniprot id, file name: input_file.csv
-APIs are checked
-   APIs controlled and accepted
-Pipeline is starting
-time: 0:09:13.951299
-before snakemake: 0:00:00.885940
-PDBminer has finished.
+2023-10-05 13:31:06,075 - INFO - PDBminer is starting
+2023-10-05 13:31:06,080 - INFO - input file created based on hugo name and uniprot id, file name: input_file.csv
+2023-10-05 13:31:06,080 - INFO - Pipeline is starting
+2023-10-05 13:31:11,834 - WARNING - Uniprot returned 260 structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list, P04637.
+2023-10-05 13:41:57,695 - INFO - total runtime: 0:10:51.619906
+2023-10-05 13:41:57,695 - INFO - PDBminer has finished.

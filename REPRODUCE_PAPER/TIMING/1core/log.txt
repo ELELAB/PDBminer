@@ -1,8 +1,5 @@
-PDBminer is starting
-input file mode is choosen and input file has been identified.
-APIs are checked
-   APIs controlled and accepted
-Pipeline is starting
-time: 0:24:17.820821
-before snakemake: 0:00:01.141749
-PDBminer has finished.
+2023-10-06 08:50:22,488 - INFO - PDBminer is starting
+2023-10-06 08:50:22,488 - INFO - input file mode is choosen and input file has been identified.
+2023-10-06 08:50:22,496 - INFO - Pipeline is starting
+2023-10-06 09:03:06,921 - INFO - total runtime: 0:12:44.432206
+2023-10-06 09:03:06,921 - INFO - PDBminer has finished.
