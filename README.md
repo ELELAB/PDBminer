@@ -45,8 +45,7 @@ PDBminer requires:
 * seaborn=0.12.0
 * yaml=0.2.5
 
-PDBminer is developed on a Linuz based system but also tested on MacOS and Windows. If you use windows and the conda
-distribution ensure that your pyqt is updated.
+PDBminer is developed on a Linux based system but also tested on MacOS and Windows.
 
 ### Pip
 #### First time:
