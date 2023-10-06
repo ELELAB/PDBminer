@@ -1,6 +1,0 @@
-2023-10-05 13:47:06,769 - INFO - PDBminer is starting
-2023-10-05 13:47:06,773 - INFO - input file created based on hugo name and uniprot id, file name: input_file.csv
-2023-10-05 13:47:06,773 - INFO - Pipeline is starting
-2023-10-05 13:47:12,602 - WARNING - Uniprot returned 252 structures. NOTICE that structures deposited in the PDB within 8 weeks may not be included in this list, P01116.
-2023-10-05 14:01:26,527 - INFO - total runtime: 0:14:19.757787
-2023-10-05 14:01:26,527 - INFO - PDBminer has finished.

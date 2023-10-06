@@ -1,6 +1,7 @@
 ,cores,total,per_pdb
-commandline,commandline,0 days 00:28:05.539927,0 days 00:00:02.054123583
-1core,1core,0 days 00:26:56.336767,0 days 00:00:02.270136
-2core,2core,0 days 00:18:48.498055,0 days 00:00:01.584969
-3core,3core,0 days 00:16:25.080633,0 days 00:00:01.383540
-4core,4core,0 days 00:16:09.455482,0 days 00:00:01.361595
+1core,1core,0 days 00:12:44.432206,0 days 00:00:01.643940
+2core,2core,0 days 00:08:19.542430,0 days 00:00:01.074285
+3core,3core,0 days 00:05:17.024713,0 days 00:00:00.681774
+4core,4core,0 days 00:04:36.033670,0 days 00:00:00.593621
+5core,5core,0 days 00:04:08.229123,0 days 00:00:00.533826
+6core,6core,0 days 00:04:06.257695,0 days 00:00:00.529586
