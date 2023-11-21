@@ -22,6 +22,7 @@ import requests
 from requests.exceptions import ConnectionError
 from datetime import datetime
 import logging
+import re
 
 import pandas as pd
 import numpy as np
@@ -619,7 +620,8 @@ def to_ranges(iterable):
         yield group[0][1], group[-1][1]
         
 
-def alignment(uniprot_sequence, AA_pdb):
+def alignment(uniprot_sequence, AA_pdb, peptide_min_length, b_factors, uniprot_numbering):
+    #updated 21Nov2021 for biopython version 1.81
     """
     A function that aligns the uniprot and AA sequence from the PDB.
 
@@ -636,7 +638,7 @@ def alignment(uniprot_sequence, AA_pdb):
 
     """
     pdb_sequence = ''.join(AA_pdb)
-    
+
     aligner = Align.PairwiseAligner()
     aligner.mode = 'local'
     aligner.match_score = 1
@@ -651,34 +653,48 @@ def alignment(uniprot_sequence, AA_pdb):
     pdb_sequence = pdb_sequence.replace("-", "X" )
     
     alignments = aligner.align(uniprot_sequence, pdb_sequence)
-    #if there are gaps: sequence contains letters not in the alphabet
-    #"-" is not understood. 
     
-    if alignments.score < 5: 
-        uniprot_aligned = []
-        pdb_aligned = []
-        modified_string = []
-    else:
-        a = format(alignments[0])
-        a = a.split("\n")    
-        
-        uniprot_aligned = a[0].replace(" ", "-")
-        uniprot_aligned = uniprot_aligned.replace("X", "-")
-        pdb_aligned = a[2].replace(" ", "-")
-        pdb_aligned = pdb_aligned.replace("X", "-")
-        
-        positions = a[1].replace(" ", "-")
-        first = positions.find('|')
-        last = positions.rfind('|')
-        modified_string = ''
-        for i in range(len(pdb_aligned)):
-            if i < first or i > last:
-                modified_string += '-'
-            else:
-                modified_string += pdb_aligned[i]
-        
-    return uniprot_aligned, pdb_aligned, modified_string
+    if alignments.score < peptide_min_length: 
+        return [], []
+    
+    a = format(alignments[0])
+    a = a.split("\n")    
+    
+    uniprot_seq_len = len(uniprot_sequence)
+    
+    #as the uniprot sequence as target and pdb is query, we get the
+    #values for the start and end positions of the alignment
+    target_strings = [string for string in a if 'target' in string]
+    query_strings = [string for string in a if 'query' in string]
 
+    start_value_uniprot = int(re.findall(r'\d+', target_strings[0])[0])
+    start_value_pdb = int(re.findall(r'\d+', query_strings[0])[0])
+    end_value_uniprot = int(re.findall(r'\d+', target_strings[-1])[-1])
+    end_value_pdb = int(re.findall(r'\d+', query_strings[-1])[-1])
+    
+    #we trim the PDB sequence, e.g., remove fusion products or constructed 
+    #linkers
+    trimmed_pdb_sequence = pdb_sequence[start_value_pdb:end_value_pdb]
+    trimmed_b_factor = b_factors[start_value_pdb:end_value_pdb]
+    
+    #we update this sequence to add the missing items of the UNIPROT sequence. 
+    updated_pdb_sequence = ("-"*(start_value_uniprot))+trimmed_pdb_sequence+("-"*(uniprot_seq_len-end_value_uniprot))
+    updated_b_factor = (["-"]*(start_value_uniprot))+trimmed_b_factor+(["-"]*(uniprot_seq_len-end_value_uniprot))
+    
+    updated_pdb_sequence = updated_pdb_sequence.replace("X", "-")
+
+    uniprot_sequence = list(uniprot_sequence)  
+    updated_pdb_sequence = list(updated_pdb_sequence) 
+
+    # Create an aligned dataframe for the chain.
+    df_align = pd.DataFrame(data={"uniprot_seq": uniprot_sequence,
+                                  "uniprot_pos": uniprot_numbering,
+                                  "pdb_seq": updated_pdb_sequence,
+                                  "b_factor": updated_b_factor}) 
+
+    df_align.loc[df_align["pdb_seq"] == "-", "b_factor"] = "-"
+    
+    return df_align
 
 def get_uniprot_sequence(uniprot_id, isoform):
     """
@@ -818,46 +834,8 @@ def get_coverage(df):
     #example: "[(1, 5);(7, 9);(13, 15)]"
     return ranges_covered
 
-def get_aligned_df(uniprot_al, modified_al, pdb_al, uniprot_num, b_factor):
-    """
-    A function that builds the dataframe with the aligned sequences. 
 
-    Parameters
-    ----------
-    uniprot_al : Aligned sequence uniprot string.
-    pdb_al : Aligned pdb sequence string. 
-    uniprot_num : The list of residue numbers in the uniprot sequence. 
-
-    Returns
-    -------
-    df_align : A dataframe containing the relevant alignment. 
-
-    """
-    uniprot_al = list(uniprot_al)  
-    pdb_al = list(pdb_al) 
-    mod_al = list(modified_al)
-    
-    for i, v in enumerate(uniprot_al):
-        if i >= len(uniprot_num) or (v == "-" and uniprot_num[i] != "-"):
-            uniprot_num.insert(i, "-")
-    
-    for i, v in enumerate(pdb_al):
-        if i >= len(b_factor) or (v == "-" and b_factor[i] != "-"):
-            b_factor.insert(i, "-")
-
-
-    # Create an aligned dataframe for the chain.
-    df_align = pd.DataFrame(data={"uniprot_seq": uniprot_al,
-                                  "uniprot_pos": uniprot_num,
-                                  "pdb_seq": mod_al,
-                                  "b_factor": b_factor}) 
-
-    df_align.loc[df_align["pdb_seq"] == "-", "b_factor"] = "-"
-    
-    return df_align
-
-
-def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numbering, b_factors):
+def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numbering, b_factors, peptide_min_length):
     """
     Function that takes the sequence from uniprot and pdb and create an aligned dataframe
     and finds mutations.
@@ -880,14 +858,10 @@ def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numberi
     logging.debug("FUNCTION: processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numbering, b_factors)")
     
     #Align the PDB sequence to the uniprot sequence.
-    uniprot_aligned, pdb_aligned, modified_pdb_aligned = alignment(uniprot_sequence, residue_names)   
-    if uniprot_aligned == []:
-        return "NA", "NA", "NA"
-
-    uniprot_numbering_copy = uniprot_numbering.copy()     
-    #create a dataframe with the uniprot sequence, numbering, aligned pdb sequence and b-factor.
+    df_align = alignment(uniprot_sequence, residue_names, peptide_min_length, b_factors, uniprot_numbering)   
     
-    df_align = get_aligned_df(uniprot_aligned, modified_pdb_aligned, pdb_aligned, uniprot_numbering_copy, b_factors)
+    if type(df_align) != pd.core.frame.DataFrame:
+        return "NA", "NA", "NA"
     
     #Find mutations and create a list of warnings. 
     df_align, mutations_in_all, warnings = get_all_discrepancies(df_align)
@@ -976,7 +950,8 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos,
         df_align, mutations_in_all, warnings = processing_normal_alignment(uniprot_sequence, 
                                                                            list(chain_df.residue_name), 
                                                                            uniprot_numbering_copy, 
-                                                                           list(chain_df.b_factor))
+                                                                           list(chain_df.b_factor),
+                                                                           peptide_min_length)
         #input mutations
         if type(mut_pos) == float or type(mut_pos) == np.float64:
             mut_pos = "NA"
@@ -1491,49 +1466,9 @@ def collect_complex_info(structural_df):
 
 ################################
 
-def filter_all(structural_df, input_dataframe):
-    logging.debug("FUNCTION: filter_all(structural_df, input_dataframe)")
-    """
-    This function cleans up sloppy coding from earlier in the pipeline
-    which is needed for further investigation by removing structures that 
-    does not satisfy the criteria.
-
-    Parameters
-    ----------
-    structural_df : The pandas dataframe containing the original input file,
-                   PDBs and subsequent additional columns. 
-
-    Returns
-    -------
-    structural_df : The pandas dataframe containing the original input file,
-                   PDBs that cover at least ONE mutation. 
-
-    """
-    final_dfs = []
-    
-    filtered_df = structural_df[structural_df['AA_in_PDB'].apply(lambda d: any(d.values()))]
-    if not filtered_df.empty:
-        filtered_df.index.name = 'structure_rank'
-        final_dfs.append(filtered_df)
-      
-    if len(set(input_dataframe.cluster_id)) != 1:
-        for cluster in list(input_dataframe.cluster_id):
-            cluster_df = structural_df[structural_df.cluster_id == cluster]
-            cluster_df = cluster_df.reset_index(drop=True)
-            cluster_df.index.name = 'structure_rank'
-            final_dfs.append(cluster_df)
-    
-    else:
-        structural_df.index.name = 'structure_rank'
-        final_dfs.append(structural_df)
-
-    return final_dfs
-
 def cleanup_all(structural_df,input_dataframe, output_format):
     logging.debug("FUNCTION: cleanup_all(structural_df,input_dataframe, output_format)")
     
-    #final_dfs = filter_all(structural_df, input_dataframe)
-    #for df in final_dfs:
     uniprot_id = structural_df.iloc[0]['uniprot_id']
     #rearrange columns
     structural_df = structural_df[['hugo_name', 'uniprot_id', 'uniprot_isoform', 

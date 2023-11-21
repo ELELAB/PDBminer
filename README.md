@@ -35,16 +35,20 @@ It is recommended to create a virtual environment to run PDBminer. The environme
 via conda using the environment.yml or via pip with requirements.txt.
 
 PDBminer requires:
-* python=3.8.8
-* numpy=1.21.2
-* pandas=1.2.4
-* requests=2.25.1
-* biopython=1.78
-* matplotlib=3.7.0
-* networkx=3.1
-* seaborn=0.12.0
-* yaml=0.2.5
+* python3
 
+* biopython
+* numpy
+* pandas
+* PyYAML
+* requests
+
+and for plotting: 
+* seaborn
+* matplotlib
+* networkx
+
+The versions of these dependencies are available in requirements.txt and environment.yml. 
 PDBminer is developed on a Linux based system but also tested on MacOS and Windows.
 
 ### Pip
