@@ -90,7 +90,7 @@ parser.add_argument("-p", '--peptide_length',
                     help='The minimum length of a peptide to be aligned. It is recomended not to go below 5 due to the risk of false alignment of a very small peptide')
 
 parser.add_argument("-a", "--file_save",
-                    metavar = "File save strategy",
+                    metavar = "file_save_strategy",
                     type=str,
                     default = "none",
                     choices=["none", "retain"],
@@ -1642,10 +1642,8 @@ def process_uniprot(uniprot_id, df, output_format, peptide_min_length, file_save
         if len(structural_df) != 0:
             cleanup_all(structural_df, uniprot_dataframe, output_format)
     
-    if file_save_strategy == "none":
-        if os.path.isdir(f"{uniprot_dir}/structures"): 
-            shutil.rmtree(f"{uniprot_dir}/structures")
-    
+    if file_save_strategy == "none" and os.path.isdir(f"{uniprot_dir}/structures"):
+        shutil.rmtree(f"{uniprot_dir}/structures")
 
 def run_list(input_file, cores, output_format, peptide_min_length, file_save_strategy):
     df = pd.read_csv(input_file)
