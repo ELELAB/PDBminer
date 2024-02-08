@@ -1215,7 +1215,6 @@ def align_alphafold(alphafold_id, mutations, path):
     
     return coverage, AA_in_PDB, b_factor_dict, r_free 
 
-
 def align(combined_structure, path, peptide_min_length):
     logging.debug("FUNCTION: align(combined_structure, path, peptide_min_length)")
     """
@@ -1269,7 +1268,7 @@ def align(combined_structure, path, peptide_min_length):
                                            combined_structure.uniprot_id[i],
                                            combined_structure.complex_protein[i],
                                            combined_structure.complex_protein_details[i],
-                                           peptide_min_length)
+                                           peptide_min_length) 
             
             if alignment_info[0] != '':
                 combined_structure.at[i, 'chains'] = alignment_info[0]  
@@ -1278,8 +1277,8 @@ def align(combined_structure, path, peptide_min_length):
                 combined_structure.at[i, 'mutations_in_pdb'] = alignment_info[3]
                 combined_structure.at[i, 'b_factor'] = alignment_info[4]
                 combined_structure.at[i, 'warnings'] = alignment_info[5]
-                combined_structure.at[i, 'r_free'] = alignment_info[6]
-                
+                combined_structure.at[i, 'r_free'] = alignment_info[6] 
+            
             #drop missing values. 
             else:
                 combined_structure = combined_structure.drop([i])
@@ -1726,3 +1725,4 @@ if __name__ == '__main__':
     logging.info(f"total runtime: {finished-start}")
     logging.info("PDBminer has finished.")
         
+
