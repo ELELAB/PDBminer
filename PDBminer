@@ -1213,7 +1213,7 @@ def align_alphafold(alphafold_id, mutations, path):
     
     b_factor_dict = dict({"A": list(AF_df.b_factor)})
     
-    return coverage, AA_in_PDB, b_factor_dict, r_free 
+    return coverage, AA_in_PDB, b_factor_dict, r_free
 
 def align(combined_structure, path, peptide_min_length):
     logging.debug("FUNCTION: align(combined_structure, path, peptide_min_length)")
@@ -1268,8 +1268,7 @@ def align(combined_structure, path, peptide_min_length):
                                            combined_structure.uniprot_id[i],
                                            combined_structure.complex_protein[i],
                                            combined_structure.complex_protein_details[i],
-                                           peptide_min_length) 
-            
+                                           peptide_min_length)            
             if alignment_info[0] != '':
                 combined_structure.at[i, 'chains'] = alignment_info[0]  
                 combined_structure.at[i, 'coverage'] = alignment_info[1] 
