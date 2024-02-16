@@ -90,6 +90,13 @@ parser.add_argument("-p", '--peptide_length',
                     default = 5,
                     help='The minimum length of a peptide to be aligned. It is recomended not to go below 5 due to the risk of false alignment of a very small peptide')
 
+parser.add_argument("-a", "--file_save",
+                    metavar = "file_save_strategy",
+                    type=str,
+                    default = "none",
+                    choices=["none", "retain"],
+                    help="the file save strategy of the run (mmcif file format), default is none, no files are saved. Alternative is 'retain', which keeps all downloded files")
+
 parser.add_argument('-v', '--verbose', 
                     action='store_true', 
                     help='Enable verbose output')
@@ -163,12 +170,15 @@ def retrieve_hugo_name(uniprot_accession_number):
     # If the response is successfull, hugo name is collected.
     if response.status_code == 200:
         uniprot_file_content = json.loads(response.text)
-        hugo_name = uniprot_file_content['genes'][0]['geneName']['value']
-    
+        if 'genes'in uniprot_file_content and 'geneName'in uniprot_file_content['genes'][0]:
+            hugo_name = uniprot_file_content['genes'][0]['geneName']['value']
+        else:
+            hugo_name = "NA"
+            logging.warning(f"Uniprot has records in this id, but no Hugo Name could be retrived with UniProt for {uniprot_accession_number}. Gene name assigned NA.")
     # Otherwise the field is left empty
     else: 
         hugo_name = "NA"
-        logging.warning(f"No Hugo Name could be retrived with UniProt for {uniprot_id}. Gene name assigned NA.")
+        logging.warning(f"No Uniprot record in this id, no Hugo Name could be retrived with UniProt for {uniprot_accession_number}. Gene name assigned NA.")
         
     return hugo_name
     
@@ -1113,7 +1123,7 @@ def import_mmcif(structure_identifier, self_chains, path):
     return chain_dfs, chain_names, r_free
 
 def align_alphafold(alphafold_id, mutations, path):
-    logging.debug("FUNCTION: align_alphafold(alphafold_id, mutations)")
+    logging.debug("FUNCTION: align_alphafold(alphafold_id, mutations, path)")
     """
     This function takes an alphafold ID and the mutational positions. 
     The aim is to find the high quality areas of the protein, and set these in 
@@ -1235,8 +1245,7 @@ def align(combined_structure, path, peptide_min_length):
                                            combined_structure.uniprot_id[i],
                                            combined_structure.complex_protein[i],
                                            combined_structure.complex_protein_details[i],
-                                           peptide_min_length)
-
+                                           peptide_min_length)            
             if alignment_info[0] != '':
                 combined_structure.at[i, 'chains'] = alignment_info[0]  
                 combined_structure.at[i, 'coverage'] = alignment_info[1] 
@@ -1245,7 +1254,6 @@ def align(combined_structure, path, peptide_min_length):
                 combined_structure.at[i, 'b_factor'] = alignment_info[4]
                 combined_structure.at[i, 'warnings'] = alignment_info[5]
                 combined_structure.at[i, 'r_free'] = alignment_info[6]
-        
             #drop missing values. 
             else:
                 combined_structure = combined_structure.drop([i])
@@ -1553,7 +1561,7 @@ def cleanup_all(structural_df,input_dataframe, output_format):
 
 ################################
 
-def process_uniprot(uniprot_id, df, output_format, peptide_min_length):
+def process_uniprot(uniprot_id, df, output_format, peptide_min_length, file_save_strategy):
     uniprot_dir = f"results/{uniprot_id}"
     os.makedirs(uniprot_dir, exist_ok=True)
     
@@ -1570,12 +1578,11 @@ def process_uniprot(uniprot_id, df, output_format, peptide_min_length):
 
         if len(structural_df) != 0:
             cleanup_all(structural_df, uniprot_dataframe, output_format)
-            
-    if os.path.isdir(f"{uniprot_dir}/structures"): 
+    
+    if file_save_strategy == "none" and os.path.isdir(f"{uniprot_dir}/structures"):
         shutil.rmtree(f"{uniprot_dir}/structures")
 
-
-def run_list(input_file, cores, output_format, peptide_min_length):
+def run_list(input_file, cores, output_format, peptide_min_length, file_save_strategy):
     df = pd.read_csv(input_file)
     uniprot_list = df['uniprot'].unique()
 
@@ -1583,7 +1590,7 @@ def run_list(input_file, cores, output_format, peptide_min_length):
 
     with Pool(processes=cores) as pool:
         #use starmap to add multiple arguments.
-        pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length) for uniprot_id in uniprot_list])
+        pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length, file_save_strategy) for uniprot_id in uniprot_list])
 
 
 if __name__ == '__main__':
@@ -1644,10 +1651,9 @@ if __name__ == '__main__':
         
     logging.info("Pipeline is starting")
     
-    run_list(input_file, args.cores, args.format, args.peptide_length)
+    run_list(input_file, args.cores, args.format, args.peptide_length, args.file_save)
     
     finished = datetime.now() 
     
     logging.info(f"total runtime: {finished-start}")
     logging.info("PDBminer has finished.")
-        

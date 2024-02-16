@@ -35,8 +35,8 @@ It is recommended to create a virtual environment to run PDBminer. The environme
 via conda using the environment.yml or via pip with requirements.txt.
 
 PDBminer requires:
-* python3
 
+* python3
 * biopython
 * numpy
 * pandas
@@ -50,6 +50,7 @@ and for plotting:
 
 The versions of these dependencies are available in requirements.txt and environment.yml. 
 PDBminer is developed on a Linux based system but also tested on MacOS and Windows.
+Notice that for BioPython, it is important to use version 1.78.  
 
 ### Pip
 #### First time:
