@@ -34,7 +34,7 @@ parser.add_argument("-r", '--result',
                     metavar = 'result path',
                     type=str,
                     default = "./results/",
-                    help='The path to the result path, deafault ./results')
+                    help='The path to the result path, default ./results')
 
 parser.add_argument("-i", "--inputfile",
                     metavar = 'input file',
