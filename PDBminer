@@ -621,7 +621,6 @@ def to_ranges(iterable):
         
 
 def alignment(uniprot_sequence, AA_pdb, peptide_min_length, b_factors, uniprot_numbering):
-    #updated 21Nov2021 for biopython version 1.81
     """
     A function that aligns the uniprot and AA sequence from the PDB.
 
@@ -655,7 +654,7 @@ def alignment(uniprot_sequence, AA_pdb, peptide_min_length, b_factors, uniprot_n
     alignments = aligner.align(uniprot_sequence, pdb_sequence)
     
     if alignments.score < peptide_min_length: 
-        return [], []
+        return None
     
     a = format(alignments[0])
     a = a.split("\n")    
@@ -948,9 +947,9 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos,
         
         uniprot_numbering_copy = uniprot_numbering.copy() 
         df_align, mutations_in_all, warnings = processing_normal_alignment(uniprot_sequence, 
-                                                                           list(chain_df.residue_name), 
+                                                                           chain_df.residue_name.to_list(),
                                                                            uniprot_numbering_copy, 
-                                                                           list(chain_df.b_factor),
+                                                                           chain_df.b_factor.to_list(),
                                                                            peptide_min_length)
         #input mutations
         if type(mut_pos) == float or type(mut_pos) == np.float64:
