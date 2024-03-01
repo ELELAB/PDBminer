@@ -646,7 +646,7 @@ def alignment(uniprot_sequence, AA_pdb, peptide_min_length, b_factors, uniprot_n
     aligner = Align.PairwiseAligner()
     aligner.mode = 'local'
     aligner.match_score = 1
-    aligner.mismatch_score = -10
+    aligner.mismatch_score = -5
     aligner.open_gap_score = -20
     aligner.extend_gap_score = -10
     
@@ -798,7 +798,7 @@ def get_mutations(mut_pos, df):
 
     return muts
 
-def get_all_discrepancies(df): 
+def get_all_discrepancies(df, residue_names): 
     """
     A function that takes the aligned dataframe and identify problems if any. 
 
@@ -813,7 +813,7 @@ def get_all_discrepancies(df):
     warnings : Qualitative warinings regarding the structure, list of strings. 
 
     """
-    logging.debug("FUNCTION: get_all_discrepancies(df)")
+    logging.debug("FUNCTION: get_all_discrepancies(df, pdb_residues)")
 
     warnings = []
         
@@ -825,11 +825,12 @@ def get_all_discrepancies(df):
     else:
         all_mutations = []
         
+    pdb_residues = "".join(residue_names)
     # check if these are part of a tag
-    if "HHH" in "".join(list(df.pdb_seq[:20])):
+    if "HHH" in pdb_residues[:20]:
         warnings.append("The structure likely contains an expression tag")
         
-    if "HHH" in "".join(list(df.pdb_seq[-20:])):
+    if "HHH" in pdb_residues[-20:]:
         warnings.append("The structure likely contains an expression tag")
     
     df = df.reset_index(drop=True)
@@ -895,7 +896,7 @@ def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numberi
         return "NA", "NA", "NA"
     
     #Find mutations and create a list of warnings. 
-    df_align, mutations_in_all, warnings = get_all_discrepancies(df_align)
+    df_align, mutations_in_all, warnings = get_all_discrepancies(df_align, residue_names)
 
     return df_align, mutations_in_all, warnings
 
@@ -996,7 +997,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos,
         
         warnings = ";".join(warnings)
         if len(warnings) > 0 and warnings[0] == ";":
-            warnings = warnings[1:]
             warning_column[chain] = warnings
                 
         if mutations_in_all == []:
