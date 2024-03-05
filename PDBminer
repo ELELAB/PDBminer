@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2023, Kristine Degn
+# Copyright (C) 2023 & 2024, Kristine Degn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -259,8 +259,7 @@ def get_alphafold_basics(uniprot_id):
     try: 
         response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
     except ConnectionError as e:
-        logging.error(f"EXITING: Could not connect to AlphaFold database API for {uniprot_id}.")
-        exit(1)
+        logging.error(f"WARNING: Could not connect to AlphaFold database API for {uniprot_id}.")
     
     # If the response is successfull, data on the model is collected.
     if response.status_code == 200:
@@ -290,8 +289,7 @@ def get_pdbs(uniprot_id):
     try: 
         response = requests.get(f"https://www.uniprot.org/uniprot/{uniprot_id}.txt")
     except ConnectionError as e:
-        logging.error(f"EXITING: Could not connect to Uniprot database API for {uniprot_id}.")
-        exit(1) 
+        logging.error(f"WARNING: Could not connect to Uniprot database API for {uniprot_id}.")
     
     # If the response is successfull, data on the models are collected.
     if response.status_code == 200:
@@ -333,8 +331,7 @@ def get_structure_metadata(pdb_id, uniprot):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"EXITING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}.")
-        exit(1)    
+        logging.error(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}.")   
     
     # If the response was unsuccessfull, e.g. if there are no metadata 
     # associated to a structure, a warning is written to the log.txt file.
@@ -367,8 +364,7 @@ def get_structure_metadata(pdb_id, uniprot):
         try: 
             response_experiment = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}")
         except ConnectionError as e:
-            logging.error(f"EXITING: Could not connect to PDB database via API (experiments) for {pdb_id}, {uniprot}.")
-            exit(1) 
+            logging.error(f"WARNING: Could not connect to PDB database via API (experiments) for {pdb_id}, {uniprot}.")
         
         # If the response was unsuccessfull, e.g. if there are no experimental metadata 
         # associated to a structure, a warning is written to the log.txt file.
@@ -403,8 +399,8 @@ def get_PDBredo(pdb, uniprot_id):
     try: 
         response = requests.get(f"https://pdb-redo.eu/db/{pdb}/data.json")
     except ConnectionError as e:
-        logging.error(f"EXITING: Could not connect to PDB-REDO database via API for {pdb}, {uniprot_id}. ")
-        exit(1) 
+        logging.error(f"WARNING: Could not connect to PDB-REDO database via API for {pdb}, {uniprot_id}. ")
+        return "NO", "NA"     
     
     if response.status_code == 200: 
         response_data = response.json()
@@ -444,8 +440,7 @@ def get_structure_df(uniprot_id):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
     except ConnectionError as e:
-        logging.error(f"EXITING: Could not connect to 3D-Beacons database via API for {uniprot_id}.")
-        exit(1) 
+        logging.error(f"WARNING: Could not connect to 3D-Beacons database via API for {uniprot_id}.")
 
     if response.status_code == 200:
         # Process data from 3D-Beacons
@@ -470,12 +465,12 @@ def get_structure_df(uniprot_id):
 
                 if metadata is None:
                     logging.warning(f"PDBe database API retured an error for {pdb_id}, {uniprot_id}.")
-                    return uniprot_id
-            
-                pdb.append(pdb_id)
-                deposition_date.append(metadata[0])
-                experimental_method.append(metadata[1]) 
-                resolution.append(metadata[2])
+
+                else:       
+                    pdb.append(pdb_id)
+                    deposition_date.append(metadata[0])
+                    experimental_method.append(metadata[1]) 
+                    resolution.append(metadata[2])
         else:
             logging.warning(f"Uniprot did not return any structures for {uniprot_id}")
             
@@ -651,7 +646,7 @@ def alignment(uniprot_sequence, AA_pdb, peptide_min_length, b_factors, uniprot_n
     aligner = Align.PairwiseAligner()
     aligner.mode = 'local'
     aligner.match_score = 1
-    aligner.mismatch_score = -10
+    aligner.mismatch_score = -5
     aligner.open_gap_score = -20
     aligner.extend_gap_score = -10
     
@@ -675,34 +670,58 @@ def alignment(uniprot_sequence, AA_pdb, peptide_min_length, b_factors, uniprot_n
     #values for the start and end positions of the alignment
     target_strings = [string for string in a if 'target' in string]
     query_strings = [string for string in a if 'query' in string]
-
+    alignment_strings = [string for string in a if not string.startswith(('target', 'query')) and string.startswith(' ')]
+    
+    #get where the areas are locally aligned:
     start_value_uniprot = int(re.findall(r'\d+', target_strings[0])[0])
     start_value_pdb = int(re.findall(r'\d+', query_strings[0])[0])
     end_value_uniprot = int(re.findall(r'\d+', target_strings[-1])[-1])
     end_value_pdb = int(re.findall(r'\d+', query_strings[-1])[-1])
     
-    #we trim the PDB sequence, e.g., remove fusion products or constructed 
-    #linkers
-    trimmed_pdb_sequence = pdb_sequence[start_value_pdb:end_value_pdb]
-    trimmed_b_factor = b_factors[start_value_pdb:end_value_pdb]
+    #combine to one dataframe:
+    dfs = []
+    for i in range(len(target_strings)):
+        data = {'pdb_seq': list(query_strings[i]), 'alignment': list(alignment_strings[i]), 'uniprot_seq': list(target_strings[i])}
+        df = pd.DataFrame(data)
+        df = df[20:] #removes "target, "query and these values"
+        dfs.append(df)
     
-    #we update this sequence to add the missing items of the UNIPROT sequence. 
-    updated_pdb_sequence = ("-"*(start_value_uniprot))+trimmed_pdb_sequence+("-"*(uniprot_seq_len-end_value_uniprot))
-    updated_b_factor = (["-"]*(start_value_uniprot))+trimmed_b_factor+(["-"]*(uniprot_seq_len-end_value_uniprot))
+    df_all = pd.concat(dfs)
+    #mask numbers
+    mask_numbers = df_all.apply(lambda x: x.astype(str).str.isdigit())
+    #mask empty rows
+    mask_empty = df_all.apply(lambda x: x.astype(str).str.strip().eq('')).all(axis=1)
+    # Use the combined mask to filter out rows with numbers or empty rows
+    df_all = df_all[~(mask_numbers.any(axis=1) | mask_empty)]
+    # Reset the index if needed
+    df_all.reset_index(drop=True, inplace=True)
     
-    updated_pdb_sequence = updated_pdb_sequence.replace("X", "-")
-
-    uniprot_sequence = list(uniprot_sequence)  
-    updated_pdb_sequence = list(updated_pdb_sequence) 
-
-    # Create an aligned dataframe for the chain.
-    df_align = pd.DataFrame(data={"uniprot_seq": uniprot_sequence,
-                                  "uniprot_pos": uniprot_numbering,
-                                  "pdb_seq": updated_pdb_sequence,
-                                  "b_factor": updated_b_factor}) 
-
-    df_align.loc[df_align["pdb_seq"] == "-", "b_factor"] = "-"
+    #get the uniprot seqpos + possible insertions
+    uniport_seqpos = [f'{item1}{item2}' for item1, item2 in zip(list(uniprot_sequence[start_value_uniprot:end_value_uniprot]), list(uniprot_numbering[start_value_uniprot:end_value_uniprot]))]
+    dash_positions = [i for i, char in enumerate(list(df_all['uniprot_seq'])) if char == '-']
     
+    for position in dash_positions:
+        uniport_seqpos.insert(position, '-')
+
+    #this might be a problem for instertions
+    df_all['uniprot_sequence'] = uniport_seqpos
+    df_all[['uniprot_letter', 'uniprot_pos']] = df_all['uniprot_sequence'].str.extract(r'([A-Za-z]+)(\d+)')
+    
+    #get b-factors
+    dash_positions = [i for i, char in enumerate(list(df_all['pdb_seq'])) if char == '-']
+    relevant_b_factors = b_factors[start_value_pdb:end_value_pdb]
+
+    for position in dash_positions:
+        relevant_b_factors.insert(position, '-')
+    
+    df_all['b_factor']=relevant_b_factors
+    
+    df_all.replace("X", "-", inplace=True)
+
+    df_align = df_all[['uniprot_seq', 'uniprot_pos', 'pdb_seq', 'b_factor']]
+    
+    df_align = df_align.reset_index(drop=True)
+
     return df_align
 
 def get_uniprot_sequence(uniprot_id, isoform):
@@ -779,7 +798,7 @@ def get_mutations(mut_pos, df):
 
     return muts
 
-def get_all_discrepancies(df): 
+def get_all_discrepancies(df, residue_names): 
     """
     A function that takes the aligned dataframe and identify problems if any. 
 
@@ -794,7 +813,7 @@ def get_all_discrepancies(df):
     warnings : Qualitative warinings regarding the structure, list of strings. 
 
     """
-    logging.debug("FUNCTION: get_all_discrepancies(df)")
+    logging.debug("FUNCTION: get_all_discrepancies(df, pdb_residues)")
 
     warnings = []
         
@@ -806,11 +825,12 @@ def get_all_discrepancies(df):
     else:
         all_mutations = []
         
+    pdb_residues = "".join(residue_names)
     # check if these are part of a tag
-    if "HHH" in "".join(list(df.pdb_seq[:20])):
+    if "HHH" in pdb_residues[:20]:
         warnings.append("The structure likely contains an expression tag")
         
-    if "HHH" in "".join(list(df.pdb_seq[-20:])):
+    if "HHH" in pdb_residues[-20:]:
         warnings.append("The structure likely contains an expression tag")
     
     df = df.reset_index(drop=True)
@@ -834,6 +854,9 @@ def get_coverage(df):
     logging.debug("FUNCTION: get_coverage(df)")
     
     #list(df.uniprot_pos) example: [1, 2, 3, 4, 5, 7, 8, 9, 13, 14, 15]
+    
+    df['uniprot_pos'] = df['uniprot_pos'].astype(int)
+    
     ranges_covered = list(to_ranges(list(df.uniprot_pos)))
     
     #ranges covered example: [(1, 5), (7, 9), (13, 15)]
@@ -844,7 +867,7 @@ def get_coverage(df):
     return ranges_covered
 
 
-def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numbering, b_factors, peptide_min_length):
+def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numbering, b_factors, peptide_min_length):    
     """
     Function that takes the sequence from uniprot and pdb and create an aligned dataframe
     and finds mutations.
@@ -873,7 +896,7 @@ def processing_normal_alignment(uniprot_sequence, residue_names, uniprot_numberi
         return "NA", "NA", "NA"
     
     #Find mutations and create a list of warnings. 
-    df_align, mutations_in_all, warnings = get_all_discrepancies(df_align)
+    df_align, mutations_in_all, warnings = get_all_discrepancies(df_align, residue_names)
 
     return df_align, mutations_in_all, warnings
 
@@ -974,7 +997,6 @@ def align_uniprot_pdb(pdb_id, uniprot_sequence, uniprot_numbering, mut_pos,
         
         warnings = ";".join(warnings)
         if len(warnings) > 0 and warnings[0] == ";":
-            warnings = warnings[1:]
             warning_column[chain] = warnings
                 
         if mutations_in_all == []:
@@ -1027,8 +1049,7 @@ def download_mmcif(structure_identifier, path):
             try: 
                 response = requests.get(f"https://alphafold.ebi.ac.uk/files/{structure_identifier}.cif")
             except ConnectionError as e:
-                logging.error(f"EXITING: Could not connect to AlphaFold database via API for {structure_identifier}, {path}.")
-                exit(1) 
+                logging.error(f"WARNING: Could not connect to AlphaFold database via API for {structure_identifier}, {path}.")
             
             if response.status_code == 200:
                 with open(f'{path}/structures/{structure_identifier}.cif', 'w') as fh:
@@ -1040,8 +1061,7 @@ def download_mmcif(structure_identifier, path):
             try: 
                 response = requests.get(f"https://files.rcsb.org/download/{structure_identifier}.cif")
             except ConnectionError as e:
-                logging.error(f"EXITING: Could not connect to PDB via API for {structure_identifier}, {path}.")
-                exit(1) 
+                logging.error(f"WARNING: Could not connect to PDB via API for {structure_identifier}, {path}.")
             
             if response.status_code == 200:
                 with open(f'{path}/structures/{structure_identifier}.cif', 'w') as fh:
@@ -1298,8 +1318,7 @@ def get_complex_information(pdb_id, uniprot):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"EXITING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}.")
-        exit(1) 
+        logging.error(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}.")
     
     if response.status_code == 200:
         response_text = json.loads(response.text)
@@ -1367,52 +1386,58 @@ def get_complex_information(pdb_id, uniprot):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"EXITING: Could not connect to PDBe database via API for molecules,{pdb_id}, {uniprot}.")
-        exit(1) 
-
-    response_text = json.loads(response.text)
-    molecule_dictionary = response_text[pdb_id.lower()]
-
-    nucleotide_info = []
-    ligand_info = []
-    
-    for i in range(len(molecule_dictionary)):
+        logging.error(f"WARNING: Could not connect to PDBe database via API for molecules,{pdb_id}, {uniprot}.")
         
-        if "nucleotide" in molecule_dictionary[i]['molecule_type']:
-            n1 = molecule_dictionary[i]['molecule_name'][0]
-            n2 = molecule_dictionary[i]['in_chains']
-            n2 = ",".join(n2)
-            n = f"{n1}, chain {n2}"
+    if response.status_code == 200: 
+        response_text = json.loads(response.text)
+        molecule_dictionary = response_text[pdb_id.lower()]
+
+        nucleotide_info = []
+        ligand_info = []
+        
+        for i in range(len(molecule_dictionary)):
             
-            nucleotide_info.append(n)
-        
-        elif molecule_dictionary[i]['molecule_type'] != 'polypeptide(L)':
-            if molecule_dictionary[i]['molecule_type'] != 'water': 
-                l1 = molecule_dictionary[i]['molecule_name'][0]
-                l2 = molecule_dictionary[i]['in_chains']
-                l2 = ",".join(l2)
-                l = f"{l1}, chain {l2}"
+            if "nucleotide" in molecule_dictionary[i]['molecule_type']:
+                n1 = molecule_dictionary[i]['molecule_name'][0]
+                n2 = molecule_dictionary[i]['in_chains']
+                n2 = ",".join(n2)
+                n = f"{n1}, chain {n2}"
                 
-                ligand_info.append(l)
-   
-    if len(nucleotide_info) > 0:
-        nucleotide_complex_list = 'nucleotide complex'
-        if len(nucleotide_info) > 1: 
-            nucleotide_info = ';'.join(nucleotide_info)
+                nucleotide_info.append(n)
+            
+            elif molecule_dictionary[i]['molecule_type'] != 'polypeptide(L)':
+                if molecule_dictionary[i]['molecule_type'] != 'water': 
+                    l1 = molecule_dictionary[i]['molecule_name'][0]
+                    l2 = molecule_dictionary[i]['in_chains']
+                    l2 = ",".join(l2)
+                    l = f"{l1}, chain {l2}"
+                    
+                    ligand_info.append(l)
+       
+        if len(nucleotide_info) > 0:
+            nucleotide_complex_list = 'nucleotide complex'
+            if len(nucleotide_info) > 1: 
+                nucleotide_info = ';'.join(nucleotide_info)
+        
+        else: 
+            nucleotide_complex_list = "NA"
+            nucleotide_info = "NA"
+               
+        if len(ligand_info) > 0:
+            ligand_complex_list = "Other ligands"
+            if len(ligand_info) > 1: 
+                ligand_info = ';'.join(ligand_info)
+        
+        else: 
+            ligand_complex_list = "NA"
+            ligand_info = "NA"
     
-    else: 
+    else:
         nucleotide_complex_list = "NA"
         nucleotide_info = "NA"
-           
-    if len(ligand_info) > 0:
-        ligand_complex_list = "Other ligands"
-        if len(ligand_info) > 1: 
-            ligand_info = ';'.join(ligand_info)
-    
-    else: 
         ligand_complex_list = "NA"
         ligand_info = "NA"
-            
+        
     output_array = np.array([protein_complex_list, protein_info, self_chain, nucleotide_complex_list, 
                              nucleotide_info, ligand_complex_list, ligand_info], dtype=object)
     
@@ -1657,3 +1682,4 @@ if __name__ == '__main__':
     
     logging.info(f"total runtime: {finished-start}")
     logging.info("PDBminer has finished.")
+
