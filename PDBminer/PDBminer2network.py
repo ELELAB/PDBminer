@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2023, Kristine Degn
+# Copyright (C) 2023 & 2025, Kristine Degn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,37 +76,9 @@ parser.add_argument('-v', '--verbose',
                     action='store_true', 
                     help='Enable verbose output')
 
-args = parser.parse_args()
-
-path = args.result
-
-log_file = f'{path}/log_network.txt'
-if args.verbose:
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-logger = logging.getLogger()
-logger.addHandler(file_handler)
-
-df = pd.read_csv(args.inputfile)
-
-uniprot_id = args.uniprot
-if uniprot_id != "none":
-    df = df[df.uniprot == uniprot_id]
-    df = df.reset_index()
-    
-center_color = args.color_center
-protein_color = args.color_proteins
-structure_color = args.color_structures
-type_color = args.type_color
-
-def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
+def plot_protein_network(path, hugo_name, uniprot, file_name, output_name,
+                         center_color, protein_color, structure_color, 
+                         type_color):
     from_list = []
     to_list = []
     
@@ -209,7 +181,7 @@ def plot_protein_network(path, hugo_name, uniprot, file_name, output_name):
     return out
 
 
-def run(df):
+def run(df, path, center_color, protein_color, structure_color, type_color):
     """
     A run file to generate the plots based on the original input file.
 
@@ -229,35 +201,75 @@ def run(df):
             logging.debug("filtered file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json")
             logging.debug("filtered is loaded")
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered")
+            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered",
+                                     center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
             logging.debug("filtered file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv", na_values=[], keep_default_na=False)
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered")
+            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered",
+                                     center_color, protein_color, structure_color, type_color)
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json"):
             logging.debug("filtered cluster file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json")
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered")
+            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered",
+                                     center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
             logging.debug("filtered cluster file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv", na_values=[], keep_default_na=False)
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered")
+            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered",
+                                     center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json"):
             logging.debug("All file identified")
             full = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json")
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all")
+            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all",
+                                     center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
             logging.debug("All file identified")
             full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv", na_values=[], keep_default_na=False)
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all")
+            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all",
+                                     center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")        
     return
 
-run(df)
-file_handler.close()    
-if os.path.exists(log_file) and os.path.getsize(log_file) == 0:
-    os.remove(log_file)
+def main():
+    args = parser.parse_args()
+
+    path = args.result
+
+    log_file = f'{path}/log_network.txt'
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+
+    logger = logging.getLogger()
+    logger.addHandler(file_handler)
+
+    df = pd.read_csv(args.inputfile)
+
+    uniprot_id = args.uniprot
+    if uniprot_id != "none":
+        df = df[df.uniprot == uniprot_id]
+        df = df.reset_index()
+        
+    center_color = args.color_center
+    protein_color = args.color_proteins
+    structure_color = args.color_structures
+    type_color = args.type_color
+    
+    run(df, path, center_color, protein_color, structure_color, type_color)
+    file_handler.close()    
+    if os.path.exists(log_file) and os.path.getsize(log_file) == 0:
+        os.remove(log_file)
+        
+if __name__ == '__main__':
+    main()

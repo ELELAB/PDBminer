@@ -59,29 +59,13 @@ git clone https://github.com/ELELAB/PDBminer.git
 cd PDBminer
 python3 -m venv PDBminer_env
 source PDBminer_env/bin/activate
-python3 -m pip --default-timeout=1000 install -r requirements.txt
+python setup.py install
 ```
 
 #### All subsequent times
 
 ```
 source PDBminer_env/bin/activate
-```
-
-### Conda 
-#### First time:
-
-```
-git clone https://github.com/ELELAB/PDBminer.git
-cd PDBminer
-conda env create -f environment.yml
-conda activate PDBminer_env
-```
-
-#### All subsequent times
-
-```
-conda activate PDBminer_env
 ```
 
 ## Running PDBminer the first time

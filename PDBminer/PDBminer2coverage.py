@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2023, Kristine Degn
+# Copyright (C) 2023 & 2025, Kristine Degn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,48 +89,6 @@ parser.add_argument("-p", "--b_factor_poor",
 parser.add_argument('-v', '--verbose', 
                     action='store_true', 
                     help='Enable verbose output')
-
-args = parser.parse_args()
-path = args.result
-
-log_file = f'{path}/log_coverage.txt'
-if args.verbose:
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-else:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-
-logger = logging.getLogger()
-logger.addHandler(file_handler)
-
-df = pd.read_csv(args.inputfile)
-
-uniprot_id = args.uniprot
-if uniprot_id != "none":
-    df = df[df.uniprot == uniprot_id]
-    df = df.reset_index()
-
-threshold = args.threshold
-
-bfactortheshold_best = args.b_factor_best
-bfactortheshold_good = args.b_factor_good
-bfactortheshold_poor = args.b_factor_poor
-
-if args.sequence: 
-    sequence = []
-    sequence_pairs = args.sequence.split(",")
-    for pair in sequence_pairs:
-        pair = pair.split("-")
-        sequence.append(int(pair[0])-1)
-        sequence.append(int(pair[1]))
-else:
-    sequence = 0
-
-logging.debug(args)
 
 def get_uniprot_sequence(uniprot_id, isoform):
     """
@@ -410,7 +368,7 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
             plt.savefig(f"{path}/{uniprot_id}/{name}_coverage_plot_cluster_{cluster}.pdf", format="pdf", bbox_inches="tight")
     return
 
-def run(df):
+def run(df, path, threshold, sequence, bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor):
     """
     A run file to generate the plots based on the original input file.
 
@@ -476,8 +434,52 @@ def run(df):
         
     return
 
-run(df)
-file_handler.close()    
-if os.path.exists(log_file) and os.path.getsize(log_file) == 0:
-    os.remove(log_file)
+def main():
+    args = parser.parse_args()
+    path = args.result
 
+    log_file = f'{path}/log_coverage.txt'
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    else:
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG if args.verbose else logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+
+    logger = logging.getLogger()
+    logger.addHandler(file_handler)
+
+    df = pd.read_csv(args.inputfile)
+
+    uniprot_id = args.uniprot
+    if uniprot_id != "none":
+        df = df[df.uniprot == uniprot_id]
+        df = df.reset_index()
+
+    threshold = args.threshold
+
+    bfactortheshold_best = args.b_factor_best
+    bfactortheshold_good = args.b_factor_good
+    bfactortheshold_poor = args.b_factor_poor
+
+    if args.sequence: 
+        sequence = []
+        sequence_pairs = args.sequence.split(",")
+        for pair in sequence_pairs:
+            pair = pair.split("-")
+            sequence.append(int(pair[0])-1)
+            sequence.append(int(pair[1]))
+    else:
+        sequence = 0
+
+    logging.debug(args)
+    run(df, path, threshold, sequence, bfactortheshold_best, bfactortheshold_good, bfactortheshold_poor)
+    file_handler.close()    
+    if os.path.exists(log_file) and os.path.getsize(log_file) == 0:
+        os.remove(log_file)
+        
+if __name__ == '__main__':
+    main()
