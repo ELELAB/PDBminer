@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (C) 2023 & 2024, Kristine Degn
+# Copyright (C) 2023, 2024 & 2025, Kristine Degn
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -90,12 +90,20 @@ parser.add_argument("-p", '--peptide_length',
                     default = 5,
                     help='The minimum length of a peptide to be aligned. It is recomended not to go below 5 due to the risk of false alignment of a very small peptide')
 
+parser.add_argument("-rm", "--remove_mutations",
+                    action='store_true',
+                    help="Option to add a processed, additional output file, where PDBs with mutations have been removed")
+
+parser.add_argument("-ri", "--remove_interactors",
+                    action='store_true',
+                    help="Option to add a processed, additional output file, where PDBs with protein and DNA/RNA interactors are removed.")
+
 parser.add_argument("-a", "--file_save",
                     metavar = "file_save_strategy",
                     type=str,
                     default = "none",
                     choices=["none", "retain"],
-                    help="the file save strategy of the run (mmcif file format), default is none, no files are saved. Alternative is 'retain', which keeps all downloded files")
+                    help="the file save strategy of the run (mmcif file format), default is none, no files are saved. Alternative is 'retain', which keeps all downloded files. Choose none or remove")
 
 parser.add_argument('-v', '--verbose', 
                     action='store_true', 
@@ -1577,7 +1585,30 @@ def cleanup_all(structural_df,input_dataframe, output_format):
         df.to_json(f"results/{uniprot_id}/{uniprot_id}_all.json", orient="columns")
     else:
         df.to_csv(f"results/{uniprot_id}/{uniprot_id}_all.csv")
+        
+    #post processing the file:
+    filtering_applied = False
 
+    #remove non-self interactors. Proteins in homodimers and similar is not listed as a complex, 
+    #but rather with multiple chains covering the sequence. 
+    #PDBminer does not know about the direction and configuration - e.g. if 
+    #multiple chains are a true dimer or just the result of the asymmetic unit.
+    if args.remove_interactors:
+        df = df[(df.complex_nucleotide == "NA") & (df.complex_protein == "NA")]
+        filtering_applied = True  
+    
+    #remove PDB structures harbouring mutations:
+    if args.remove_mutations:
+        df = df[df.mutations_in_pdb == "NA"]
+        filtering_applied = True  
+    
+    #export file, if there has been any processing:
+    if filtering_applied:
+        if output_format == "json":
+            df.to_json(f"results/{uniprot_id}/{uniprot_id}_processed.json", orient="columns")
+        else:
+            df.to_csv(f"results/{uniprot_id}/{uniprot_id}_processed.csv")
+        
     return 
 
 ################################
@@ -1682,4 +1713,3 @@ if __name__ == '__main__':
     
     logging.info(f"total runtime: {finished-start}")
     logging.info("PDBminer has finished.")
-
