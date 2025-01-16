@@ -91,18 +91,12 @@ parser.add_argument("-p", '--peptide_length',
                     help='The minimum length of a peptide to be aligned. It is recomended not to go below 5 due to the risk of false alignment of a very small peptide')
 
 parser.add_argument("-rm", "--remove_mutations",
-                    metavar = "remove_mutations",
-                    type=str,
-                    default = "none",
-                    choices=["none", "remove"],
-                    help="Option for a processed, additional output file, where PDBs with mutations have been removed")
+                    action='store_true',
+                    help="Option to add a processed, additional output file, where PDBs with mutations have been removed")
 
 parser.add_argument("-ri", "--remove_interactors",
-                    metavar = "remove_interactors",
-                    type=str,
-                    default = "none",
-                    choices=["none", "remove"],
-                    help="Option for a processed, additional output file, where PDBs with protein and DNA/RNA interactors are removed. Choose none or remove")
+                    action='store_true',
+                    help="Option to add a processed, additional output file, where PDBs with protein and DNA/RNA interactors are removed.")
 
 parser.add_argument("-a", "--file_save",
                     metavar = "file_save_strategy",
