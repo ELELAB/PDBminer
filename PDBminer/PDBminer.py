@@ -1713,7 +1713,6 @@ def main():
     logging.info(f"total runtime: {finished-start}")
     logging.info("PDBminer has finished.")
 
-
 if __name__ == '__main__':
     main()
 

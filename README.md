@@ -170,6 +170,16 @@ It is also possible to choose options to directly process the files before expor
 * remove interactors -ri, which removes all DNA/RNA and non self interactors. Only one processed file is generated taking all options into account.
 
 You can choose both, either/or - but you only get one additional file: {unipot_id}_pocessed.csv or .json
+=======
+It is also possible to choose options to directly process the files before export. 
+Currently the two processing options are: 
+* remove mutations -rm, which removes all the PDBs that habour mutations. 
+* remove interactors -ri, which removes all DNA/RNA and non self interactors.
+Only one processed file is generated taking all options into account. 
+
+You can choose both, either/or - but you only get one additional file: 
+{unipot_id}_pocessed.csv or .json
+
 See examples of the in- and output of the example directories.
 
 #content of {unipot_id}_filtered.json/csv and {unipot_id}_all.json/csv:
