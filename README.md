@@ -182,8 +182,9 @@ Notice that multiple filtered files are available when multiple clusters are par
 
 It is also possible to choose options to directly process the files before export. 
 Currently the two processing options are: 
-* remove mutations -rm remove, which removes all the PDBs that habour mutations. 
-* remove interactors -ri remove, which removes all DNA/RNA and non self interactors. 
+* remove mutations -rm, which removes all the PDBs that habour mutations. 
+* remove interactors -ri, which removes all DNA/RNA and non self interactors.
+Only one processed file is generated taking all options into account. 
 
 You can choose both, either/or - but you only get one additional file: 
 {unipot_id}_pocessed.csv or .json
