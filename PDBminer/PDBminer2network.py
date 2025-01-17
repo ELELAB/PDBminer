@@ -76,7 +76,7 @@ parser.add_argument('-v', '--verbose',
                     action='store_true', 
                     help='Enable verbose output')
 
-def plot_protein_network(path, hugo_name, uniprot, file_name, output_name,
+def plot_protein_network(path, uniprot, file_name, output_name,
                          center_color, protein_color, structure_color, 
                          type_color):
     from_list = []
@@ -188,6 +188,12 @@ def run(df, path, center_color, protein_color, structure_color, type_color):
     Parameters
     ----------
     df : Dataframe of the inputfile.
+    path : path to output
+    center_color : color for center of graph (node)
+    protein_color : color for proteins (nodes)
+    structure_color: color for structures - PDBids (nodes)
+    type_color: color for the protein and fusion clades (nodes)
+
 
     Returns
     -------
@@ -201,36 +207,36 @@ def run(df, path, center_color, protein_color, structure_color, type_color):
             logging.debug("filtered file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json")
             logging.debug("filtered is loaded")
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered",
+            o = plot_protein_network(path, df.iloc[i].uniprot, filtered, "filtered",
                                      center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv"):
             logging.debug("filtered file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.csv", na_values=[], keep_default_na=False)
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered, "filtered",
+            o = plot_protein_network(path, df.iloc[i].uniprot, filtered, "filtered",
                                      center_color, protein_color, structure_color, type_color)
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json"):
             logging.debug("filtered cluster file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.json")
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered",
+            o = plot_protein_network(path, df.iloc[i].uniprot, filtered,"filtered",
                                      center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv"):
             logging.debug("filtered cluster file identified")
             filtered = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_cluster{df.iloc[i].cluster_id}_filtered.csv", na_values=[], keep_default_na=False)
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, filtered,"filtered",
+            o = plot_protein_network(path, df.iloc[i].uniprot, filtered,"filtered",
                                      center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json"):
             logging.debug("All file identified")
             full = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.json")
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all",
+            o = plot_protein_network(path, df.iloc[i].uniprot, full,"all",
                                      center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv"):
             logging.debug("All file identified")
             full = pd.read_csv(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_all.csv", na_values=[], keep_default_na=False)
-            o = plot_protein_network(path, df.iloc[i].hugo_name, df.iloc[i].uniprot, full,"all",
+            o = plot_protein_network(path, df.iloc[i].uniprot, full,"all",
                                      center_color, protein_color, structure_color, type_color)
             logging.debug(f"{o}")        
     return

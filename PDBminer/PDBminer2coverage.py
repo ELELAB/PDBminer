@@ -375,6 +375,15 @@ def run(df, path, threshold, sequence, bfactortheshold_best, bfactortheshold_goo
     Parameters
     ----------
     df : Dataframe of the inputfile.
+    path : The path to the output files.
+    threshold : Max number of residues plotted on the y-axis
+    sequence : User input of area to be plotted.
+    bfactortheshold_best : A integer defining a value where lower b-factors are
+                           considered the best quality.
+    bfactortheshold_good : A integer defining a value where lower b-factors are
+                           considered good quality.
+    bfactortheshold_poor : A integer defining a value where higher b-factors are
+                           considered poor quality.
 
     Returns
     -------
