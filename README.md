@@ -58,29 +58,13 @@ git clone https://github.com/ELELAB/PDBminer.git
 cd PDBminer
 python3 -m venv PDBminer_env OR virtualenv -p python3.10 PDBminer_env
 source PDBminer_env/bin/activate
-python3 -m pip --default-timeout=1000 install -r requirements.txt
+python setup.py install
 ```
 
 #### All subsequent times
 
 ```
 source PDBminer_env/bin/activate
-```
-
-### Conda 
-#### First time:
-
-```
-git clone https://github.com/ELELAB/PDBminer.git
-cd PDBminer
-conda env create -f environment.yml
-conda activate PDBminer_env
-```
-
-#### All subsequent times
-
-```
-conda activate PDBminer_env
 ```
 
 ## Running PDBminer the first time
@@ -180,6 +164,13 @@ are covered by any structure.
 Notice that multiple filtered files are available when multiple clusters are parsed. 
 * {uniprot_id}_cluster{cluster_id}_filtered.json/csv.
 
+It is also possible to choose options to directly process the files before export. Currently the two processing options are:
+
+* remove mutations -rm, which removes all the PDBs that habour mutations.
+* remove interactors -ri, which removes all DNA/RNA and non self interactors. Only one processed file is generated taking all options into account.
+
+You can choose both, either/or - but you only get one additional file: {unipot_id}_pocessed.csv or .json
+=======
 It is also possible to choose options to directly process the files before export. 
 Currently the two processing options are: 
 * remove mutations -rm, which removes all the PDBs that habour mutations. 

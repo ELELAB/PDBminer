@@ -1,6 +1,6 @@
-2023-10-05 13:27:10,768 - INFO - PDBminer is starting
-2023-10-05 13:27:11,097 - WARNING - No Hugo Name could be retrived with UniProt for ['P22307']. Gene name assigned NA.
-2023-10-05 13:27:11,106 - INFO - input file created based on hugo name and uniprot id, file name: input_file.csv
-2023-10-05 13:27:11,106 - INFO - Pipeline is starting
-2023-10-05 13:27:15,650 - INFO - total runtime: 0:00:04.882202
-2023-10-05 13:27:15,650 - INFO - PDBminer has finished.
+2025-01-15 13:15:53,099 - INFO - PDBminer is starting
+2025-01-15 13:15:53,592 - WARNING - No Uniprot record in this id, no Hugo Name could be retrived with UniProt for ['P22307']. Gene name assigned NA.
+2025-01-15 13:15:53,642 - INFO - input file created based on hugo name and uniprot id, file name: input_file.csv
+2025-01-15 13:15:53,642 - INFO - Pipeline is starting
+2025-01-15 13:16:03,960 - INFO - total runtime: 0:00:10.860971
+2025-01-15 13:16:03,961 - INFO - PDBminer has finished.

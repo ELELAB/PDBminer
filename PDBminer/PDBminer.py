@@ -1648,8 +1648,7 @@ def run_list(input_file, cores, output_format, peptide_min_length, file_save_str
         #use starmap to add multiple arguments.
         pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length, file_save_strategy) for uniprot_id in uniprot_list])
 
-
-if __name__ == '__main__':
+def main():
     start = datetime.now()
     logging.info("PDBminer is starting")
     
@@ -1713,3 +1712,7 @@ if __name__ == '__main__':
     
     logging.info(f"total runtime: {finished-start}")
     logging.info("PDBminer has finished.")
+
+if __name__ == '__main__':
+    main()
+
