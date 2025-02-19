@@ -124,6 +124,38 @@ else:
 
 #####################
 
+def fetch_uniprot_data(uniprot_id):
+    """
+    This function takes the uniprot assccesion number and checks that it
+    does indeed exist.
+
+    Parameters
+    ----------
+    uniprot_id : uniprot accession number.
+
+    Returns
+    -------
+    Nothing, exist program if faulty. .
+
+    """
+    url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.json"
+
+    try:
+        response = requests.get(url)
+
+        if response.status_code == 400:
+            logging.error(f"ERROR: The UniProt accession number {uniprot_id} does not exist. Exiting...")
+            exit(1)
+        elif response.status_code == 200:
+            return response.json()
+        else:
+            logging.error(f"ERROR: Failed to fetch data. Status code: {response.status_code}")
+            exit(1)
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"ERROR: Network problem occurred: {e}")
+        exit(1)
+
 def uniprot_accession_number_type(df):
     """
     This function takes the input to PDBminer read as a pandas dataframe 
@@ -204,6 +236,9 @@ def check_input_file(df):
         df['uniprot_isoform'] = 1
 
     for i, r in df.iterrows():
+        #UNIPROT
+        data = fetch_uniprot_data(r['uniprot'])
+
         # HUGO NAME
         if r['hugo_name'] in ["N/A", "NA"] or pd.isna(r['hugo_name']):
             hugo_name_specific = retrieve_hugo_name(r['uniprot'])
@@ -1674,6 +1709,9 @@ def main():
 
     elif args.uniprot_id:
         uniprot_id = [args.uniprot_id]
+        data = fetch_uniprot_data(uniprot_id)
+        #will exit if problem, data only occur if the response is 200.
+
         if args.hugo_name:
             hugo_name = [args.hugo_name]
         else:  
