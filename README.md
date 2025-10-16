@@ -28,6 +28,7 @@ range of information suitable for deciding on a structural model for further res
 * Running PDBminer
 * Understanding the Output
 * Plotting the Output
+* Filtering the output with PDBminer_complexes
 
 ## Dependencies
 
@@ -288,3 +289,8 @@ All options, example:
 ```
 $ PDBminer2network -r PDBminer_run/results -i PDBminer_run/input_file.csv -u P00000 -c '#64b2b5' -p '#183233' -s '#1fc6cc' -t '#a3cacc'
 ```
+
+# Filtering PDBminer's output with PDBminer_complexes
+PDBMiner_complexes is a tool that filters the results of PDBMiner to retain only complex structures in which the target protein has no missing residues at the interface. It also identifies which residues of the target protein chain(s) interact with residues from other chains in the complex.
+
+More practical information about PDBminer_complexes usage can be found in the dedicated README.md file located in PDBminer_complex_filter/ directory.
