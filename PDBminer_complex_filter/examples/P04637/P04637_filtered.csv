@@ -1,0 +1,92 @@
+,structure_id,self_chains,coverage,mutations,complex_details,binding_partners,residues,complex_type
+0,5MHC,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+1,6RL3,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+2,6V4F,B,"{'B': '[(21, 25)]'}",,"MDM4_DANRE, Q7ZUW7, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+3,1YC5,B,"{'B': '[(373, 381)]'}",,"NPD_THEMA, Q9WYW0, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+4,6RWU,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+5,6V4H,B;D,"{'B': '[(21, 26)]', 'D': '[(21, 26)]'}",,"MDM4_DANRE, Q7ZUW7, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+6,6RWS,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+7,6RJZ,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+8,6RM7,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+9,6RL4,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+10,6RL6,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+11,2FOJ,B,"{'B': '[(363, 367)]'}",,"UBP7_HUMAN, Q93009, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+12,2B3G,B,"{'B': '[(33, 56)]'}",,"RFA1_HUMAN, P27694, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+13,6SIP,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+14,6SIQ,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+15,6SIO,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+16,6SIN,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+17,6RWI,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+18,6RWH,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+19,6S9Q,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+20,2H2D,B,"{'B': '[(373, 381)]'}",,"NPD_THEMA, Q9WYW0, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+21,5MOC,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+22,3PDH,D,"{'D': '[(373, 381)]'}",,"NPD_THEMA, Q9WYW0, chain_A;P53_HUMAN, P04637, chain_D",NA,NA,protein complex
+23,3DAC,B;P,"{'B': '[(17, 29)]', 'P': '[(17, 28)]'}",,"MDM4_DANRE, Q7ZUW7, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+24,6S39,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+25,6RKI,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+26,6RKK,P,"{'P': '[(382, 386)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+27,6RKM,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+28,6R5L,P,"{'P': '[(382, 386)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+29,6SLV,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+30,6S40,P,"{'P': '[(388, 393)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+31,3DAB,B;D;F;H,"{'B': '[(17, 28)]', 'D': '[(17, 27)]', 'F': '[(16, 27)]', 'H': '[(18, 28)]'}",,"MDM4_HUMAN, O15151, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+32,2H59,D;E,"{'D': '[(380, 385)]', 'E': '[(380, 385)]'}",,"NPD_THEMA, Q9WYW0, chain_A;P53_HUMAN, P04637, chain_D",NA,NA,protein complex
+33,6S3C,P,"{'P': '[(382, 386)]'}",,"1433S_HUMAN, P31947, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+34,1MA3,B,"{'B': '[(383, 387)]'}",,"NPD2_ARCFU, O30124, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+35,7YGI,A;B,"{'A': '[(92, 289)]', 'B': '[(92, 289)]'}",,"P53_HUMAN, P04637, chain_A;AZUR_PSEAE, P00282, chain_C",NA,NA,protein complex
+36,7NMI,A,"{'A': '[(33, 55)]'}",,"P53_HUMAN, P04637, chain_A;ANXA2_HUMAN, P07355, chain_B;S100P_HUMAN, P25815, chain_B",NA,NA,protein complex with fusion product
+37,2H4J,D,"{'D': '[(375, 385)]'}",,"NPD_THEMA, Q9WYW0, chain_A;P53_HUMAN, P04637, chain_D",NA,NA,protein complex
+38,7EL4,A,"{'A': '[(23, 28)]'}",,"MDM4_HUMAN, O15151, chain_A;P53_HUMAN, P04637, chain_A",NA,NA,fusion product
+39,5UN8,E;F;G;H,"{'E': '[(146, 152)]', 'F': '[(146, 153)]', 'G': '[(146, 154)]', 'H': '[(146, 153)]'}",,"OGA_HUMAN, O60502, chain_A;P53_HUMAN, P04637, chain_E",NA,NA,protein complex
+40,2H2F,B,"{'B': '[(378, 384)]'}",,"NPD_THEMA, Q9WYW0, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+41,2FOO,B,"{'B': '[(358, 363)]'}",,"UBP7_HUMAN, Q93009, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+42,1YCS,A,"{'A': '[(97, 287)]'}",,"P53_HUMAN, P04637, chain_A;ASPP2_HUMAN, Q13625, chain_B",NA,NA,protein complex
+43,1H26,E,"{'E': '[(378, 386)]'}",,"CDK2_HUMAN, P24941, chain_A;CCNA2_HUMAN, P20248, chain_B;P53_HUMAN, P04637, chain_E",NA,NA,protein complex
+44,4XR8,C;D,"{'C': '[(94, 292)]', 'D': '[(94, 292)]'}",,"MALE_ECOLI, P0AEX9, chain_A;UBE3A_HUMAN, Q05086, chain_A;P53_HUMAN, P04637, chain_C;VE6_HPV16, P03126, chain_F",NA,NA,protein complex with fusion product
+45,3TG5,B,"{'B': '[(368, 375)]'}",,"SMYD2_HUMAN, Q9NRG4, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+46,2Z5S,P;Q;R,"{'P': '[(17, 27)]', 'Q': '[(17, 27)]', 'R': '[(18, 27)]'}",,"MDM4_DANRE, Q7ZUW7, chain_M;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+47,2Z5T,P;Q;R,"{'P': '[(17, 27)]', 'Q': '[(17, 27)]', 'R': '[(17, 27)]'}",,"MDM4_DANRE, Q7ZUW7, chain_M;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+48,1YCQ,B,"{'B': '[(17, 27)]'}",,"MDM2_XENLA, P56273, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+49,8HLN,A,"{'A': '[(95, 288)]'}",,"P53_HUMAN, P04637, chain_A;BCL2_HUMAN, P10415, chain_B",NA,NA,protein complex
+50,6VR1,P;Q,"{'P': '[(168, 176)]', 'Q': '[(168, 176)]'}",,"A0A140T913_HUMAN, A0A140T913, chain_A;B2MG_HUMAN, P61769, chain_B;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+51,6VR5,P;Q,"{'P': '[(168, 174)]', 'Q': '[(168, 174)]'}",,"A0A140T913_HUMAN, A0A140T913, chain_A;B2MG_HUMAN, P61769, chain_B;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+52,7BWN,A;B;C;D;E;F;G;H;I;J;K;L;M;N;O;P,"{'A': '[(325, 339)]', 'B': '[(326, 339)]', 'C': '[(325, 339)]', 'D': '[(326, 339)]', 'E': '[(325, 339)]', 'F': '[(325, 339)]', 'G': '[(326, 339)]', 'H': '[(325, 339)]', 'I': '[(326, 339)]', 'J': '[(325, 339)]', 'K': '[(326, 339)]', 'L': '[(326, 339)]', 'M': '[(325, 339)]', 'N': '[(326, 339)]', 'O': '[(325, 339)]', 'P': '[(326, 339)]'}",,"P53_HUMAN, P04637, chain_A;GFP_AEQVI, P42212, chain_A",NA,NA,fusion product
+53,6VRN,P,"{'P': '[(168, 174)]'}",,"A0A140T913_HUMAN, A0A140T913, chain_A;B2MG_HUMAN, P61769, chain_B;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+54,6LHD,A;B,"{'A': '[(96, 289)]', 'B': '[(97, 289)]'}",,"P53_HUMAN, P04637, chain_A;B2CL1_HUMAN, Q07817, chain_A",NA,NA,fusion product
+55,1KZY,A;B,"{'A': '[(95, 289)]', 'B': '[(95, 289)]'}",,"P53_HUMAN, P04637, chain_A;TP53B_HUMAN, Q12888, chain_C",NA,NA,protein complex
+56,8HLM,A,"{'A': '[(95, 288)]'}",,"P53_HUMAN, P04637, chain_A;BCL2_HUMAN, P10415, chain_B",NA,NA,protein complex
+57,7DVD,A;B;C;D,"{'A': '[(92, 290)]', 'B': '[(92, 290)]', 'C': '[(92, 290)]', 'D': '[(92, 290)]'}",,"P53_HUMAN, P04637, chain_A;BBC3_HUMAN, Q9BXH1, chain_E",NA,NA,protein complex
+58,1GZH,A;C,"{'A': '[(95, 182)]', 'C': '[(95, 289)]'}",,"P53_HUMAN, P04637, chain_A;TP53B_HUMAN, Q12888, chain_B",NA,NA,protein complex
+59,1YCR,B,"{'B': '[(17, 29)]'}",,"MDM2_HUMAN, Q00987, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+60,6VRM,P,"{'P': '[(168, 174)]'}",,"A0A140T913_HUMAN, A0A140T913, chain_A;B2MG_HUMAN, P61769, chain_B;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+61,8HLL,A,"{'A': '[(95, 288)]'}",,"P53_HUMAN, P04637, chain_A;BCL2_HUMAN, P10415, chain_B",NA,NA,protein complex
+62,4HFZ,B;D,"{'B': '[(17, 27)]', 'D': '[(17, 27)]'}",,"MDM2_HUMAN, Q00987, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+63,2YDR,P,"{'P': '[(145, 152)]'}",,"OGA_CLOP1, Q0TR53, chain_A;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+64,6VQO,P;Q,"{'P': '[(168, 174)]', 'Q': '[(168, 174)]'}",,"A0A140T913_HUMAN, A0A140T913, chain_A;B2MG_HUMAN, P61769, chain_B;P53_HUMAN, P04637, chain_P",NA,NA,protein complex
+65,6T58,A;B,"{'A': '[(36, 54)]', 'B': 'NA'}",,"P53_HUMAN, P04637, chain_A;ANXA2_HUMAN, P07355, chain_A;S10A4_HUMAN, P26447, chain_A",NA,NA,fusion product
+66,2H1L,M;N;O;P;Q;R;S;T;U;V;W;X,"{'M': '[(92, 289)]', 'N': '[(92, 289)]', 'O': '[(92, 289)]', 'P': '[(92, 289)]', 'Q': '[(92, 289)]', 'R': '[(92, 289)]', 'S': '[(92, 289)]', 'T': '[(92, 289)]', 'U': '[(92, 289)]', 'V': '[(92, 289)]', 'W': '[(92, 289)]', 'X': '[(92, 289)]'}",,"LT_SV40, P03070, chain_A;P53_HUMAN, P04637, chain_M",NA,NA,protein complex
+67,4BV2,E;H,"{'E': '[(380, 384)]', 'H': '[(380, 384)]'}",,"NPD_THEMA, Q9WYW0, chain_A;P53_HUMAN, P04637, chain_E",NA,NA,protein complex
+68,7RM4,C;H;M;R,"{'C': '[(168, 174)]', 'H': '[(168, 174)]', 'M': '[(168, 174)]', 'R': '[(168, 174)]'}",,"HLAA_HUMAN, P04439, chain_A;B2MG_HUMAN, P61769, chain_B;P53_HUMAN, P04637, chain_C",NA,NA,protein complex
+69,6W51,C;F;I;L,"{'C': '[(168, 174)]', 'F': '[(168, 174)]', 'I': '[(168, 174)]', 'L': '[(168, 174)]'}",,"A0A140T913_HUMAN, A0A140T913, chain_A;B2MG_HUMAN, P61769, chain_B;P53_HUMAN, P04637, chain_C",NA,NA,protein complex
+70,6RZ3,A,"{'A': '[(91, 291)]'}",,"P53_HUMAN, P04637, chain_A;IASPP_HUMAN, Q8WUF5, chain_B",NA,NA,protein complex
+71,8OXO,E;F,"{'E': '[(12, 18)]', 'F': '[(12, 18)]'}",,"P53_HUMAN, P04637, chain_E;ATM_HUMAN, Q13315, chain_A",NA,NA,protein complex
+72,8OXM,E;F,"{'E': '[(12, 18)]', 'F': '[(12, 18)]'}",,"P53_HUMAN, P04637, chain_E;ATM_HUMAN, Q13315, chain_A",NA,NA,protein complex
+73,7XZZ,K;L;M;N,"{'K': '[(94, 291)]', 'L': '[(94, 291)]', 'M': '[(94, 291)]', 'N': '[(94, 291)]'}",,"H31_HUMAN, P68431, chain_A;H4_HUMAN, P62805, chain_B;H2A1B_HUMAN, P04908, chain_C;H2B1J_HUMAN, P06899, chain_D;P53_HUMAN, P04637, chain_K",NA,NA,protein complex
+74,7XZX,K;L;M;N,"{'K': '[(94, 291)]', 'L': '[(94, 291)]', 'M': '[(94, 291)]', 'N': '[(94, 291)]'}",,"H31_HUMAN, P68431, chain_A;H4_HUMAN, P62805, chain_B;H2A1B_HUMAN, P04908, chain_C;H2B1J_HUMAN, P06899, chain_D;P53_HUMAN, P04637, chain_K",NA,NA,protein complex
+75,6XRE,M,"{'M': '[(88, 351)]'}",,"RPB1_HUMAN, P24928, chain_A;RPB2_HUMAN, P30876, chain_B;RPB3_HUMAN, P19387, chain_C;RPB4_HUMAN, O15514, chain_D;RPAB1_HUMAN, P19388, chain_E;RPAB2_HUMAN, P61218, chain_F;RPB7_HUMAN, P62487, chain_G;RPAB3_HUMAN, P52434, chain_H;RPB9_HUMAN, P36954, chain_I;RPAB5_HUMAN, P62875, chain_J;RPB11_HUMAN, P52435, chain_K;RPAB4_HUMAN, P53803, chain_L;P53_HUMAN, P04637, chain_M",NA,NA,protein complex
+76,5XZC,B;C;D;E,"{'B': '[(92, 291)]', 'C': '[(92, 291)]', 'D': '[(92, 291)]', 'E': '[(92, 291)]'}",,"EP300_HUMAN, Q09472, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+77,5HPD,A,"{'A': '[(2, 61)]'}",,"P53_HUMAN, P04637, chain_A;CBP_MOUSE, P45481, chain_A",NA,NA,fusion product
+78,5HOU,A,"{'A': '[(1, 61)]'}",,"P53_HUMAN, P04637, chain_A;CBP_MOUSE, P45481, chain_A",NA,NA,fusion product
+79,5HP0,A,"{'A': '[(37, 61)]'}",,"P53_HUMAN, P04637, chain_A;CBP_MOUSE, P45481, chain_A",NA,NA,fusion product
+80,2MZD,B,"{'B': '[(35, 59)]'}",,"EP300_HUMAN, Q09472, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+81,2MWY,B,"{'B': '[(15, 29)]'}",,"MDM4_HUMAN, O15151, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+82,2MWO,B,"{'B': '[(363, 369)]'}",,"TP53B_HUMAN, Q12888, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+83,2MWP,B,"{'B': '[(376, 381)]'}",,"TP53B_HUMAN, Q12888, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+84,2RUK,A,"{'A': '[(47, 54)]'}",,"P53_HUMAN, P04637, chain_A;TF2H1_HUMAN, P32780, chain_B",NA,NA,protein complex
+85,2MEJ,B,"{'B': '[(96, 290)]'}",,"B2CL1_HUMAN, Q07817, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+86,2LY4,B,"{'B': '[(14, 60)]'}",,"HMGB1_HUMAN, P09429, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+87,2L14,B,"{'B': '[(13, 61)]'}",,"CBP_MOUSE, P45481, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+88,2K8F,B,"{'B': '[(1, 39)]'}",,"EP300_HUMAN, Q09472, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+89,2GS0,B,"{'B': '[(45, 58)]'}",,"TFB1_YEAST, P32776, chain_A;P53_HUMAN, P04637, chain_B",NA,NA,protein complex
+90,1JSP,A,"{'A': '[(367, 381)]'}",,"P53_HUMAN, P04637, chain_A;CBP_HUMAN, Q92793, chain_B",NA,NA,protein complex

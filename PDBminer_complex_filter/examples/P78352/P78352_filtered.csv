@@ -1,0 +1,4 @@
+,structure_id,self_chains,coverage,mutations,complex_details,binding_partners,residues,complex_type
+0,6SPZ,A,"{'A': '[(58, 246)]'}",,"DLG4_HUMAN, P78352, chain_A;KCNJ2_HUMAN, P63252, chain_P",NA,NA,protein complex
+1,5JXB,A;C,"{'A': '[(309, 413)]', 'C': '[(309, 413)]'}",,"J3QQ18_MOUSE, J3QQ18, chain_A;DLG4_HUMAN, P78352, chain_A",NA,NA,fusion product
+2,5J7J,B,"{'B': '[(1, 18)]'}",,"CALM1_XENLA, P0DP33, chain_A;DLG4_HUMAN, P78352, chain_B",NA,NA,protein complex
