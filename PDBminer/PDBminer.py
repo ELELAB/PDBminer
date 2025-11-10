@@ -281,7 +281,7 @@ def check_input_file(df):
 ################################
 
 
-def get_alphafold_basics(uniprot_id):
+def get_alphafold_basics(uniprot_id, uniprot_isoform=None):
     logging.debug(f"FUNCTION: get_alphafold_basics({uniprot_id})")
     """
     Function that takes a uniprot id and retrieve data from the alphafold
@@ -311,6 +311,22 @@ def get_alphafold_basics(uniprot_id):
         result = response.json()[0]
         deposition_date = result['modelCreatedDate'] 
         Alphafold_ID = result['pdbUrl'].split('/')[-1][:-4]
+        
+        if uniprot_isoform is not None:
+            try:
+                iso = int(uniprot_isoform)
+            except Exception:
+                iso = None
+            if iso and iso >= 1:
+                # if ID looks like AF-<UID>-F<k>-model_v<ver>, insert "-<iso>-" after <UID>:
+                # keep whatever F-number/version AF returns
+                import re
+                m = re.match(rf"^AF-{re.escape(uniprot_id)}-(.+)$", Alphafold_ID)
+                if m:
+                    tail = m.group(1)  # e.g. F1-model_v6
+                    if f"-{iso}-" not in Alphafold_ID:
+                        Alphafold_ID = f"AF-{uniprot_id}-{iso}-{tail}"
+
 
         return Alphafold_ID, uniprot_id, deposition_date, "PREDICTED", "NA", 0
     
@@ -529,7 +545,7 @@ def get_structure_df(uniprot_id):
     
     structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
     
-    AF_model = get_alphafold_basics(uniprot_id)
+    AF_model = get_alphafold_basics(uniprot_id, args.uniprot_isoform)
             
     if AF_model is not None:
         structure_df.loc[len(structure_df)] = tuple(AF_model)
@@ -795,17 +811,17 @@ def get_uniprot_sequence(uniprot_id, isoform):
     """
     logging.debug(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
     
-    if isoform==1:
+    if isoform is None:
     
         try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
+            response = requests.get(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
         except ConnectionError as e:
             logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform 1.")
             exit(1) 
     
     else:
         try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
+            response = requests.get(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
         except ConnectionError as e:
             logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
             exit(1) 
@@ -816,7 +832,8 @@ def get_uniprot_sequence(uniprot_id, isoform):
         pSeq=list(SeqIO.parse(Seq,'fasta'))
         uniprot_sequence = str(pSeq[0].seq)
         uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-
+        print(uniprot_sequence)
+        print(uniprot_numbering)
     else:
         logging.error(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
         exit(1) 
@@ -1731,10 +1748,10 @@ def main():
         df = pd.DataFrame({'hugo_name':hugo_name,'uniprot':uniprot_id})
         
         if args.uniprot_isoform:
-            isoform = [args.uniprot_isoform]
-            df['uniprot_isoform'] = isoform
-        else: df['uniprot_isoform'] = [1]
-        
+            df['uniprot_isoform'] = [args.uniprot_isoform]
+        else:
+            df['uniprot_isoform'] = [None]
+
         if args.mutations:
             mutations = [args.mutations]
             df['mutations'] = mutations
