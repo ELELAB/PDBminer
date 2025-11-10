@@ -118,6 +118,7 @@ else:
     logging.basicConfig(filename='log.txt', level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 #####################
 
 # INPUT HANDLING 
@@ -138,11 +139,12 @@ def fetch_uniprot_data(uniprot_id):
     Nothing, exist program if faulty. .
 
     """
+    uniprot_id = uniprot_id[0] if isinstance(uniprot_id, (list, tuple)) else uniprot_id
+        
     url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.json"
 
     try:
         response = requests.get(url)
-
         if response.status_code == 400:
             logging.error(f"ERROR: The UniProt accession number {uniprot_id} does not exist. Exiting...")
             exit(1)
