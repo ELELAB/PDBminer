@@ -318,12 +318,10 @@ def get_alphafold_basics(uniprot_id, uniprot_isoform=None):
             except Exception:
                 iso = None
             if iso and iso >= 1:
-                # if ID looks like AF-<UID>-F<k>-model_v<ver>, insert "-<iso>-" after <UID>:
-                # keep whatever F-number/version AF returns
                 import re
                 m = re.match(rf"^AF-{re.escape(uniprot_id)}-(.+)$", Alphafold_ID)
                 if m:
-                    tail = m.group(1)  # e.g. F1-model_v6
+                    tail = m.group(1)  
                     if f"-{iso}-" not in Alphafold_ID:
                         Alphafold_ID = f"AF-{uniprot_id}-{iso}-{tail}"
 
@@ -832,8 +830,6 @@ def get_uniprot_sequence(uniprot_id, isoform):
         pSeq=list(SeqIO.parse(Seq,'fasta'))
         uniprot_sequence = str(pSeq[0].seq)
         uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-        print(uniprot_sequence)
-        print(uniprot_numbering)
     else:
         logging.error(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
         exit(1) 
@@ -1309,7 +1305,13 @@ def align(combined_structure, path, peptide_min_length):
     combined_structure["warnings"] = " "
     combined_structure["r_free"] = " "
     
-    uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id[0], int(combined_structure['uniprot_isoform'][0]))     
+    iso_raw = combined_structure['uniprot_isoform'].iloc[0]
+    if pd.isna(iso_raw) or str(iso_raw).strip().upper() in ("", "NA", "N/A"):
+        iso_norm = None
+    else:
+        iso_norm = int(iso_raw)
+
+    uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id.iloc[0], iso_norm)     
 
     for i in range(len(combined_structure)):
                            
