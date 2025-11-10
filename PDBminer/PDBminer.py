@@ -538,7 +538,15 @@ def get_structure_df(uniprot_id):
     structure_df = structure_df.drop(['method_priority'], axis=1)
     
     structure_df['PDBREDOdb'] = structure_df.apply(lambda row: get_PDBredo(row['pdb'], row['uniprot_id']), axis=1)
-    structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+
+    if structure_df.empty:
+        logging.error(f"No structures found for UniProt ID {uniprot_id}. Skipping.")
+        return pd.DataFrame()
+    
+    try:
+        structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
+    except ValueError as e:
+        logging.warning(f"Skipping PDBREDO expansion for {uniprot_id}: {e}")
                                                             
     return structure_df   
 
