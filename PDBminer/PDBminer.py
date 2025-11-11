@@ -541,7 +541,7 @@ def get_structure_df(uniprot_id):
 
     if structure_df.empty:
         logging.error(f"No structures found for UniProt ID {uniprot_id}. Skipping.")
-        return pd.DataFrame()
+        return structure_df
     
     try:
         structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
@@ -1551,7 +1551,18 @@ def collect_complex_info(structural_df):
 
 def cleanup_all(structural_df,input_dataframe, output_format):
     logging.debug("FUNCTION: cleanup_all(structural_df,input_dataframe, output_format)")
-    
+    if structural_df.empty:
+        uniprot_id = input_dataframe.iloc[0]['uniprot']
+        logging.warning(f"No structures for {uniprot_id} — writing header-only output.")
+        output_path = f"results/{uniprot_id}"
+        os.makedirs(output_path, exist_ok=True)
+
+        if output_format == "json":
+            structural_df.to_json(f"{output_path}/{uniprot_id}_all.json", orient="columns")
+        else:
+            structural_df.to_csv(f"{output_path}/{uniprot_id}_all.csv", index=False)
+        return
+
     uniprot_id = structural_df.iloc[0]['uniprot_id']
     #rearrange columns
     structural_df = structural_df[['hugo_name', 'uniprot_id', 'uniprot_isoform', 
@@ -1672,11 +1683,17 @@ def process_uniprot(uniprot_id, df, output_format, peptide_min_length, file_save
     if len(found_structures) != 0:
         combined_structure = combine_structure_dfs(uniprot_dataframe, found_structures)
         combined_structure = collect_complex_info(combined_structure)
-        
         structural_df = align(combined_structure, uniprot_dir, peptide_min_length)
-
-        if len(structural_df) != 0:
-            cleanup_all(structural_df, uniprot_dataframe, output_format)
+    else:
+        structural_df = pd.DataFrame(columns=[
+        'hugo_name','uniprot_id','uniprot_isoform','mutations','cluster_id',
+        'structure_id','deposition_date','experimental_method','resolution',
+        'r_free','PDBREDOdb','PDBREDOdb_rfree','complex_protein',
+        'complex_protein_details','complex_nucleotide','complex_nucleotide_details',
+        'complex_ligand','complex_ligand_details','chains','coverage',
+        'mutations_in_pdb','AA_in_PDB','b_factor','warnings'])
+    
+    cleanup_all(structural_df, uniprot_dataframe, output_format)
     
     if file_save_strategy == "none" and os.path.isdir(f"{uniprot_dir}/structures"):
         shutil.rmtree(f"{uniprot_dir}/structures")
