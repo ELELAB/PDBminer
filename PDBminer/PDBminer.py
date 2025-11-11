@@ -541,7 +541,6 @@ def get_structure_df(uniprot_id):
 
     if structure_df.empty:
         logging.error(f"No structures found for UniProt ID {uniprot_id}. Skipping.")
-        return structure_df
     
     try:
         structure_df[['PDBREDOdb', 'PDBREDOdb_details']] = structure_df['PDBREDOdb'].apply(pd.Series)
