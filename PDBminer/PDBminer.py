@@ -138,7 +138,8 @@ def fetch_uniprot_data(uniprot_id):
     -------
     Nothing, exist program if faulty. .
 
-    """  
+    """
+    
     url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.json"
 
     try:
