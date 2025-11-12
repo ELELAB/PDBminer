@@ -138,9 +138,7 @@ def fetch_uniprot_data(uniprot_id):
     -------
     Nothing, exist program if faulty. .
 
-    """
-    uniprot_id = uniprot_id[0] if isinstance(uniprot_id, (list, tuple)) else uniprot_id
-        
+    """  
     url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.json"
 
     try:
@@ -1734,16 +1732,16 @@ def main():
             exit(1)
 
     elif args.uniprot_id:
-        uniprot_id = [args.uniprot_id]
+        uniprot_id = args.uniprot_id
         data = fetch_uniprot_data(uniprot_id)
         #will exit if problem, data only occur if the response is 200.
 
         if args.hugo_name:
-            hugo_name = [args.hugo_name]
+            hugo_name = args.hugo_name
         else:  
             hugo_name = retrieve_hugo_name(uniprot_id)
         
-        df = pd.DataFrame({'hugo_name':hugo_name,'uniprot':uniprot_id})
+        df = pd.DataFrame({'hugo_name':[hugo_name],'uniprot':[uniprot_id]})
         
         if args.uniprot_isoform:
             isoform = [args.uniprot_isoform]
