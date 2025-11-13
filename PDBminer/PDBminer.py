@@ -1600,6 +1600,9 @@ def cleanup_all(structural_df,input_dataframe, output_format):
             if all(value == 'NA' for value in df.warnings[i].values()):
                 df.loc[i,'warnings'] = "NA"
     
+    key = df.map(str).agg('|'.join, axis=1)
+    df = df.loc[~key.duplicated(keep='first')].reset_index(drop=True)
+
     df.index.name = 'structure_rank'
     
     #### find if there are mutations in the file containing non numbers.
@@ -1625,9 +1628,7 @@ def cleanup_all(structural_df,input_dataframe, output_format):
                     cluster_data.to_json(f"results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.json", orient="columns")
                 else: 
                     cluster_data.to_csv(f"results/{uniprot_id}/{uniprot_id}_cluster_{cluster_id}.csv")
-    
-    df = df[~df.index.duplicated(keep='first')]
-    
+        
     if 'mutations' in df.columns:
         df.drop('mutations', inplace=True, axis=1)
         df.drop('AA_in_PDB', inplace=True, axis=1)
