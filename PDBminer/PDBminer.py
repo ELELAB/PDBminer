@@ -298,32 +298,22 @@ def get_alphafold_basics(uniprot_id, uniprot_isoform=None):
 
     """
     
-    #try to get the metadata on the alphafold ID. 
-    # If the AlphaFold Database is down, the program will exit.
-    try: 
-        response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
-    except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to AlphaFold database API for {uniprot_id}.")
+    if uniprot_isoform is not None:
+        acc = f"{uniprot_id}-{uniprot_isoform}"
+    else:
+        acc = uniprot_id
+    
+    try:
+        response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{acc}")
+    except ConnectionError:
+        logging.error(f"WARNING: Could not connect to AlphaFold database API for {acc}.")
+        return
     
     # If the response is successfull, data on the model is collected.
     if response.status_code == 200:
         result = response.json()[0]
         deposition_date = result['modelCreatedDate'] 
         Alphafold_ID = result['pdbUrl'].split('/')[-1][:-4]
-        
-        if uniprot_isoform is not None:
-            try:
-                iso = int(uniprot_isoform)
-            except Exception:
-                iso = None
-            if iso and iso >= 1:
-                import re
-                m = re.match(rf"^AF-{re.escape(uniprot_id)}-(.+)$", Alphafold_ID)
-                if m:
-                    tail = m.group(1)  
-                    if f"-{iso}-" not in Alphafold_ID:
-                        Alphafold_ID = f"AF-{uniprot_id}-{iso}-{tail}"
-
 
         return Alphafold_ID, uniprot_id, deposition_date, "PREDICTED", "NA", 0
     
@@ -806,22 +796,19 @@ def get_uniprot_sequence(uniprot_id, isoform):
 
     """
     logging.debug(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
-    
     if isoform is None:
-    
-        try: 
-            response = requests.get(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform 1.")
-            exit(1) 
-    
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
     else:
-        try: 
-            response = requests.get(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
-            exit(1) 
-    
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta"
+
+    try:
+        response = requests.get(url)  
+    except requests.exceptions.RequestException as e:
+        logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
+        raise RuntimeError(
+            f"Connection error when trying to connect to Uniprot for "
+            f"{uniprot_id}, isoform {isoform}: {e}")
+   
     if response.status_code == 200:
         sequence_data=''.join(response.text)
         Seq=StringIO(sequence_data)
@@ -829,9 +816,11 @@ def get_uniprot_sequence(uniprot_id, isoform):
         uniprot_sequence = str(pSeq[0].seq)
         uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
     else:
-        logging.error(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
-        exit(1) 
-    
+        logging.error(f"EXITING: The sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
+        raise RuntimeError(
+            f"The sequence could not be retrieved, ensure that isoform "
+            f"{isoform} exists for {uniprot_id} (status {response.status_code}).")
+
     return uniprot_sequence, uniprot_numbering
     
 def get_mutations(mut_pos, df):
@@ -1726,7 +1715,11 @@ def run_list(input_file, cores, output_format, peptide_min_length, file_save_str
 
     with Pool(processes=cores) as pool:
         #use starmap to add multiple arguments.
-        pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length, file_save_strategy) for uniprot_id in uniprot_list])
+        try:    
+            pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length, file_save_strategy) for uniprot_id in uniprot_list])
+        except Exception as e:
+            logging.error(f"Fatal error in worker: {e}")
+            exit(1)
 
 def main():
     start = datetime.now()
