@@ -820,7 +820,6 @@ def get_uniprot_sequence(uniprot_id, isoform):
         raise RuntimeError(
             f"The sequence could not be retrieved, ensure that isoform "
             f"{isoform} exists for {uniprot_id} (status {response.status_code}).")
-
     return uniprot_sequence, uniprot_numbering
     
 def get_mutations(mut_pos, df):
@@ -1292,13 +1291,7 @@ def align(combined_structure, path, peptide_min_length):
     combined_structure["warnings"] = " "
     combined_structure["r_free"] = " "
     
-    iso_raw = combined_structure['uniprot_isoform'].iloc[0]
-    if pd.isna(iso_raw) or str(iso_raw).strip().upper() in ("", "NA", "N/A"):
-        iso_norm = None
-    else:
-        iso_norm = int(iso_raw)
-
-    uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id.iloc[0], iso_norm)     
+    uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id.iloc[0], combined_structure['uniprot_isoform'][0])     
 
     for i in range(len(combined_structure)):
                            
