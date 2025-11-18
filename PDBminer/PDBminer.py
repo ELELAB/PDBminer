@@ -796,6 +796,10 @@ def get_uniprot_sequence(uniprot_id, isoform):
 
     """
     logging.debug(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
+    
+    if isoform in (None, "") or str(isoform).lower() == "nan":
+        isoform = None
+
     if isoform is None:
         url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
     else:
