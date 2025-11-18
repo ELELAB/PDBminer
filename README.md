@@ -141,7 +141,8 @@ $ python PDBminer -g SSTR3 -u P05543 -m "T11S;C191S;R330L" -n 1 -f json
 $ python PDBminer -u P05543
 ``` 
 
-NOTICE: when isoform is not specified 1 is assumed.
+NOTICE: when isoform is not specified canonical is assumed.
+NOTICE: Only use -s flag when you want to retrieve a non canonical isoform
 NOTICE: json is the default output format, csv can be chosen (but is discouraged). 
 
 ## The Output
