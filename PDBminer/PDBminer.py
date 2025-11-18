@@ -320,7 +320,7 @@ def get_alphafold_basics(uniprot_id, uniprot_isoform=None):
     # If the response was unsuccessfull, e.g. if there are no alphafold structure 
     # in the AlphaFold database, a warning is written to the log.txt file.
     else:
-        logging.warning(f"The Alphafold Database returned an error for the request of {uniprot_id}.")
+        logging.warning(f"The Alphafold Database returned an error for the request of {acc}.")
         return
 
     
@@ -537,7 +537,7 @@ def get_structure_df(uniprot_id):
     if AF_model is not None:
         structure_df.loc[len(structure_df)] = tuple(AF_model)
     else:
-        logging.warning(f"AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.")
+        logging.warning(f"AlphaFold database returned an error for {uniprot_id}-{args.uniprot_isoform}. This may indicate that there are no structure for {uniprot_id}-{args.uniprot_isoform} in the Alphafold Database.")
                 
     structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
     structure_df = structure_df.drop(['method_priority'], axis=1)
