@@ -531,13 +531,16 @@ def get_structure_df(uniprot_id):
     rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
     
     structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
-    
+
+    iso_str = f"-{args.uniprot_isoform}" if args.uniprot_isoform else ""
+    full_uniprot_id = f"{uniprot_id}{iso_str}"
+
     AF_model = get_alphafold_basics(uniprot_id, args.uniprot_isoform)
-            
+     
     if AF_model is not None:
         structure_df.loc[len(structure_df)] = tuple(AF_model)
     else:
-        logging.warning(f"AlphaFold database returned an error for {uniprot_id}-{args.uniprot_isoform}. This may indicate that there are no structure for {uniprot_id}-{args.uniprot_isoform} in the Alphafold Database.")
+        logging.warning(f"AlphaFold database returned an error for {full_uniprot_id}. This may indicate that there are no structure for {full_uniprot_id} in the Alphafold Database.")
                 
     structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
     structure_df = structure_df.drop(['method_priority'], axis=1)
