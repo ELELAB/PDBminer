@@ -106,33 +106,36 @@ def get_uniprot_sequence(uniprot_id, isoform):
     uniprot_numbering : A list of numerical values describing the residue position.
 
     """
+    
     logging.debug(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
     
-    if isoform==1:
-    
-        try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: Uniprot database API rejected for {uniprot_id}.")
-            exit(1) 
-    
+    if isoform in (None, "") or str(isoform).lower() == "nan":
+        isoform = None
+
+    if isoform is None:
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
     else:
-        try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: Uniprot database API rejected for {uniprot_id}.")
-            exit(1) 
-    
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{int(isoform)}.fasta"
+
+    try:
+        response = requests.get(url)  
+    except requests.exceptions.RequestException as e:
+        logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
+        raise RuntimeError(
+            f"Connection error when trying to connect to Uniprot for "
+            f"{uniprot_id}, isoform {isoform}: {e}")
+   
     if response.status_code == 200:
         sequence_data=''.join(response.text)
         Seq=StringIO(sequence_data)
         pSeq=list(SeqIO.parse(Seq,'fasta'))
         uniprot_sequence = str(pSeq[0].seq)
         uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-
     else:
-        logging.error(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
-        exit(1) 
+        logging.error(f"EXITING: The sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
+        raise RuntimeError(
+            f"The sequence could not be retrieved, ensure that isoform "
+            f"{isoform} exists for {uniprot_id} (status {response.status_code}).")
     
     uniprot_sequence = list(uniprot_sequence)
     columns = []
@@ -321,6 +324,14 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
             # we need to color in mutations
             # if any a_range is assigned 5.
             a_range = get_mutations(a.mutations_in_pdb, a_range, chain)
+            
+            if len(a_range) != len(uniprot_numbering):
+                logging.warning(
+                    f"Skipping {a.structure_id}_{chain}: "
+                    f"a_range={len(a_range)}, uniprot={len(uniprot_numbering)}"
+                )
+                continue
+            
             if set(a_range) != {0.0}: 
                 index.append(f"{a.structure_id}_{chain}")                
                 ranges.append(a_range)
@@ -395,6 +406,7 @@ def run(df, path, threshold, sequence, bfactortheshold_best, bfactortheshold_goo
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json"):
             logging.debug("filtered file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json")
+            print(filtered["structure_id"].unique())
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
                           "filtered", sequence, threshold, 

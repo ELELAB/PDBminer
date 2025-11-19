@@ -1,5 +1,5 @@
-2023-10-05 13:28:33,161 - INFO - PDBminer is starting
-2023-10-05 13:28:33,161 - INFO - input file mode is choosen and input file has been identified.
-2023-10-05 13:28:33,168 - INFO - Pipeline is starting
-2023-10-05 13:28:42,811 - INFO - total runtime: 0:00:09.649699
-2023-10-05 13:28:42,811 - INFO - PDBminer has finished.
+2025-11-19 13:45:06,817 - INFO - PDBminer is starting
+2025-11-19 13:45:06,817 - INFO - input file mode is choosen and input file has been identified.
+2025-11-19 13:45:07,218 - INFO - Pipeline is starting
+2025-11-19 13:45:16,809 - INFO - total runtime: 0:00:09.991588
+2025-11-19 13:45:16,809 - INFO - PDBminer has finished.

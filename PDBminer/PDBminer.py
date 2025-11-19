@@ -317,8 +317,33 @@ def get_alphafold_basics(uniprot_id, uniprot_isoform=None):
     
     # If the response is successfull, data on the model is collected.
     if response.status_code == 200:
-        result = response.json()[0]
-        deposition_date = result['modelCreatedDate'] 
+        # API returns a list of models; we only want the one matching `acc`
+        try:
+            results = response.json()
+        except ValueError:
+            logging.warning(f"The Alphafold Database returned invalid JSON for {acc}.")
+            return
+
+        if not isinstance(results, list) or len(results) == 0:
+            logging.warning(f"The Alphafold Database returned no models for {acc}.")
+            return
+
+        # STRICT: only accept entries whose uniprotAccession matches `acc`
+        result = None
+        for r in results:
+            if r.get("uniprotAccession") == acc:
+                result = r
+                break
+
+        if result is None:
+            # e.g. querying P11532 but only P11532-9 exists
+            logging.warning(
+                f"The Alphafold Database has models for other isoforms of {uniprot_id}, "
+                f"but none for accession {acc}. Ignoring AlphaFold for this protein."
+            )
+            return
+
+        deposition_date = result['modelCreatedDate']
         Alphafold_ID = result['pdbUrl'].split('/')[-1][:-4]
 
         return Alphafold_ID, uniprot_id, deposition_date, "PREDICTED", "NA", 0

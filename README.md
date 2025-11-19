@@ -84,8 +84,8 @@ Example of input file as a table:
 
 ```
 hugo_name,uniprot,uniprot_isoform,mutations,cluster_id
-MAT1A,Q00266,1,P30N;W300H,1
-SSTR3,P05543,1,T11S;C191S;R330L,1
+MAT1A,Q00266,NA,P30N;W300H,1
+SSTR3,P05543,,T11S;C191S;R330L,1
 SAMD4A,Q9UPU9,3,L10R;I80A,1
 TP53,P04637,2,P278L;R337C;L344P,1
         
@@ -110,7 +110,7 @@ The name of the input file should be specified in the command line.
   assign a run-specific name relevant to the user.
 * "uniprot_isoform": The isoform reflects the sequence PDBminer aligns the sequence
   of the structures to and assigned mismatches between the structure sequence and
-  the UniProt sequence.  
+  the UniProt sequence. If you leave it empty it will atomatically search for the canoncial one. 
 * "mutations": If you input mutations, PDBminer will filter the structures based on
   the sites of the mutations. That means every structure in the filtered output covers
   at least one mutational site. It does not mean that the mutation necessarily is present
@@ -191,7 +191,7 @@ See examples of the in- and output of the example directories.
 * structure_rank: Index, the lower the value the seemingly better the model.
 * hugo_name: Gene name from the input.
 * uniprot_id: Uniprot id from the input.
-* uniprot_isoform: Uniprot isoform from the input or 1 if none given.
+* uniprot_isoform: Uniprot isoform from the input or empty if none given.
 * mutations: A list of input mutations, only visible in the filtered output.
 * cluster_id: If clusters are specified, the cluster will be visible in this column.  
 * structure_id: Identifier of the PDB file or Alphafold Model.
