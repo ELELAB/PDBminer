@@ -324,14 +324,6 @@ def plot_coverage(path, isoform, uniprot_id, mutations, cluster, file, name,
             # we need to color in mutations
             # if any a_range is assigned 5.
             a_range = get_mutations(a.mutations_in_pdb, a_range, chain)
-            
-            if len(a_range) != len(uniprot_numbering):
-                logging.warning(
-                    f"Skipping {a.structure_id}_{chain}: "
-                    f"a_range={len(a_range)}, uniprot={len(uniprot_numbering)}"
-                )
-                continue
-            
             if set(a_range) != {0.0}: 
                 index.append(f"{a.structure_id}_{chain}")                
                 ranges.append(a_range)
@@ -406,7 +398,6 @@ def run(df, path, threshold, sequence, bfactortheshold_best, bfactortheshold_goo
         if os.path.isfile(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json"):
             logging.debug("filtered file identified")
             filtered = pd.read_json(f"{path}/{df.iloc[i].uniprot}/{df.iloc[i].uniprot}_filtered.json")
-            print(filtered["structure_id"].unique())
             plot_coverage(path, df.iloc[i].uniprot_isoform, df.iloc[i].uniprot, 
                           df.iloc[i].mutations, df.iloc[i].cluster_id, filtered, 
                           "filtered", sequence, threshold, 
