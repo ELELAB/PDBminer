@@ -110,7 +110,7 @@ The name of the input file should be specified in the command line.
   assign a run-specific name relevant to the user.
 * "uniprot_isoform": The isoform reflects the sequence PDBminer aligns the sequence
   of the structures to and assigned mismatches between the structure sequence and
-  the UniProt sequence. If you leave it empty it will atomatically search for the canoncial one. 
+  the UniProt sequence. If you leave it empty it will atomatically search for the canonical one. 
 * "mutations": If you input mutations, PDBminer will filter the structures based on
   the sites of the mutations. That means every structure in the filtered output covers
   at least one mutational site. It does not mean that the mutation necessarily is present
