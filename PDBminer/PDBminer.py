@@ -234,7 +234,7 @@ def check_input_file(df):
             df[new_column_label] = 'NA'
     
     if not 'uniprot_isoform' in df.columns:
-        df['uniprot_isoform'] = 1
+        df['uniprot_isoform'] = None
 
     for i, r in df.iterrows():
         #UNIPROT
@@ -249,10 +249,16 @@ def check_input_file(df):
             problems.append(f"there is a problem with the hugo name input on the line of {r['uniprot']}")
 
         # ISOFORM
-        try:
-            df.at[i, "uniprot_isoform"] = int(r['uniprot_isoform'])
-        except ValueError:
-            problems.append(f"there is a problem with the isoform input on the line of {r['uniprot']}")
+        iso = r['uniprot_isoform']
+
+        # Treat empty / NA / N/A / NaN as "no isoform specified" → canonical
+        if iso in ["", "NA", "N/A"] or pd.isna(iso):
+            df.at[i, "uniprot_isoform"] = None
+        else:
+            try:
+                df.at[i, "uniprot_isoform"] = int(iso)
+            except ValueError:
+                problems.append(f"there is a problem with the isoform input on the line of {r['uniprot']}")
         
         #MUTATIONS
         if r['mutations'] in ["N/A", "NA"] or pd.isna(r['mutations']):
@@ -280,7 +286,7 @@ def check_input_file(df):
 ################################
 
 
-def get_alphafold_basics(uniprot_id):
+def get_alphafold_basics(uniprot_id, uniprot_isoform=None):
     logging.debug(f"FUNCTION: get_alphafold_basics({uniprot_id})")
     """
     Function that takes a uniprot id and retrieve data from the alphafold
@@ -298,17 +304,46 @@ def get_alphafold_basics(uniprot_id):
 
     """
     
-    #try to get the metadata on the alphafold ID. 
-    # If the AlphaFold Database is down, the program will exit.
-    try: 
-        response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}")
-    except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to AlphaFold database API for {uniprot_id}.")
+    if uniprot_isoform is not None:
+        acc = f"{uniprot_id}-{int(uniprot_isoform)}"
+    else:
+        acc = uniprot_id
+    
+    try:
+        response = requests.get(f"https://alphafold.ebi.ac.uk/api/prediction/{acc}")
+    except ConnectionError:
+        logging.error(f"WARNING: Could not connect to AlphaFold database API for {acc}.")
+        return
     
     # If the response is successfull, data on the model is collected.
     if response.status_code == 200:
-        result = response.json()[0]
-        deposition_date = result['modelCreatedDate'] 
+        # API returns a list of models; we only want the one matching `acc`
+        try:
+            results = response.json()
+        except ValueError:
+            logging.warning(f"The Alphafold Database returned invalid JSON for {acc}.")
+            return
+
+        if not isinstance(results, list) or len(results) == 0:
+            logging.warning(f"The Alphafold Database returned no models for {acc}.")
+            return
+
+        # STRICT: only accept entries whose uniprotAccession matches `acc`
+        result = None
+        for r in results:
+            if r.get("uniprotAccession") == acc:
+                result = r
+                break
+
+        if result is None:
+            # e.g. querying P11532 but only P11532-9 exists
+            logging.warning(
+                f"The Alphafold Database has models for other isoforms of {uniprot_id}, "
+                f"but none for accession {acc}. Ignoring AlphaFold for this protein."
+            )
+            return
+
+        deposition_date = result['modelCreatedDate']
         Alphafold_ID = result['pdbUrl'].split('/')[-1][:-4]
 
         return Alphafold_ID, uniprot_id, deposition_date, "PREDICTED", "NA", 0
@@ -316,7 +351,7 @@ def get_alphafold_basics(uniprot_id):
     # If the response was unsuccessfull, e.g. if there are no alphafold structure 
     # in the AlphaFold database, a warning is written to the log.txt file.
     else:
-        logging.warning(f"The Alphafold Database returned an error for the request of {uniprot_id}.")
+        logging.warning(f"The Alphafold Database returned an error for the request of {acc}.")
         return
 
     
@@ -453,7 +488,7 @@ def get_PDBredo(pdb, uniprot_id):
     else:
         return "NO", "NA"     
     
-def get_structure_df(uniprot_id): 
+def get_structure_df(uniprot_id, isoform=None): 
     """
     This function takes a single uniprot ID and outputs a 
     dataframe containing a sorted list of PDB ids and their metadata. 
@@ -470,7 +505,7 @@ def get_structure_df(uniprot_id):
 
     """
     
-    logging.debug(f"FUNCTION: get_structure_df({uniprot_id})")
+    logging.debug(f"FUNCTION: get_structure_df({uniprot_id}, isoform={isoform})")
     
     pdb = []
     deposition_date = []
@@ -527,13 +562,16 @@ def get_structure_df(uniprot_id):
     rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
     
     structure_df['method_priority'] = structure_df['experimental_method'].map(rank_dict).fillna(6)
-    
-    AF_model = get_alphafold_basics(uniprot_id)
-            
+
+    iso_str = f"-{isoform}" if isoform else ""
+    full_uniprot_id = f"{uniprot_id}{iso_str}"
+
+    AF_model = get_alphafold_basics(uniprot_id, isoform)
+     
     if AF_model is not None:
         structure_df.loc[len(structure_df)] = tuple(AF_model)
     else:
-        logging.warning(f"AlphaFold database returned an error for {uniprot_id}. This may indicate that there are no structure for {uniprot_id} in the Alphafold Database.")
+        logging.warning(f"AlphaFold database returned an error for {full_uniprot_id}. This may indicate that there are no structure for {full_uniprot_id} in the Alphafold Database.")
                 
     structure_df.sort_values(["method_priority", "resolution", "deposition_date"], ascending=[True, True, False], inplace=True)
     structure_df = structure_df.drop(['method_priority'], axis=1)
@@ -574,17 +612,24 @@ def find_structure_list(input_dataframe):
     
     #take all uniprot id's from the input file
     all_uniprot_ids = list(input_dataframe.uniprot)
-    all_uniprot_ids = sorted(set(all_uniprot_ids), key=all_uniprot_ids.index)
+    
+    if "uniprot_isoform" in input_dataframe.columns:
+        all_isoforms = list(input_dataframe.uniprot_isoform)
+    else:
+        all_isoforms = [None] * len(all_uniprot_ids)
            
-    for row in range(len(all_uniprot_ids)):
-        
-        logging.debug(all_uniprot_ids[row])
-        
-        structure_info = get_structure_df(all_uniprot_ids[row]) 
+    for uniprot_id, isoform in zip(all_uniprot_ids, all_isoforms):
+
+        # normalize isoform: "NA" or empty → canonical (None)
+        if isinstance(isoform, str):
+            isoform = isoform.strip()
+        if isoform in ("", "NA") or pd.isna(isoform):
+            isoform = None
+            
+        structure_info = get_structure_df(uniprot_id, isoform) 
     
         if type(structure_info) != str: 
-            df_collector.append(structure_info)
-        
+            df_collector.append(structure_info)  
         else:
             logging.warning(f"No structures found in any resource for {structure_info}, {all_uniprot_ids[row]}. ")
             
@@ -793,32 +838,33 @@ def get_uniprot_sequence(uniprot_id, isoform):
     """
     logging.debug(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
     
-    if isoform==1:
-    
-        try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform 1.")
-            exit(1) 
-    
+    if isoform in (None, "") or str(isoform).lower() == "nan":
+        isoform = None
+
+    if isoform is None:
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
     else:
-        try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
-            exit(1) 
-    
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{int(isoform)}.fasta"
+
+    try:
+        response = requests.get(url)  
+    except requests.exceptions.RequestException as e:
+        logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
+        raise RuntimeError(
+            f"Connection error when trying to connect to Uniprot for "
+            f"{uniprot_id}, isoform {isoform}: {e}")
+   
     if response.status_code == 200:
         sequence_data=''.join(response.text)
         Seq=StringIO(sequence_data)
         pSeq=list(SeqIO.parse(Seq,'fasta'))
         uniprot_sequence = str(pSeq[0].seq)
         uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-
     else:
-        logging.error(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
-        exit(1) 
-    
+        logging.error(f"EXITING: The sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
+        raise RuntimeError(
+            f"The sequence could not be retrieved, ensure that isoform "
+            f"{isoform} exists for {uniprot_id} (status {response.status_code}).")
     return uniprot_sequence, uniprot_numbering
     
 def get_mutations(mut_pos, df):
@@ -1290,7 +1336,7 @@ def align(combined_structure, path, peptide_min_length):
     combined_structure["warnings"] = " "
     combined_structure["r_free"] = " "
     
-    uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id[0], int(combined_structure['uniprot_isoform'][0]))     
+    uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id.iloc[0], combined_structure['uniprot_isoform'][0])     
 
     for i in range(len(combined_structure)):
                            
@@ -1707,7 +1753,11 @@ def run_list(input_file, cores, output_format, peptide_min_length, file_save_str
 
     with Pool(processes=cores) as pool:
         #use starmap to add multiple arguments.
-        pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length, file_save_strategy) for uniprot_id in uniprot_list])
+        try:    
+            pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length, file_save_strategy) for uniprot_id in uniprot_list])
+        except Exception as e:
+            logging.error(f"Fatal error in worker: {e}")
+            exit(1)
 
 def main():
     start = datetime.now()
@@ -1746,10 +1796,10 @@ def main():
         df = pd.DataFrame({'hugo_name':[hugo_name],'uniprot':[uniprot_id]})
         
         if args.uniprot_isoform:
-            isoform = [args.uniprot_isoform]
-            df['uniprot_isoform'] = isoform
-        else: df['uniprot_isoform'] = [1]
-        
+            df['uniprot_isoform'] = [args.uniprot_isoform]
+        else:
+            df['uniprot_isoform'] = [None]
+
         if args.mutations:
             mutations = [args.mutations]
             df['mutations'] = mutations

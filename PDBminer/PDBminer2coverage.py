@@ -106,33 +106,36 @@ def get_uniprot_sequence(uniprot_id, isoform):
     uniprot_numbering : A list of numerical values describing the residue position.
 
     """
+    
     logging.debug(f"FUNCTION: get_uniprot_sequence({uniprot_id}, {isoform})")
     
-    if isoform==1:
-    
-        try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: Uniprot database API rejected for {uniprot_id}.")
-            exit(1) 
-    
+    if isoform in (None, "") or str(isoform).lower() == "nan":
+        isoform = None
+
+    if isoform is None:
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
     else:
-        try: 
-            response = requests.post(f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{isoform}.fasta")
-        except ConnectionError as e:
-            logging.error(f"EXITING: Uniprot database API rejected for {uniprot_id}.")
-            exit(1) 
-    
+        url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}-{int(isoform)}.fasta"
+
+    try:
+        response = requests.get(url)  
+    except requests.exceptions.RequestException as e:
+        logging.error(f"EXITING: connection error when trying to connect to Uniprot database API, {uniprot_id}, isoform {isoform}.")
+        raise RuntimeError(
+            f"Connection error when trying to connect to Uniprot for "
+            f"{uniprot_id}, isoform {isoform}: {e}")
+   
     if response.status_code == 200:
         sequence_data=''.join(response.text)
         Seq=StringIO(sequence_data)
         pSeq=list(SeqIO.parse(Seq,'fasta'))
         uniprot_sequence = str(pSeq[0].seq)
         uniprot_numbering = list(range(1,len(uniprot_sequence)+1,1)) 
-
     else:
-        logging.error(f"EXITING: The canonical sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
-        exit(1) 
+        logging.error(f"EXITING: The sequence could not be retrieved, ensure that isoform {isoform} exist, {uniprot_id}.")
+        raise RuntimeError(
+            f"The sequence could not be retrieved, ensure that isoform "
+            f"{isoform} exists for {uniprot_id} (status {response.status_code}).")
     
     uniprot_sequence = list(uniprot_sequence)
     columns = []
