@@ -410,8 +410,8 @@ def get_structure_metadata(pdb_id, uniprot):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")
-        raise Exception(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")  
+        logging.error(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")
+        raise Exception(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")  
     
     # If the response was unsuccessfull, e.g. if there are no metadata 
     # associated to a structure, a warning is written to the log.txt file.
@@ -452,7 +452,7 @@ def get_structure_metadata(pdb_id, uniprot):
         # If the response was unsuccessfull, e.g. if there are no experimental metadata 
         # associated to a structure, a warning is written to the log.txt file.
         if response_experiment.status_code != 200:
-            logging.warning(f"The PDBe Database returned HTTP {response_experiment.status_code} for the request of eperimental data of {pdb_id}, {uniprot}.")
+            logging.error(f"The PDBe Database returned HTTP {response_experiment.status_code} for the request of eperimental data of {pdb_id}, {uniprot}.")
             raise Exception(f"The PDBe Database returned HTTP {response_experiment.status_code} for the request of eperimental data of {pdb_id}, {uniprot}.")
 
         response_text_exp = json.loads(response_experiment.text)
@@ -526,7 +526,7 @@ def get_structure_df(uniprot_id, isoform=None):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
     except ConnectionError as e:
-        logging.error(f"ERROR: Could not connect to 3D-Beacons database via API for {uniprot_id}.")
+        logging.error(f"WARNING: Could not connect to 3D-Beacons database via API for {uniprot_id}.")
 
     if response.status_code == 200:
         # Process data from 3D-Beacons
@@ -1422,8 +1422,8 @@ def get_complex_information(pdb_id, uniprot):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
-        raise Exception(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
+        logging.error(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
+        raise Exception(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
     if response.status_code != 200:
         logging.error(f"PDBe returned HTTP {response.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
         raise Exception(f"PDBe returned HTTP {response.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
@@ -1532,7 +1532,7 @@ def get_complex_information(pdb_id, uniprot):
         if len(nucleotide_info) > 1: 
             nucleotide_info = ';'.join(nucleotide_info)
     
-    else: 
+    else:
         nucleotide_complex_list = "NA"
         nucleotide_info = "NA"
            
