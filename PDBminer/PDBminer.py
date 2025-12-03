@@ -17,7 +17,7 @@
 
 import os
 import argparse
-from sys import exit
+import sys
 import requests
 from requests.exceptions import ConnectionError
 from datetime import datetime
@@ -410,16 +410,20 @@ def get_structure_metadata(pdb_id, uniprot):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}.")   
+        logging.error(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")
+        raise Exception(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")  
     
     # If the response was unsuccessfull, e.g. if there are no metadata 
     # associated to a structure, a warning is written to the log.txt file.
     if response.status_code != 200:
-        logging.warning(f"The PDBe Database returned an error for the request of summary data for {pdb_id}, {uniprot}.")
-        return
+        logging.error(f"The PDBe returned HTTP {response.status_code} for the request of summary data for {pdb_id}, {uniprot}.")
+        raise Exception(f"The PDBe returned HTTP {response.status_code} for the request of summary data for {pdb_id}, {uniprot}.")
     
     # If the response is successfull, data on the metadata on the models are collected.
     response_text = json.loads(response.text)
+    if pdb_id.lower() not in response_text or not response_text[pdb_id.lower()]:
+        logging.error(f"The PDBe Database returned an empty response for the request of summary data for {pdb_id}, {uniprot}.")
+        raise Exception(f"The PDBe Database returned an empty response for the request of summary data for {pdb_id}, {uniprot}.") 
     metadata_dictionary = response_text[pdb_id.lower()]
     metadata_dictionary = metadata_dictionary[0]
 
@@ -443,15 +447,18 @@ def get_structure_metadata(pdb_id, uniprot):
         try: 
             response_experiment = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}")
         except ConnectionError as e:
-            logging.error(f"WARNING: Could not connect to PDB database via API (experiments) for {pdb_id}, {uniprot}.")
-        
+            logging.error(f"ERROR: Could not connect to PDB database via API (experiments) for {pdb_id}, {uniprot}: {e}.")
+            raise Exception(f"ERROR: Could not connect to PDB database via API (experiments) for {pdb_id}, {uniprot}: {e}.")
         # If the response was unsuccessfull, e.g. if there are no experimental metadata 
         # associated to a structure, a warning is written to the log.txt file.
         if response_experiment.status_code != 200:
-            logging.warning(f"The PDBe Database returned an error for the request of eperimental data of {pdb_id}, {uniprot}.")
-            return
+            logging.error(f"The PDBe Database returned HTTP {response_experiment.status_code} for the request of eperimental data of {pdb_id}, {uniprot}.")
+            raise Exception(f"The PDBe Database returned HTTP {response_experiment.status_code} for the request of eperimental data of {pdb_id}, {uniprot}.")
 
         response_text_exp = json.loads(response_experiment.text)
+        if pdb_id.lower() not in response_text_exp or not response_text_exp[pdb_id.lower()]:
+            logging.error(f"The PDBe Database returned an empty response for the request of experimental data for {pdb_id}, {uniprot}.")
+            raise Exception(f"The PDBe Database returned an empty response for the request of experimental data for {pdb_id}, {uniprot}.") 
         dictionary_exp = response_text_exp[pdb_id.lower()]
         dictionary_exp = dictionary_exp[0]
         resolution = dictionary_exp['resolution']
@@ -1415,123 +1422,126 @@ def get_complex_information(pdb_id, uniprot):
     try: 
         response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to PDBe database via API for {pdb_id}, {uniprot}.")
-    
-    if response.status_code == 200:
-        response_text = json.loads(response.text)
-        protein_segment_dictionary = response_text[pdb_id.lower()]
-        
-        self_chain = []
-    
-        if len(protein_segment_dictionary['UniProt']) <= 1:
-            protein_complex_list = "NA"
-            protein_info = "NA"    
-            
-            #check that uniprot found the correct PDB:
-            if list(protein_segment_dictionary['UniProt'].keys())[0] != uniprot:
-                output_array = np.array(['NA', 'NA', 'NA', 'NA', 
-                                         'NA', 'NA', 'NA'], dtype=object)
-                return output_array
-            
-            else:               
-                #allow isoforms
-                for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
-                    self_chain.append(i['chain_id'])
-                self_chain = list(set(self_chain))
-                
-        else: 
-            if uniprot not in list(protein_segment_dictionary['UniProt'].keys()):
-                output_array = np.array(['NA', 'NA', 'NA', 'NA', 
-                                         'NA', 'NA', 'NA'], dtype=object)
-                return output_array
+        logging.error(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
+        raise Exception(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
+    if response.status_code != 200:
+        logging.error(f"PDBe returned HTTP {response.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
+        raise Exception(f"PDBe returned HTTP {response.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
 
-            else:            
-                #allow isoforms
-                for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
-                    self_chain.append(i['chain_id'])
-                self_chain = list(set(self_chain))
-                
-                info = []
-                fusion_test = []
-                for i in protein_segment_dictionary['UniProt']:
-                    prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
-                    info.append(prot_info)
-                    
-                for item in enumerate(info):
-                    fusion_test.append(item[1][-1])
-                    if uniprot in item[1]:
-                        value = item[0]
-                
-                if len(set(fusion_test)) == 1:
-                    protein_complex_list = 'fusion product'
-                elif len(fusion_test) > len(set(fusion_test)):
-                    if fusion_test.count(fusion_test[value]) > 1:
-                        protein_complex_list = 'fusion product in protein complex'
-                    else:
-                        protein_complex_list = 'protein complex with fusion product'
-                else:
-                    protein_complex_list = 'protein complex'
-            
-                info = ';'.join(info)
-                protein_info = [info] 
+    response_text = json.loads(response.text)
+    if pdb_id.lower() not in response_text or not response_text[pdb_id.lower()]:
+        logging.error(f"PDBe mappings returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
+        raise Exception(f"PDBe mappings returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
 
-    else:
+    protein_segment_dictionary = response_text[pdb_id.lower()]
+    
+    self_chain = []
+
+    if len(protein_segment_dictionary['UniProt']) <= 1:
         protein_complex_list = "NA"
-        protein_info = "NA"
+        protein_info = "NA"    
+        
+        #check that uniprot found the correct PDB:
+        if list(protein_segment_dictionary['UniProt'].keys())[0] != uniprot:
+            output_array = np.array(['NA', 'NA', 'NA', 'NA', 
+                                     'NA', 'NA', 'NA'], dtype=object)
+            return output_array
+        
+        else:               
+            #allow isoforms
+            for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
+                self_chain.append(i['chain_id'])
+            self_chain = list(set(self_chain))
+            
+    else: 
+        if uniprot not in list(protein_segment_dictionary['UniProt'].keys()):
+            output_array = np.array(['NA', 'NA', 'NA', 'NA', 
+                                     'NA', 'NA', 'NA'], dtype=object)
+            return output_array
+
+        else:            
+            #allow isoforms
+            for i in next(v for k,v in protein_segment_dictionary['UniProt'].items() if uniprot in k)['mappings']:
+                self_chain.append(i['chain_id'])
+            self_chain = list(set(self_chain))
+            
+            info = []
+            fusion_test = []
+            for i in protein_segment_dictionary['UniProt']:
+                prot_info = f"{protein_segment_dictionary['UniProt'][i]['identifier']}, {i}, chain_{protein_segment_dictionary['UniProt'][i]['mappings'][0]['chain_id']}"
+                info.append(prot_info)
+                
+            for item in enumerate(info):
+                fusion_test.append(item[1][-1])
+                if uniprot in item[1]:
+                    value = item[0]
+            
+            if len(set(fusion_test)) == 1:
+                protein_complex_list = 'fusion product'
+            elif len(fusion_test) > len(set(fusion_test)):
+                if fusion_test.count(fusion_test[value]) > 1:
+                    protein_complex_list = 'fusion product in protein complex'
+                else:
+                    protein_complex_list = 'protein complex with fusion product'
+            else:
+                protein_complex_list = 'protein complex'
+        
+            info = ';'.join(info)
+            protein_info = [info]
     
     #finding complexes with other ligands by identifying other molecules
     try: 
-        response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{pdb_id}")
+        response_mol = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{pdb_id}")
     except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to PDBe database via API for molecules,{pdb_id}, {uniprot}.")
-        
-    if response.status_code == 200: 
-        response_text = json.loads(response.text)
-        molecule_dictionary = response_text[pdb_id.lower()]
+        logging.error(f"WARNING: Could not connect to PDBe database via API for molecules for PDB {pdb_id} and UPAC {uniprot}: {e}.")
+        raise Exception(f"WARNING: Could not connect to PDBe database via API for molecules for PDB {pdb_id} and UPAC {uniprot}: {e}.")
+    if response_mol.status_code != 200:
+        logging.error(f"PDBe returned HTTP {response_mol.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
+        raise Exception(f"PDBe returned HTTP {response_mol.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")   
+    
+    response_text = json.loads(response_mol.text)
+    if pdb_id.lower() not in response_text or not response_text[pdb_id.lower()]:
+        logging.error(f"PDBe molecules returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
+        raise Exception(f"PDBe molecules returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
+    molecule_dictionary = response_text[pdb_id.lower()]
 
-        nucleotide_info = []
-        ligand_info = []
+    nucleotide_info = []
+    ligand_info = []
+    
+    for i in range(len(molecule_dictionary)):
         
-        for i in range(len(molecule_dictionary)):
+        if "nucleotide" in molecule_dictionary[i]['molecule_type']:
+            n1 = molecule_dictionary[i]['molecule_name'][0]
+            n2 = molecule_dictionary[i]['in_chains']
+            n2 = ",".join(n2)
+            n = f"{n1}, chain {n2}"
             
-            if "nucleotide" in molecule_dictionary[i]['molecule_type']:
-                n1 = molecule_dictionary[i]['molecule_name'][0]
-                n2 = molecule_dictionary[i]['in_chains']
-                n2 = ",".join(n2)
-                n = f"{n1}, chain {n2}"
+            nucleotide_info.append(n)
+        
+        elif molecule_dictionary[i]['molecule_type'] != 'polypeptide(L)':
+            if molecule_dictionary[i]['molecule_type'] != 'water': 
+                l1 = molecule_dictionary[i]['molecule_name'][0]
+                l2 = molecule_dictionary[i]['in_chains']
+                l2 = ",".join(l2)
+                l = f"{l1}, chain {l2}"
                 
-                nucleotide_info.append(n)
-            
-            elif molecule_dictionary[i]['molecule_type'] != 'polypeptide(L)':
-                if molecule_dictionary[i]['molecule_type'] != 'water': 
-                    l1 = molecule_dictionary[i]['molecule_name'][0]
-                    l2 = molecule_dictionary[i]['in_chains']
-                    l2 = ",".join(l2)
-                    l = f"{l1}, chain {l2}"
-                    
-                    ligand_info.append(l)
-       
-        if len(nucleotide_info) > 0:
-            nucleotide_complex_list = 'nucleotide complex'
-            if len(nucleotide_info) > 1: 
-                nucleotide_info = ';'.join(nucleotide_info)
-        
-        else: 
-            nucleotide_complex_list = "NA"
-            nucleotide_info = "NA"
-               
-        if len(ligand_info) > 0:
-            ligand_complex_list = "Other ligands"
-            if len(ligand_info) > 1: 
-                ligand_info = ';'.join(ligand_info)
-        
-        else: 
-            ligand_complex_list = "NA"
-            ligand_info = "NA"
+                ligand_info.append(l)
+   
+    if len(nucleotide_info) > 0:
+        nucleotide_complex_list = 'nucleotide complex'
+        if len(nucleotide_info) > 1: 
+            nucleotide_info = ';'.join(nucleotide_info)
     
     else:
         nucleotide_complex_list = "NA"
         nucleotide_info = "NA"
+           
+    if len(ligand_info) > 0:
+        ligand_complex_list = "Other ligands"
+        if len(ligand_info) > 1: 
+            ligand_info = ';'.join(ligand_info)
+    
+    else: 
         ligand_complex_list = "NA"
         ligand_info = "NA"
         
@@ -1757,7 +1767,8 @@ def run_list(input_file, cores, output_format, peptide_min_length, file_save_str
             pool.starmap(process_uniprot, [(uniprot_id, df, output_format, peptide_min_length, file_save_strategy) for uniprot_id in uniprot_list])
         except Exception as e:
             logging.error(f"Fatal error in worker: {e}")
-            exit(1)
+            print (f"ERROR: PDBminer encountered an unrecoverable error and was forced to exit before completing operations. See log.txt for details.", file=sys.stderr)
+            sys.exit(1)
 
 def main():
     start = datetime.now()
