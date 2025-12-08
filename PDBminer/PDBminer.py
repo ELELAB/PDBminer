@@ -20,6 +20,8 @@ import argparse
 import sys
 import requests
 from requests.exceptions import ConnectionError
+from requests.exceptions import RequestException
+import time
 from datetime import datetime
 import logging
 import re
@@ -117,6 +119,65 @@ if args.verbose:
 else:
     logging.basicConfig(filename='log.txt', level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+#####################
+
+# API HELPER
+
+#####################
+
+def pdbe_get(url, error_message, max_retries=20, delay=3, timeout=10):
+    """
+    GET a URL with retry. If still failing after max_retries, raise RuntimeError.
+
+    Returns only responses with status_code == 200.
+    Any persistent non-200 or network error -> RuntimeError (exit).
+
+    """
+    attempts = 0
+    last_status = None
+    last_exception = None
+
+    while attempts < max_retries:
+        attempts += 1
+        try:
+            response = requests.get(url, timeout=timeout)
+        except RequestException as e:
+            last_exception = e
+            logging.warning(
+                f"{error_message} – network error {e}. "
+                f"Retrying in {delay} seconds (attempt {attempts}/{max_retries})."
+            )
+            time.sleep(delay)
+            continue
+
+        last_status = response.status_code
+
+        if response.status_code == 200:
+            return response
+
+        if response.status_code == 404:
+            logging.warning(
+                f"{error_message} – got HTTP 404 (not found). Not retrying this URL."
+            )
+            break
+
+        logging.warning(
+            f"{error_message} – got HTTP {response.status_code}. "
+            f"Retrying in {delay} seconds (attempt {attempts}/{max_retries})."
+        )
+        time.sleep(delay)
+
+    if last_exception is not None:
+        raise RuntimeError(
+            f"{error_message} failed after {max_retries} attempts. "
+            f"Last exception: {last_exception}"
+        )
+    else:
+        raise RuntimeError(
+            f"{error_message} failed. Last HTTP status: {last_status}"
+        )
 
 
 #####################
@@ -407,23 +468,16 @@ def get_structure_metadata(pdb_id, uniprot):
     """
     #try to get the basic metadata on the pdb id from PDBe. 
     # If the PDBe Database is down, the program will exit.
-    try: 
-        response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}")
-    except ConnectionError as e:
-        logging.error(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")
-        raise Exception(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}")  
-    
-    # If the response was unsuccessfull, e.g. if there are no metadata 
-    # associated to a structure, a warning is written to the log.txt file.
-    if response.status_code != 200:
-        logging.error(f"The PDBe returned HTTP {response.status_code} for the request of summary data for {pdb_id}, {uniprot}.")
-        raise Exception(f"The PDBe returned HTTP {response.status_code} for the request of summary data for {pdb_id}, {uniprot}.")
-    
+
+    url = f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}"
+    response = pdbe_get(url,
+        error_message=(f"ERROR: Could not get PDBe summary data for PDB {pdb_id}, UniProt {uniprot}"),
+        max_retries=20,
+        delay=3,
+        timeout=10) 
+     
     # If the response is successfull, data on the metadata on the models are collected.
     response_text = json.loads(response.text)
-    if pdb_id.lower() not in response_text or not response_text[pdb_id.lower()]:
-        logging.error(f"The PDBe Database returned an empty response for the request of summary data for {pdb_id}, {uniprot}.")
-        raise Exception(f"The PDBe Database returned an empty response for the request of summary data for {pdb_id}, {uniprot}.") 
     metadata_dictionary = response_text[pdb_id.lower()]
     metadata_dictionary = metadata_dictionary[0]
 
@@ -444,21 +498,15 @@ def get_structure_metadata(pdb_id, uniprot):
     else:
         #try to get the detailed metadata on the pdb id from PDBe. 
         # If the PDBe Database is down, the program will exit.
-        try: 
-            response_experiment = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}")
-        except ConnectionError as e:
-            logging.error(f"ERROR: Could not connect to PDB database via API (experiments) for {pdb_id}, {uniprot}: {e}.")
-            raise Exception(f"ERROR: Could not connect to PDB database via API (experiments) for {pdb_id}, {uniprot}: {e}.")
-        # If the response was unsuccessfull, e.g. if there are no experimental metadata 
-        # associated to a structure, a warning is written to the log.txt file.
-        if response_experiment.status_code != 200:
-            logging.error(f"The PDBe Database returned HTTP {response_experiment.status_code} for the request of eperimental data of {pdb_id}, {uniprot}.")
-            raise Exception(f"The PDBe Database returned HTTP {response_experiment.status_code} for the request of eperimental data of {pdb_id}, {uniprot}.")
+        url_experiment = f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/experiment/{pdb_id}"
+        response_experiment = pdbe_get(url_experiment,
+            error_message=(f"ERROR: Could not get PDBe experimental data for PDB {pdb_id}, " 
+            f"UniProt {uniprot}"),
+            max_retries=20,
+            delay=3,
+            timeout=10)
 
         response_text_exp = json.loads(response_experiment.text)
-        if pdb_id.lower() not in response_text_exp or not response_text_exp[pdb_id.lower()]:
-            logging.error(f"The PDBe Database returned an empty response for the request of experimental data for {pdb_id}, {uniprot}.")
-            raise Exception(f"The PDBe Database returned an empty response for the request of experimental data for {pdb_id}, {uniprot}.") 
         dictionary_exp = response_text_exp[pdb_id.lower()]
         dictionary_exp = dictionary_exp[0]
         resolution = dictionary_exp['resolution']
@@ -523,13 +571,16 @@ def get_structure_df(uniprot_id, isoform=None):
     # As of October 2023 the 3D becons API does not always return a code 200
     # even for entries on the website. So far this has been the case for 
     # a set amount of the test structures. It is seemingly not at random. 
+    url_3dbeacons = (f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
+    print(url_3dbeacons)
     try: 
-        response = requests.get(f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
-    except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to 3D-Beacons database via API for {uniprot_id}.")
-
-    if response.status_code == 200:
-        # Process data from 3D-Beacons
+        response = pdbe_get(url_3dbeacons,
+            error_message=(f"WARNING: Could not connect to 3D-Beacons database via API "
+            f"for {uniprot_id}."),
+            max_retries=20,
+            delay=3,
+            timeout=10)
+        
         response_text = json.loads(response.text)
         structures = response_text['structures']
            
@@ -539,7 +590,11 @@ def get_structure_df(uniprot_id, isoform=None):
             experimental_method.append(structure['summary']['experimental_method'])
             resolution.append(structure['summary']['resolution'])
                 
-    else:
+    except RuntimeError as e:
+        logging.warning(
+            f"3D-Beacons query failed for {uniprot_id}: {e}. "
+            f"Falling back to UniProt PDB list.")
+        
         # Try to get data from Uniprot
         pdbs = get_pdbs(uniprot_id)
         
@@ -1418,20 +1473,14 @@ def get_complex_information(pdb_id, uniprot):
     """    
     #finding protein complexes and their related uniprot_ids 
     #this step also serves as a quality control of uniprot id's and chains.
-    
-    try: 
-        response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id}")
-    except ConnectionError as e:
-        logging.error(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
-        raise Exception(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}: {e}.")
-    if response.status_code != 200:
-        logging.error(f"PDBe returned HTTP {response.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
-        raise Exception(f"PDBe returned HTTP {response.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
+    url_segments = f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id}"
+    response = pdbe_get(url_segments,
+        error_message=(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}"),
+        max_retries=20,
+        delay=3,
+        timeout=10)
 
     response_text = json.loads(response.text)
-    if pdb_id.lower() not in response_text or not response_text[pdb_id.lower()]:
-        logging.error(f"PDBe mappings returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
-        raise Exception(f"PDBe mappings returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
 
     protein_segment_dictionary = response_text[pdb_id.lower()]
     
@@ -1490,19 +1539,15 @@ def get_complex_information(pdb_id, uniprot):
             protein_info = [info]
     
     #finding complexes with other ligands by identifying other molecules
-    try: 
-        response_mol = requests.get(f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{pdb_id}")
-    except ConnectionError as e:
-        logging.error(f"WARNING: Could not connect to PDBe database via API for molecules for PDB {pdb_id} and UPAC {uniprot}: {e}.")
-        raise Exception(f"WARNING: Could not connect to PDBe database via API for molecules for PDB {pdb_id} and UPAC {uniprot}: {e}.")
-    if response_mol.status_code != 200:
-        logging.error(f"PDBe returned HTTP {response_mol.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")
-        raise Exception(f"PDBe returned HTTP {response_mol.status_code} for PDB {pdb_id} and UniProt AC {uniprot}.")   
+    url_mol = f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/molecules/{pdb_id}"
+    response_mol = pdbe_get(url_mol,
+        error_message=(f"WARNING: Could not connect to PDBe database via API for molecules "
+            f"for PDB {pdb_id} and UPAC {uniprot}"),
+        max_retries=20,
+        delay=3,
+        timeout=10)
     
     response_text = json.loads(response_mol.text)
-    if pdb_id.lower() not in response_text or not response_text[pdb_id.lower()]:
-        logging.error(f"PDBe molecules returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
-        raise Exception(f"PDBe molecules returned empty or missing JSON for PDB {pdb_id} and UniProt AC {uniprot}.")
     molecule_dictionary = response_text[pdb_id.lower()]
 
     nucleotide_info = []
