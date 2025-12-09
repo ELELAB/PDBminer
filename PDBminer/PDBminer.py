@@ -145,10 +145,8 @@ def pdbe_get(url, error_message, max_retries=20, delay=3, timeout=10):
             response = requests.get(url, timeout=timeout)
         except RequestException as e:
             last_exception = e
-            logging.warning(
-                f"{error_message} – network error {e}. "
-                f"Retrying in {delay} seconds (attempt {attempts}/{max_retries})."
-            )
+            logging.warning(f"{error_message} – network error {e}. "
+                f"Retrying in {delay} seconds (attempt {attempts}/{max_retries}).")
             time.sleep(delay)
             continue
 
@@ -158,26 +156,18 @@ def pdbe_get(url, error_message, max_retries=20, delay=3, timeout=10):
             return response
 
         if response.status_code == 404:
-            logging.warning(
-                f"{error_message} – got HTTP 404 (not found). Not retrying this URL."
-            )
+            logging.warning(f"{error_message} – got HTTP 404 (not found). Not retrying this URL.")
             break
 
-        logging.warning(
-            f"{error_message} – got HTTP {response.status_code}. "
-            f"Retrying in {delay} seconds (attempt {attempts}/{max_retries})."
-        )
+        logging.warning(f"{error_message} – got HTTP {response.status_code}. "
+            f"Retrying in {delay} seconds (attempt {attempts}/{max_retries}).")
         time.sleep(delay)
 
     if last_exception is not None:
-        raise RuntimeError(
-            f"{error_message} failed after {max_retries} attempts. "
-            f"Last exception: {last_exception}"
-        )
+        raise RuntimeError(f"{error_message} failed after {max_retries} attempts. "
+            f"Last exception: {last_exception}")
     else:
-        raise RuntimeError(
-            f"{error_message} failed. Last HTTP status: {last_status}"
-        )
+        raise RuntimeError(f"{error_message} failed. Last HTTP status: {last_status}")
 
 
 #####################
