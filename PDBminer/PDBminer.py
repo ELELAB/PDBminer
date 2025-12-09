@@ -562,7 +562,6 @@ def get_structure_df(uniprot_id, isoform=None):
     # even for entries on the website. So far this has been the case for 
     # a set amount of the test structures. It is seemingly not at random. 
     url_3dbeacons = (f"https://www.ebi.ac.uk/pdbe/pdbe-kb/3dbeacons/api/uniprot/{uniprot_id}.json?provider=pdbe")
-    print(url_3dbeacons)
     try: 
         response = pdbe_get(url_3dbeacons,
             error_message=(f"WARNING: Could not connect to 3D-Beacons database via API "
