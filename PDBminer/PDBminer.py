@@ -1462,7 +1462,8 @@ def get_complex_information(pdb_id, uniprot):
     """    
     #finding protein complexes and their related uniprot_ids 
     #this step also serves as a quality control of uniprot id's and chains.
-    url_segments = f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id}"
+    pdb_id_l = pdb_id.lower()
+    url_segments = f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot_segments/{pdb_id_l}"
     response = pdbe_get(url_segments,
         error_message=(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}"),
         max_retries=20,
