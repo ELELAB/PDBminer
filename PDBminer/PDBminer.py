@@ -169,6 +169,88 @@ def pdbe_get(url, error_message, max_retries=20, delay=3, timeout=10):
     else:
         raise RuntimeError(f"{error_message} failed. Last HTTP status: {last_status}")
 
+def resolve_obsolete_pdb_id(pdb_id):
+    pdb_id_u = pdb_id.upper()
+    pdb_id_l = pdb_id.lower()
+
+    logging.info(f"[obsolete-check] Start status resolution for {pdb_id_u}")
+
+    # 1) PDBe status
+    try:
+        url = f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/status/{pdb_id_l}"
+        logging.info(f"[obsolete-check] Trying PDBe status for {pdb_id_u}: {url}")
+        print(f"[obsolete-check] PDBe status -> {pdb_id_u}", flush=True)
+
+        response = pdbe_get(
+            url,
+            error_message=f"ERROR: Could not get PDBe status data for PDB {pdb_id_u}",
+            max_retries=20,
+            delay=3,
+            timeout=10
+        )
+        data = response.json()
+
+        if pdb_id_l not in data or not data[pdb_id_l]:
+            raise RuntimeError(f"Unexpected PDBe status response for PDB {pdb_id_u}")
+
+        entry = data[pdb_id_l][0]
+        status_code = str(entry.get("status_code", "")).upper()
+        logging.info(f"[obsolete-check] PDBe status_code for {pdb_id_u}: {status_code}")
+
+        if status_code == "REL":
+            logging.info(f"[obsolete-check] {pdb_id_u} is REL")
+            return pdb_id_u
+
+        if status_code == "OBS":
+            superseded = entry.get("superceded_by", [])
+            logging.info(f"[obsolete-check] {pdb_id_u} is OBS, superceded_by={superseded}")
+            if superseded:
+                replacement = str(superseded[0]).upper()
+                if replacement == pdb_id_u:
+                    logging.warning(f"PDBe marks {pdb_id_u} obsolete but superceded_by points to itself.")
+                    return None
+                logging.info(f"[obsolete-check] {pdb_id_u} -> replacement {replacement} (PDBe)")
+                return replacement
+            return None
+
+        raise RuntimeError(f"Unexpected PDBe status_code '{status_code}' for PDB {pdb_id_u}")
+
+    except RuntimeError as pdbe_err:
+        logging.warning(f"[obsolete-check] PDBe status failed for {pdb_id_u}, trying RCSB /removed/: {pdbe_err}")
+        print(f"[obsolete-check] PDBe failed, trying RCSB /removed/ -> {pdb_id_u}", flush=True)
+
+    # 2) RCSB /removed/ fallback
+    rcsb_url = f"https://www.rcsb.org/structure/removed/{pdb_id_l}"
+    logging.info(f"[obsolete-check] Trying RCSB removed page for {pdb_id_u}: {rcsb_url}")
+
+    try:
+        r = requests.get(rcsb_url, timeout=10)
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(f"RCSB /removed/ fallback failed for {pdb_id_u}: {e}")
+
+    logging.info(f"[obsolete-check] RCSB /removed/ HTTP {r.status_code} for {pdb_id_u}")
+
+    if r.status_code != 200:
+        raise RuntimeError(
+            f"Could not confirm status of PDB {pdb_id_u}: PDBe status failed and RCSB /removed/ returned HTTP {r.status_code}"
+        )
+
+    text = r.text
+
+    if "removed from the distribution of released PDB entries" not in text and "status Obsolete" not in text:
+        raise RuntimeError(f"RCSB /removed/ page for {pdb_id_u} did not confirm obsolete status.")
+
+    m = re.search(r"replaced \(superseded\) by\s*([0-9A-Za-z]{4})", text, re.IGNORECASE)
+    if m:
+        repl = m.group(1).upper()
+        logging.info(f"[obsolete-check] RCSB /removed/ replacement for {pdb_id_u}: {repl}")
+        if repl == pdb_id_u:
+            logging.warning(f"RCSB reports {pdb_id_u} obsolete but superseded by itself. Skipping.")
+            return None
+        return repl
+
+    logging.warning(f"RCSB confirms {pdb_id_u} is obsolete but no replacement was found.")
+    return None
 
 #####################
 
@@ -460,12 +542,36 @@ def get_structure_metadata(pdb_id, uniprot):
     # If the PDBe Database is down, the program will exit.
 
     url = f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}"
-    response = pdbe_get(url,
-        error_message=(f"ERROR: Could not get PDBe summary data for PDB {pdb_id}, UniProt {uniprot}"),
-        max_retries=20,
-        delay=3,
-        timeout=10) 
-     
+    try:
+        response = pdbe_get(
+            url,
+            error_message=(f"ERROR: Could not get PDBe summary data for PDB {pdb_id}, UniProt {uniprot}"),
+            max_retries=20,
+            delay=3,
+            timeout=10
+        )
+    except RuntimeError as e:
+        if "Last HTTP status: 404" in str(e):
+            replacement = resolve_obsolete_pdb_id(pdb_id)  # uses /entry/status
+            if replacement is None:
+                logging.warning(f"PDB {pdb_id} is obsolete and has no replacement. Skipping.")
+                return None
+            if replacement != pdb_id.upper():
+                logging.warning(f"PDB {pdb_id} is obsolete. Using superseding entry {replacement}.")
+                pdb_id = replacement
+                response = pdbe_get(
+                    f"https://www.ebi.ac.uk/pdbe/api/pdb/entry/summary/{pdb_id}",
+                    error_message=(f"ERROR: Could not get PDBe summary data for superseding PDB {pdb_id}, UniProt {uniprot}"),
+                    max_retries=20,
+                    delay=3,
+                    timeout=10
+                )
+            else:
+                # 404 but status endpoint did not mark it obsolete -> keep fatal
+                raise
+        else:
+            raise 
+        
     # If the response is successfull, data on the metadata on the models are collected.
     response_text = json.loads(response.text)
     metadata_dictionary = response_text[pdb_id.lower()]
@@ -501,7 +607,7 @@ def get_structure_metadata(pdb_id, uniprot):
         dictionary_exp = dictionary_exp[0]
         resolution = dictionary_exp['resolution']
     
-    return deposition_date, experimental_method, resolution
+    return pdb_id, deposition_date, experimental_method, resolution
 
 def get_PDBredo(pdb, uniprot_id):
     logging.debug(f"FUNCTION: get_PDBredo({pdb}, {uniprot_id})")
@@ -549,7 +655,6 @@ def get_structure_df(uniprot_id, isoform=None):
                     uniprot id in terms of pdb files.  
 
     """
-    
     logging.debug(f"FUNCTION: get_structure_df({uniprot_id}, isoform={isoform})")
     
     pdb = []
@@ -597,10 +702,10 @@ def get_structure_df(uniprot_id, isoform=None):
                     logging.warning(f"PDBe database API retured an error for {pdb_id}, {uniprot_id}.")
 
                 else:       
-                    pdb.append(pdb_id)
-                    deposition_date.append(metadata[0])
-                    experimental_method.append(metadata[1]) 
-                    resolution.append(metadata[2])
+                    pdb.append(metadata[0])
+                    deposition_date.append(metadata[1])
+                    experimental_method.append(metadata[2]) 
+                    resolution.append(metadata[3])
         else:
             logging.warning(f"Uniprot did not return any structures for {uniprot_id}")
             
@@ -609,6 +714,8 @@ def get_structure_df(uniprot_id, isoform=None):
                                  "deposition_date": deposition_date, 
                                  "experimental_method": experimental_method, 
                                  "resolution": resolution}) 
+    
+    structure_df = structure_df.drop_duplicates(subset=["pdb"]).reset_index(drop=True)
         
     rank_dict = {'X-RAY DIFFRACTION': 1,'ELECTRON MICROSCOPY': 2,'ELECTRON CRYSTALLOGRAPHY': 3,'SOLUTION NMR': 4, 'SOLID-STATE NMR': 5}
     
