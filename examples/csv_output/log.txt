@@ -3,3 +3,8 @@
 2025-11-19 13:41:41,077 - INFO - Pipeline is starting
 2025-11-19 13:42:05,806 - INFO - total runtime: 0:00:25.119995
 2025-11-19 13:42:05,806 - INFO - PDBminer has finished.
+2026-11-06 14:03:46,191 - INFO - PDBminer is starting
+2026-11-06 14:03:46,192 - INFO - input file mode is choosen and input file has been identified.
+2026-11-06 14:03:46,591 - INFO - Pipeline is starting
+2026-11-06 14:04:24,120 - INFO - total runtime: 0:00:37.929063
+2026-11-06 14:04:24,121 - INFO - PDBminer has finished.

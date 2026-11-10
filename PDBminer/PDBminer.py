@@ -127,7 +127,7 @@ else:
 
 #####################
 
-def pdbe_get(url, error_message, max_retries=20, delay=3, timeout=10):
+def pdbe_get(url, error_message, max_retries=20, delay=3, timeout=10, allow_404=False):
     """
     GET a URL with retry. If still failing after max_retries, raise RuntimeError.
 
@@ -156,6 +156,8 @@ def pdbe_get(url, error_message, max_retries=20, delay=3, timeout=10):
             return response
 
         if response.status_code == 404:
+            if allow_404:
+                return None
             logging.warning(f"{error_message} – got HTTP 404 (not found). Not retrying this URL.")
             break
 
@@ -1493,6 +1495,9 @@ def align(combined_structure, path, peptide_min_length):
     combined_structure["b_factor"] = " "
     combined_structure["warnings"] = " "
     combined_structure["r_free"] = " "
+
+    if combined_structure.empty:
+        return combined_structure
     
     uniprot_sequence, uniprot_numbering = get_uniprot_sequence(combined_structure.uniprot_id.iloc[0], combined_structure['uniprot_isoform'][0])     
 
@@ -1575,11 +1580,19 @@ def get_complex_information(pdb_id, uniprot):
         error_message=(f"ERROR: Could not connect to PDBe database via API for {pdb_id}, {uniprot}"),
         max_retries=20,
         delay=3,
-        timeout=10)
+        timeout=10,
+        allow_404=True)
 
+    if response is None:
+        logging.warning(f"Skipping PDB {pdb_id} for UniProt {uniprot}: "
+                        f"PDBe chain mappings are unavailable (HTTP 404 from {url_segments}).")
+        return np.full(7, 'NA', dtype=object)
     response_text = json.loads(response.text)
-
     protein_segment_dictionary = response_text[pdb_id.lower()]
+
+    if not protein_segment_dictionary['UniProt']:
+        logging.warning(f"Skipping PDB {pdb_id} for UniProt {uniprot}: PDBe returned no UniProt chain mappings.")
+        return np.full(7, 'NA', dtype=object)
     
     self_chain = []
 

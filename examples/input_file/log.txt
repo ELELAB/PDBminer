@@ -6,3 +6,13 @@
 2025-11-19 15:30:46,619 - WARNING - AlphaFold database returned an error for P11532. This may indicate that there are no structure for P11532 in the Alphafold Database.
 2025-11-19 15:30:51,079 - INFO - total runtime: 0:00:06.936115
 2025-11-19 15:30:51,079 - INFO - PDBminer has finished.
+2026-11-06 14:07:19,732 - INFO - PDBminer is starting
+2026-11-06 14:07:19,733 - INFO - input file mode is choosen and input file has been identified.
+2026-11-06 14:07:20,157 - INFO - Pipeline is starting
+2026-11-06 14:07:20,423 - WARNING - WARNING: Could not connect to 3D-Beacons database via API for P0A7Y7. – got HTTP 404 (not found). Not retrying this URL.
+2026-11-06 14:07:20,423 - WARNING - 3D-Beacons query failed for P0A7Y7: WARNING: Could not connect to 3D-Beacons database via API for P0A7Y7. failed. Last HTTP status: 404. Falling back to UniProt PDB list.
+2026-11-06 14:07:20,795 - WARNING - Uniprot did not return any structures for P0A7Y7
+2026-11-06 14:07:22,319 - WARNING - The Alphafold Database has models for other isoforms of P11532, but none for accession P11532. Ignoring AlphaFold for this protein.
+2026-11-06 14:07:22,320 - WARNING - AlphaFold database returned an error for P11532. This may indicate that there are no structure for P11532 in the Alphafold Database.
+2026-11-06 14:07:31,909 - INFO - total runtime: 0:00:12.176786
+2026-11-06 14:07:31,910 - INFO - PDBminer has finished.
